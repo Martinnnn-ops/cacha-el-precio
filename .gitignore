@@ -1,0 +1,62 @@
+# ─── Secretos y configuración local ────────────────────────────────
+# Nunca subir credenciales. Ver AGENTS.md → Reglas del repo.
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+*.jks
+credentials
+application-local.yml
+application-local.yaml
+application-secrets.yml
+*-secrets.yml
+.aws/
+secrets/
+
+# ─── Java / Gradle (Micronaut) ─────────────────────────────────────
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.gradle/
+out/
+*.class
+*.jar
+*.war
+target/
+
+# ─── Node / React (frontend) ───────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── Infraestructura ───────────────────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+cdk.out/
+.serverless/
+
+# ─── Datos capturados ──────────────────────────────────────────────
+# El crudo vive en S3, no en el repo.
+datos/
+capturas/
+*.csv
+*.parquet
+!docs/**/*.csv
+
+# ─── Herramientas y sistema ────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.log
