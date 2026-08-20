@@ -28,7 +28,11 @@ Decisiones tomadas:
 
 **Integrante 1 —**
 
-**Integrante 2 —**
+**Integrante 2 — Backend**
+
+Se configuró el monorepo Maven con Java 25 y se agregó `catalog-service` como primer módulo
+Micronaut, todavía sin lógica de negocio. Se verificó el arranque y el endpoint de salud. Queda
+pendiente que el integrante implemente el primer endpoint del catálogo con acompañamiento.
 
 **Integrante 3 —**
 
