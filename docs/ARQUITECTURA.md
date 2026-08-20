@@ -561,6 +561,7 @@ Lo bueno y lo malo que aceptamos. **Especialmente lo malo.**
 | 011 | S3 como fuente de verdad, no la base de datos | §10 |
 | 012 | Cola efímera, sin EFS | §11 |
 | 013 | Java 25 y Maven como base del backend | [`ADR-013`](adr/013-java-25-maven.md) |
+| 014 | Versionado semántico independiente por microservicio | [`ADR-014`](adr/014-versionado-semantico-por-servicio.md) |
 
 **Por qué vale la pena:** el razonamiento ya está escrito acá, así que es mayormente copiar y
 pegar. Y en una defensa, un ADR que dice *"consideramos X, lo descartamos porque Y, y aceptamos

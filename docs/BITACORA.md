@@ -34,6 +34,10 @@ Se configuró el monorepo Maven con Java 25 y se agregó `catalog-service` como 
 Micronaut, todavía sin lógica de negocio. Se verificó el arranque y el endpoint de salud. Queda
 pendiente que el integrante implemente el primer endpoint del catálogo con acompañamiento.
 
+Se decidió usar Semantic Versioning independiente por microservicio porque cada uno avanzará a
+un ritmo distinto. `catalog-service` parte en `0.1.0`; la versión del agregador Maven no se hereda
+como versión del servicio.
+
 **Integrante 3 —**
 
 **Del equipo:** (decisiones tomadas, cosas que cambiaron respecto del plan)
