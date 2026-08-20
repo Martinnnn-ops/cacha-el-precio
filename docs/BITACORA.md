@@ -38,6 +38,10 @@ Se decidió usar Semantic Versioning independiente por microservicio porque cada
 un ritmo distinto. `catalog-service` parte en `0.1.0`; la versión del agregador Maven no se hereda
 como versión del servicio.
 
+Se habilitó el versionado de rutas mediante headers y se crearon los primeros controladores del
+catálogo junto con su DTO de respuesta. Queda pendiente incorporar pruebas HTTP antes de conectar
+la capa de aplicación y la persistencia.
+
 **Integrante 3 —**
 
 **Del equipo:** (decisiones tomadas, cosas que cambiaron respecto del plan)
