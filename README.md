@@ -48,7 +48,7 @@ Frontend (S3 + CloudFront)
 
 | Capa | Tecnología |
 |---|---|
-| Backend | **Micronaut** (Java) · 4 microservicios |
+| Backend | **Micronaut 5** · Java 25 · Maven · 4 microservicios |
 | Identidad | **AWS Cognito** — OIDC, Authorization Code + PKCE, Google federado |
 | API Manager | **AWS API Gateway** HTTP API con JWT Authorizer |
 | Mensajería | **RabbitMQ** con DLQ y reintentos |
@@ -83,12 +83,14 @@ respetando `robots.txt`. Ver [`docs/PLAN.md`](docs/PLAN.md#8-consideraciones-leg
 
 ## Cómo levantarlo
 
-> Pendiente: se completa cuando exista el monorepo.
+Requiere **JDK 25**. El Maven Wrapper descarga la versión de Maven definida por el proyecto.
 
 ```bash
-docker compose up -d     # Postgres + RabbitMQ
-./gradlew run            # los servicios
+./mvnw verify
+./mvnw -pl catalog-service mn:run
 ```
+
+Con `catalog-service` arriba, su estado se consulta en `http://localhost:8081/health`.
 
 ## Equipo
 
