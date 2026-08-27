@@ -1,228 +1,166 @@
 # Tareas del proyecto
 
-> **Acá está lo que hay que hacer, quién lo hace y para qué sirve.**
-> Si tienes 5 minutos y no sabes qué hacer, abre este documento y busca tu semana.
+> **Acá está lo que hay que hacer, en qué semana, y qué tiene que existir al final de cada una.**
+> Si tienes 15 minutos y no sabes qué hacer, abre este documento, busca la semana en curso y
+> toma cualquier tarea que no esté marcada.
 >
-> Última revisión: 19-08-2026
+> Última revisión: **27-08-2026**
 
 ---
 
 ## Cómo usar este documento
 
-1. **Busca tu semana** y dentro de ella tu nombre.
-2. Cada bloque de tareas dice **para qué sirve** antes de la lista. Si no entiendes por qué
-   estás haciendo algo, esa línea te lo explica.
-3. **Marca el `[x]`** cuando termines y súbelo. Así los otros dos ven el avance sin preguntar.
+1. **Busca la semana en curso.** Dentro hay una bolsa de tareas, no carriles con dueño fijo.
+2. **En la reunión semanal se reparte** quién toma qué de esa bolsa. Lo que se acuerde se
+   anota ahí mismo, entre paréntesis, al lado de la tarea.
+3. **Marca el `[x]` cuando termines** y súbelo. Así los otros dos ven el avance sin preguntar.
 4. **Anota lo que hiciste en [BITACORA.md](BITACORA.md)** al final de la semana. Son 3 líneas
    y en septiembre esa bitácora es el informe, ya escrito.
 
-**Otros documentos:** la idea y el alcance están en [PLAN.md](PLAN.md) · el porqué técnico en
-[ARQUITECTURA.md](ARQUITECTURA.md) · lo que evalúa el ramo en [EVALUACIONES.md](EVALUACIONES.md).
+**Otros documentos:** la idea y el alcance en [PLAN.md](PLAN.md) · el porqué técnico en
+[ARQUITECTURA.md](ARQUITECTURA.md) · lo que evalúa el ramo en [EVALUACIONES.md](EVALUACIONES.md)
+· los requisitos en [REQUISITOS.md](REQUISITOS.md).
 
 ---
 
 ## 📋 Índice
 
-- [El equipo: quién hace qué](#-el-equipo-quién-hace-qué)
-- [Las cuatro semanas de un vistazo](#-las-cuatro-semanas-de-un-vistazo)
-- [Semana 0 · 19–23 ago](#-semana-0--1923-ago--que-los-tres-entiendan-el-login)
-- [Semana 1 · 24–30 ago](#-semana-1--2430-ago--el-login-de-verdad-y-el-backend-que-valida)
+- [Cómo nos repartimos el trabajo](#-cómo-nos-repartimos-el-trabajo)
+- [Dónde estamos hoy](#-dónde-estamos-hoy--27-08-2026)
+- [Las tres fechas que mandan](#-las-tres-fechas-que-mandan)
+- [Semana 1 · 28–30 ago](#-semana-1--2830-ago--destrabar-cognito)
 - [Semana 2 · 31 ago – 6 sep](#-semana-2--31-ago--6-sep--todo-a-la-nube)
-- [Semana 3 · 7–13 sep](#-semana-3--713-sep--cerrar-congelar-y-entregar)
-- [Después de la entrega](#-después-de-la-entrega)
+- [Semana 3 · 7–10 sep](#-semana-3--710-sep--cerrar-y-congelar)
+- [Cierre · 11–13 sep](#-cierre--1113-sep--informe-y-entrega)
 - [Modo de trabajo](#-modo-de-trabajo)
-- [Checklist final: lo que tiene que quedar funcionando](#-checklist-final-lo-que-tiene-que-quedar-funcionando)
+- [Checklist final](#-checklist-final-lo-que-tiene-que-quedar-funcionando)
 
 ---
 
-## 👥 El equipo: quién hace qué
+## 👥 Cómo nos repartimos el trabajo
 
-Tres carriles. Cada uno es **dueño** de lo suyo, pero los tres tienen que entender el proyecto
-completo (en la presentación la nota es individual y la pregunta le puede tocar a cualquiera).
+**No hay carriles fijos.** Cada semana tiene una bolsa de tareas y en la **reunión semanal** se
+reparte quién toma cada una, según lo que quedó pendiente y quién tiene tiempo esa semana.
 
-### 🔑 Integrante 1 — Identidad y Frontend
+Los tres tienen que **entender el proyecto completo**, no solo lo que les tocó: en la
+presentación la nota es individual y la pregunta le puede tocar a cualquiera.
 
-> **Nombre:** _por definir_
-
-**Se lleva:** todo lo que el usuario ve y todo lo relacionado con "quién eres".
-Cognito, el registro y login, el botón de Google, la pantalla, el diseño.
-
-**Es el carril más pesado de la primera entrega** (vale el 60% de EP1).
-
-### 🛡️ Integrante 2 — Backend y Dominio
-
-> **Nombre:** _por definir_
-
-**Se lleva:** el cerebro del sistema. Que el backend revise que los tokens sean válidos, que
-sepa quién puede hacer qué, y toda la lógica de comparar productos y calcular descuentos.
-
-**Es quien demuestra que la seguridad funciona** (el 40% de EP1).
-
-### ☁️ Integrante 3 — Nube y Plataforma
-
-> **Nombre:** _por definir_
-
-**Se lleva:** que todo esto exista de verdad en internet. API Gateway, AWS, el despliegue
-automático, y los scrapers que traen los datos.
-
-**Sin su trabajo nadie puede presentar nada**, porque hay que mostrar el sistema andando en
-la nube. En puntaje directo defiende menos, pero en horas está parejo con los otros dos.
-
----
-
-## 🗓️ Las cuatro semanas de un vistazo
-
-| Semana | Fechas | El foco | Al final de la semana tiene que existir |
-|---|---|---|---|
-| **0** | 19–23 ago | Que los tres entiendan el login | Cada uno con su login andando + el scraper juntando precios |
-| **1** | 24–30 ago | El login de verdad y el backend que valida | Un usuario real entra, y la API responde 200 / 401 / 403 |
-| **2** | 31 ago – 6 sep | Todo a la nube | El sistema funcionando en internet, no en el notebook |
-| **3** | 7–13 sep | Cerrar, congelar y entregar | Código congelado el 10 · entrega el 13 |
-
-**Regla de oro del calendario:** el **10 de septiembre no se toca más código**. Los últimos tres
-días son solo para informe, ensayo y grabación. Si algo se cae el día 11 y no hay margen, no hay
-entrega.
-
----
-
-## 🚀 Semana 0 · 19–23 ago — Que los tres entiendan el login
-
-### 🎯 Objetivo
-
-Que los tres puedan explicar cómo funciona el login **porque lo hicieron con sus manos**, no
-porque se lo contaron.
-
-### ⚠️ Lo más urgente de toda la semana
-
-> **Hay que echar a andar el scraper HOY, aunque sea un script feo en el notebook.**
+> ⚠️ **Dos cosas que sí necesitan dueño con nombre, y no pueden decidirse la última semana:**
 >
-> El historial de precios **solo existe si empieza a acumularse desde ya**. Si arranca el 22 de
-> agosto, la demo tiene 3 semanas de datos reales. Si arranca en septiembre, un gráfico con tres
-> puntos tristes. **Esto no se puede recuperar después.**
+> - **El EP1 se califica en dos mitades:** 60% el flujo OIDC del frontend y 40% la validación
+>   del token en el BFF. Son dos personas distintas defendiendo dos notas distintas.
+> - **El EP2 es nota individual y por indicador** (ver el mapa de puntaje en
+>   [EVALUACIONES.md](EVALUACIONES.md#mapa-de-puntaje)). Cada indicador lo presenta alguien.
+>
+> **Ese reparto hay que cerrarlo a más tardar en la reunión del sábado 6 de septiembre**, para
+> que cada uno llegue a la presentación habiendo trabajado de verdad lo que va a defender.
+
+### La reunión semanal
+
+Una hora, los sábados. Tres cosas y se acaba:
+
+1. Cada uno cuenta qué hizo (esto es la bitácora, dicha en voz alta).
+2. Se reparte la bolsa de la semana que entra.
+3. Se anota en `BITACORA.md` lo que cambió respecto del plan, y por qué.
 
 ---
 
-### 🔁 Los tres hacen lo mismo (cada uno en su propia cuenta, sin pisarse)
+## 📍 Dónde estamos hoy · 27-08-2026
 
-**Para qué sirve:** en la presentación la nota es individual. Si a alguien le preguntan por PKCE
-y responde "eso lo hizo mi compañero", esa persona pierde puntos. Son 2 días y es la forma más
-barata de que los tres entiendan de verdad cómo funciona esto.
+Estado real, verificado contra el repo y contra AWS — no de memoria.
 
-- [ ] Crear un **User Pool de práctica propio** en Cognito (se borra la semana que viene)
-- [ ] Crear tu propio **app client** con Authorization Code + PKCE y las URLs de redirección
-  - ↳ *Ojo: las URLs tienen que calzar exactas, incluyendo `http://localhost:5173`*
-- [ ] Levantar una **página HTML fea** con `oidc-client-ts` que haga login
-  - ↳ *Sin CSS, sin diseño, sin nada. Que entre y muestre el token en pantalla*
-- [ ] Abrir **DevTools** y encontrar a mano, en la URL de `/authorize`: `code_challenge`,
-      `code_challenge_method=S256`, `state` y `nonce`
-  - ↳ *Estos cuatro parámetros son exactamente lo que se evalúa. Verlos con tus ojos vale más
-    que leer sobre ellos*
-- [ ] Pegar el `access_token` en [jwt.io](https://jwt.io) y **anotar qué trae adentro**:
-      `iss`, `client_id`, `scope`, `exp`, `token_use`, `cognito:groups`
+| | Pieza | Estado |
+|---|---|---|
+| ✅ | Repo, ramas y acuerdos de trabajo | Andando. `main` protegido, `development` libre |
+| ✅ | **Scraper de Sparta** | 🟢 **Capturando 3 veces al día desde el 27-08.** 2.088 productos por corrida |
+| ✅ | `catalog-service` | Base con rutas versionadas y `/health`, mergeada |
+| ✅ | Decisión de cómputo | **EC2 + Docker Compose**, cerrada y escrita en [ADR-008](adr/008-ec2-docker-compose.md) |
+| 🔴 | **Cognito en AWS Academy** | **Sin probar.** Es el riesgo número uno del proyecto |
+| ⬜ | Frontend | No existe |
+| ⬜ | BFF / validación de JWT | No existe |
+| ⬜ | API Gateway | No existe |
+| ⬜ | RDS, VPC, despliegue | No existe |
+| ⬜ | Scraper de Hites | No existe. El endpoint del plan original **da 500** |
+| ⬜ | CI en GitHub Actions | **0 workflows.** Estaba escrito como si existiera |
+| ⬜ | ADR | 3 de 14 escritos (008, 013, 014) |
 
----
-
-### 🔑 Integrante 1 — además
-
-- [ ] **Crear el repo en GitHub** con las ramas `main` y `development`
-- [ ] Activar **branch protection** en las dos (que nadie pueda subir directo sin PR)
-- [ ] Escribir el **`.gitignore`** (el ramo lo pide explícitamente) y una plantilla de PR
-
-### 🛡️ Integrante 2 — además
-
-- [ ] **Monorepo de Micronaut** con los 4 módulos: `scraper`, `catalog`, `price`, `gateway`
-- [ ] **`docker-compose.yml`** con Postgres + RabbitMQ para trabajar local
-  - ↳ *Para que los tres puedan levantar el proyecto con un solo comando*
-
-### ☁️ Integrante 3 — además
-
-- [ ] 🔥 **Scraper mínimo de Sparta corriendo con cron en tu PC, guardando JSON en S3 cada 8 horas**
-  - ↳ *Sin arquitectura, sin cola, sin base de datos. Un script que baje los precios y los guarde.
-    **Esta es la tarea más importante de la semana.***
-- [ ] Verificar que la cuenta de **AWS Academy deja crear User Pool y API Gateway**
-  - ↳ *Si no deja, hay que saberlo ahora y no en septiembre. El plan B es Keycloak*
+> 🔴 **Lo más importante de esta tabla:** todo lo que puntúa en el EP1 —el 60% del frontend y
+> el 40% del BFF— **todavía no existe**, y ambos dependen de que Cognito se pueda levantar.
 
 ---
 
-### ✅ Al terminar la semana
+## 📅 Las tres fechas que mandan
 
-Los tres con su login funcionando, y precios acumulándose todos los días.
+| Fecha | Qué | Por qué importa |
+|---|---|---|
+| ☁️ **dom 6-sep** | **El sistema tiene que estar en la nube** | Sin esto no hay EP1, aunque el código esté impecable |
+| 🔒 **jue 10-sep** | **Code freeze** | Del 10 al 13 no se toca código: informe, ensayo y grabación |
+| 📤 **dom 13-sep 23:59** | **Entrega formal** por GitHub + AVA | La fecha oficial. Se trata como colchón, no como meta |
+
+### Lo que choca en el camino
+
+Estas fechas no son del ramo, pero se comen las mismas horas:
+
+| Fecha | Qué |
+|---|---|
+| vie 4-sep | Parcial 1 de OCY1102 (práctico, 16:00–19:00) |
+| 7–12 sep | Parcial 1 de ISY1102 (día por confirmar) |
+| mié 9-sep | Entrega EV1 de GPY1102 |
+| jue 10-sep | Defensa EV1 de GPY1102 — **el mismo día del code freeze** |
+
+> ⚠️ **El fin de semana del 5–6 está pedido dos veces:** el despliegue del EP1 y la EV1 de
+> GPY1102. El que se puede mover es el despliegue: si se hace **entre semana**, el fin de semana
+> queda libre para la EV1. Lo que no se puede es descubrirlo el sábado 5.
 
 ---
 
-## 🔐 Semana 1 · 24–30 ago — El login de verdad y el backend que valida
+## 🔓 Semana 1 · 28–30 ago — Destrabar Cognito
 
 ### 🎯 Objetivo
 
-Pasar de "prototipos de práctica" al sistema real: un solo Cognito oficial, y un backend que
-sepa distinguir entre *"no sé quién eres"* y *"sé quién eres pero no puedes hacer esto"*.
+Salir del fin de semana **sabiendo si Cognito se puede o no**, y con el login andando en el
+computador de cada uno.
 
----
+### 🔴 Lo primero, antes que cualquier otra cosa
 
-### 🔑 Integrante 1 — Identidad y Frontend
+- [ ] **Entrar a la consola de AWS Academy e intentar crear un User Pool de Cognito**
+  - ↳ *AWS Academy restringe servicios. **El 100% del EP1 depende de esto**: el 60% del frontend
+    y el 40% del BFF. Son 20 minutos y lleva una semana postergándose.*
+  - ↳ *Si **no** se puede: el plan B es **Keycloak como un contenedor más del compose**. Esa
+    decisión hay que tomarla esta semana, no la otra.*
 
-**Para qué sirve este bloque:** es el 60% de la primera entrega. Todo lo que el corrector va
-a mirar primero.
+### La bolsa de la semana
 
+**Identidad**
 - [ ] **User Pool oficial** con política de contraseñas y verificación por email
-- [ ] Crear los **grupos `admin` y `usuario`**
-  - ↳ *Sin grupos la API solo puede responder 200 y 401. Con grupos aparece el **403**, que es
-    la diferencia entre "no estás logueado" y "estás logueado pero no te corresponde"*
-- [ ] **Resource Server** con los permisos `precios:leer`, `seguimiento:escribir`, `ingesta:escribir`
-- [ ] **Google como opción de login**, además del registro normal
-- [ ] Crear **3 usuarios de prueba**: uno admin, uno normal, uno que entre con Google
-  - ↳ *Se usan en la demo. Tenerlos listos desde ya evita improvisar el día de la presentación*
-- [ ] Frontend en **React + Vite** con `react-oidc-context`: **registro**, login y logout
-  - ↳ *Ojo con el **registro**: no basta con el login, hay que poder crear una cuenta nueva*
-- [ ] **Guard de ruta**: si entras a una página protegida sin sesión, te manda al login
-- [ ] **Interceptor**: que cada llamada a la API lleve el token automáticamente
-- [ ] Mostrar en pantalla los **roles y permisos leídos del token**
-  - ↳ *Suena tonto pero es un punto explícito de la rúbrica: hay que demostrar que el frontend
-    sabe leer los claims*
+- [ ] Grupos **`admin`** y **`usuario`** — *sin grupos solo hay 200 y 401; el **403** aparece con roles*
+- [ ] **Resource Server** con `precios:leer`, `seguimiento:escribir`, `ingesta:escribir`
+- [ ] **Google como IdP federado** — *Google y no GitHub: GitHub es OAuth2 pero **no OIDC**, no emite `id_token`*
+- [ ] **3 usuarios de prueba**: un admin, uno normal, uno que entre con Google
 
-### 🛡️ Integrante 2 — Backend y Dominio
+**Que los tres entiendan el login** *(no es relleno: la nota del EP2 es individual)*
+- [ ] Cada uno levanta una página fea con `oidc-client-ts` que haga login
+- [ ] Encontrar a mano en DevTools, en la URL de `/authorize`: `code_challenge`,
+      `code_challenge_method=S256`, `state` y `nonce`
+- [ ] Pegar el `access_token` en [jwt.io](https://jwt.io) y anotar `iss`, `client_id`, `scope`,
+      `exp`, `token_use`, `cognito:groups`
 
-**Para qué sirve este bloque:** es el 40% de la primera entrega, y el 20% más grande de la
-presentación.
-
-- [ ] Agregar **`micronaut-security-jwt`** a `gateway`, `catalog` y `price`
-- [ ] Validar de forma explícita: **quién emitió el token, para quién es, la firma y que no
-      esté vencido**
-  - ↳ *En términos técnicos: `iss`, `client_id`, firma contra el JWKS, y `exp`.
-    El detalle de por qué Cognito no trae `aud` está en
-    [ARQUITECTURA.md §9](ARQUITECTURA.md#9-el-detalle-del-audience-en-cognito)*
-- [ ] **Autorización por rol** leyendo `cognito:groups` → una ruta que le dé **403** al no-admin
-- [ ] Endpoints de prueba que devuelvan **200 / 401 / 403** de forma predecible
-  - ↳ *Estos tres endpoints son los que se muestran en la demo. Que sean fáciles de llamar*
-- [ ] Revisar el **modelo de datos con datos reales** de Sparta y escribir las migraciones (Flyway)
-- [ ] Consumidor de RabbitMQ con **DLQ** e **idempotencia**
-  - ↳ *La idempotencia evita que el historial de precios se llene de duplicados si un mensaje
-    llega dos veces. Es media hora de trabajo y responde una pregunta clásica de la defensa*
-
-### ☁️ Integrante 3 — Nube y Plataforma
-
-**Para qué sirve este bloque:** dejar de depender de que tu notebook esté prendido.
-
-- [ ] Mover el scraper de tu PC a **Lambda + EventBridge** (3 veces al día)
-  - ↳ *90 invocaciones al mes contra un free tier de 1 millón: cuesta prácticamente cero*
-- [ ] Escribir el **adaptador de Hites** con Jsoup
-- [ ] Crear el endpoint **`POST /ingesta`** + el app client de **client credentials** del scraper
-  - ↳ *Así el scraper entra por la puerta principal como todos, con su propio token. Es lo que
-    hace que el flujo "de máquina a máquina" se valide de verdad y no sea decorativo*
+**Infraestructura de trabajo**
+- [ ] **`docker-compose.yml`** con Postgres + RabbitMQ para desarrollo local
+  - ↳ *Doble valor: es el mismo archivo que después corre en la EC2 ([ADR-008](adr/008-ec2-docker-compose.md))*
 - [ ] **CI en GitHub Actions**: que compile y corra los tests en cada PR
-- [ ] Agregar `micronaut-management` para tener **`/health` y `/metrics`**
-  - ↳ *Es una sola dependencia. Si no se hace ahora, no se hace nunca*
+  - ↳ *Hoy son 0 workflows. `TAREAS.md` lo daba por hecho desde la semana 0*
 
----
-
-### 🤝 Reunión de sincronización — sábado, 1 hora
-
-Cada uno le explica a los otros dos lo que construyó. **Conviene grabarla**: sirve de repaso
-antes de la presentación.
+**Datos**
+- [ ] **Adaptador de Hites** con Jsoup, usando `https://www.hites.com/search?q=`
+  - ↳ *El `Search-UpdateGrid` del plan original **devuelve 500 desde el 27-08***
+- [ ] Revisar el **modelo de datos contra los datos reales** que ya está capturando el scraper
+  - ↳ *Hay 2.088 productos por captura esperando en `capturas/`. Ya no hay que suponer nada*
 
 ### ✅ Al terminar la semana
 
-Un usuario real se registra, entra, y la API le responde 200, 401 o 403 según corresponda.
+Sabemos si Cognito se puede. Hay un User Pool con grupos y usuarios de prueba. Los tres
+levantaron un login con sus manos.
 
 ---
 
@@ -230,104 +168,108 @@ Un usuario real se registra, entra, y la API le responde 200, 401 o 403 según c
 
 ### 🎯 Objetivo
 
-Que el sistema exista en internet. **Esta es la semana crítica**: casi todos los indicadores de
-la presentación piden mostrar el sistema andando en la nube, no en `localhost`.
+**Que el sistema exista en internet.** Es la semana crítica: casi todos los indicadores de la
+presentación piden mostrarlo andando en la nube, no en `localhost`.
 
----
+> 🔴 **Adelantar el despliegue a entre semana.** El fin de semana del 5–6 ya está comprometido
+> con la EV1 de GPY1102, y el viernes 4 es el parcial de OCY. **El objetivo real es tener el
+> sistema arriba el jueves 3.**
 
-### ☁️ Integrante 3 — Nube y Plataforma *(semana más cargada; los otros dos ayudan)*
+### La bolsa de la semana
 
-- [ ] **API Gateway HTTP API** con el **JWT Authorizer** apuntando a Cognito
-  - ↳ *Esto hace que un token inválido se rechace **antes** de gastar servidor. Más barato y
-    más seguro*
-- [ ] Mapear **todas** las rutas a los microservicios
-- [ ] Configurar **CORS**: orígenes explícitos (CloudFront y `http://localhost:5173`),
-      métodos y headers necesarios, **sin usar `*`**
-  - ↳ *CORS es la regla del navegador que decide qué sitios pueden llamar a nuestra API.
-    Poner `*` funciona pero es inseguro y resta puntos*
-- [ ] Crear los **stages `dev` y `prod`** + throttling
-- [ ] Desplegar todo: servicios en **ECS Fargate**, scrapers en **Lambda**, **RDS Postgres**,
-      **RabbitMQ en Fargate**, secretos en **Secrets Manager**
-- [ ] Frontend en **S3 + CloudFront** (usamos la URL que da CloudFront, no compramos dominio)
-- [ ] **Despliegue automático**: merge a `development` → sube a `dev`; merge a `main` → sube a `prod`
-
-### 🔑 Integrante 1 — Frontend
-
-- [ ] **Diseño real**: paleta de colores, tipografía y distribución de la página
-  - ↳ *No dejarlo para el final. Una app que se ve terminada se defiende mejor que una que
-    se ve a medio hacer, aunque por dentro sean iguales*
+**Frontend — es el 60% del EP1**
+- [ ] React + Vite con `react-oidc-context`: **registro**, login y logout
+  - ↳ *Ojo con el **registro**: no basta el login, hay que poder crear una cuenta nueva*
+- [ ] **Guard de ruta**: sin sesión, te manda al login
+- [ ] **Interceptor**: cada llamada a la API lleva el token automáticamente
+- [ ] Mostrar en pantalla los **roles y scopes leídos del token** — *es un punto explícito de la rúbrica*
 - [ ] Buscador de modelos y ficha de producto
-- [ ] Actualizar las URLs de redirección de Cognito al dominio de CloudFront
+- [ ] **Diseño real**: paleta, tipografía y distribución — *una app que se ve terminada se defiende mejor*
+- [ ] Actualizar las **URLs de redirección** de Cognito al dominio de CloudFront
   - ↳ *Si se olvida, el login deja de funcionar en producción y no es obvio por qué*
-- [ ] **Lista de seguimiento** del usuario
-  - ↳ *Esta es la razón por la que el login existe: los precios son públicos, pero tu lista es tuya*
 
-### 🛡️ Integrante 2 — Dominio
+**BFF y validación — es el 40% del EP1**
+- [ ] `micronaut-security-jwt` en `gateway`, `catalog` y `price`
+- [ ] Validar explícitamente **issuer, audience, firma contra el JWKS y vigencia**
+  - ↳ *Por qué Cognito no trae `aud`: [ARQUITECTURA.md §9](ARQUITECTURA.md#9-el-detalle-del-audience-en-cognito)*
+- [ ] **Autorización por rol** leyendo `cognito:groups` → una ruta que le dé **403** al no-admin
+- [ ] Endpoints que devuelvan **200 / 401 / 403** de forma predecible — *son los de la demo*
+- [ ] Migraciones con Flyway sobre el modelo ya validado con datos reales
 
-- [ ] **Matching** con `pg_trgm` + tabla de candidatos para revisión manual
-- [ ] Historial y cálculo del **descuento real** (los tres números)
+**Nube**
+- [ ] **VPC** con subredes públicas y privadas en **dos zonas**, y **NAT Gateway**
+      (ver [ARQUITECTURA.md §11](ARQUITECTURA.md#11-dónde-vive-esto-en-aws))
+- [ ] **RDS Postgres** en subred privada — *fuera del compose: si se cae, el historial no se recupera*
+- [ ] **EC2** con `docker compose up`: BFF, catalog, price y RabbitMQ
+- [ ] **API Gateway HTTP API** con **JWT Authorizer** apuntando a Cognito
+  - ↳ *Un token inválido se rechaza en el borde, antes de gastar la instancia*
+- [ ] Mapear **todas** las rutas a los microservicios
+- [ ] **CORS**: orígenes explícitos (CloudFront y `http://localhost:5173`), **sin usar `*`**
+- [ ] Stages **`dev`** y **`prod`** + throttling
+- [ ] **Frontend en S3 + CloudFront**
+- [ ] Secretos en **Secrets Manager** — *nunca en el repo ni en el compose*
+- [ ] Mover el **scraper a Lambda + EventBridge** y el crudo a S3
+  - ↳ *Hoy corre en el notebook de Martín con un timer de systemd. Funciona, pero no es la nube*
+- [ ] Endpoint **`POST /ingesta`** + app client de **client credentials** del scraper
+  - ↳ *Es lo que hace que el flujo máquina a máquina se valide de verdad y no sea decorativo*
+
+**Dominio** *(si alcanza — no puntúa en el EP1)*
+- [ ] Matching con `pg_trgm` + tabla de candidatos
+- [ ] Historial y cálculo del **descuento real**
 - [ ] Revisar **30 productos a mano** y anotar el porcentaje de aciertos
-  - ↳ *Esto da un **número medido** para el informe: "24 de 30 correctos = 80%". Un resultado
-    concreto vale mucho más que una descripción*
-- [ ] Importar el **OpenAPI** que genera Micronaut como documentación de la API
-
----
+  - ↳ *Da un número medido para el informe: "24 de 30 = 80%"*
 
 ### ✅ Al terminar la semana
 
 Todo el tráfico entra por el API Gateway, con el token validado en el borde, y ningún servicio
-expuesto directo a internet.
+expuesto directo a internet. **La URL de CloudFront abre y el login funciona.**
 
 ---
 
-## 🏁 Semana 3 · 7–13 sep — Cerrar, congelar y entregar
+## 🏁 Semana 3 · 7–10 sep — Cerrar y congelar
 
 ### 🎯 Objetivo
 
-Terminar lo que falta, **congelar el 10**, y llegar tranquilos al 13.
-
----
-
-### Del 7 al 10 · los tres
+Terminar lo que falta y **congelar el jueves 10**. Acá no se aprende nada nuevo.
 
 - [ ] Cerrar el [checklist final](#-checklist-final-lo-que-tiene-que-quedar-funcionando):
       cada ruta probada con token, sin token y sin permiso
 - [ ] **Gráfico del historial** de precios + botón "Descargar CSV"
 - [ ] Test de contrato por scraper ("esta captura trajo más de N productos válidos")
-      y tests del matching
-- [ ] Verificar que el historial tenga **al menos 3 semanas** de datos
-- [ ] Escribir los **ADR** en `adr/` — las 12 decisiones ya están listadas en
-      [ARQUITECTURA.md §12](ARQUITECTURA.md#12-registro-de-decisiones-adr)
-  - ↳ *Es mayormente copiar y pegar lo que ya está escrito. Y en la defensa, un documento que
-    dice "consideramos X, lo descartamos por Y" demuestra criterio*
+- [ ] **Escribir los ADR que faltan** — los 14 están listados en
+      [ARQUITECTURA.md §13](ARQUITECTURA.md#13-registro-de-decisiones-adr)
+  - ↳ *Es mayormente copiar lo que ya está escrito. **De acá sale el informe de 5 páginas**, y en
+    la defensa un ADR es literalmente la respuesta a «¿por qué?»*
+- [ ] **Cerrar quién presenta cada indicador del EP2** (si no se hizo el 6)
+- [ ] Revisar el `.gitignore` y que **no haya ningún secreto** en el repo
 
-### 🧊 Del 10 al 13 · código congelado
+### 🧊 El 10 se congela
 
-- [ ] Informe terminado
-  - ↳ *Si la bitácora se fue llenando cada semana, el informe ya está escrito en un 80%*
-- [ ] **Grabar un video de respaldo de la demo completa**
-  - ↳ *Las demos en vivo se caen y el wifi de la sala falla. Con el video grabado, si algo se
-    cae sigues adelante y nadie lo nota*
+Si algo se cae el día 11 y no hay margen, no hay entrega. Por eso el freeze es tres días antes.
+
+---
+
+## 📤 Cierre · 11–13 sep — Informe y entrega
+
+- [ ] **Informe ejecutivo de 5 páginas** contando la portada — o sea 4 de contenido
+  - ↳ *Su punto central es **justificar la elección del IDaaS y del API Manager**. Si la bitácora
+    y los ADR están al día, ya está escrito en un 80%*
+- [ ] **Grabar un video de respaldo** de la demo completa
+  - ↳ *Las demos en vivo se caen y el wifi de la sala falla. Con el video grabado sigues adelante*
 - [ ] Ensayo cronometrado: **5 a 10 minutos**, ni uno más
-- [ ] Revisar el `.gitignore` y que **no haya ningún secreto** subido al repo
+- [ ] Verificar que el ambiente de AWS esté prendido y con crédito
 - [ ] 📤 **Entregar: enlaces de GitHub a AVA + copia al correo de la docente**
 
 ---
 
 ## 📅 Después de la entrega
 
-### Preparación de la presentación (nota individual)
-
-- [ ] Cada uno ensaya **su parte**, y además practica **responder preguntas de las partes de
-      los otros dos**
-- [ ] Repasar el guion de la demo en
-      [EVALUACIONES.md §3](EVALUACIONES.md#3-guion-de-la-demo-de-ep2)
-
 ### Ideas para después (no ahora)
 
+- [ ] **Kafka** — topic `precios.cambiados`. Es EP5 y EP6, **no** el EP1
 - [ ] `alert-service` suscrito a `precio.cambiado` → avisos de restock por talla
 - [ ] Nike.cl y Falabella con navegador headless
-- [ ] Vestuario de marca (el matching difícil)
+- [ ] Migrar de EC2 a ECS Fargate si el ramo lo pide ([ADR-008](adr/008-ec2-docker-compose.md))
 - [ ] Mercado Libre con OAuth
 
 ---
@@ -338,75 +280,76 @@ Terminar lo que falta, **congelar el 10**, y llegar tranquilos al 13.
 
 ```
 feature/loquesea  ──PR──▶  development  ──PR──▶  main
-                          (ambiente dev)       (producción real)
-                           acá se prueba        acá va lo que ya funciona
+                          (acá se prueba)      (producción real)
 ```
 
 - Una **rama por funcionalidad**: `feature/login-google`, `feature/scraper-hites`
-- Todo PR llega primero a **`development`**, donde se prueba
-- A **`main`** solo entra lo que ya funciona. **Merge a `main` = se despliega a producción**
-- **Nadie mergea su propio PR.** Siempre lo revisa otro
+- Todo PR llega primero a **`development`**
+- A **`main`** solo entra lo que ya funciona
 
-### 📓 La bitácora — al final de cada semana, sin falta
+**Protección de ramas, ajustada el 27-08:**
 
-**Cada uno escribe 3 líneas en [BITACORA.md](BITACORA.md):** qué hice, qué me costó, qué queda
-pendiente.
+| Rama | Regla |
+|---|---|
+| `main` | Protegida: **1 revisión**, sin force-push, sin borrado |
+| `development` | **Libre.** Se mergea sin esperar aprobación |
 
-> **Por qué importa:** el informe hay que escribirlo igual, y escribirlo de memoria en septiembre
-> es diez veces más caro que anotarlo cuando pasó. Si la bitácora está al día, **el informe ya
-> está escrito** y solo hay que darle formato. Son 5 minutos por semana.
-
-También se anota ahí cuando **una decisión cambia** respecto del plan: qué se cambió y por qué.
-Eso es material directo para la defensa.
+> `development` se liberó a propósito para no trabarse a dos semanas del freeze. **El acuerdo de
+> que nadie mergea su propio PR sigue en pie** — ahora es un acuerdo entre nosotros, no una regla
+> que GitHub imponga. El historial de PRs es la evidencia de que trabajamos los tres.
 
 ### Los acuerdos
 
 | Acuerdo | Por qué |
 |---|---|
-| **Cada uno commitea lo suyo** | Si uno commitea todo, en el historial parece que trabajó una sola persona. Con nota individual de por medio, eso perjudica al resto |
-| **Reunión de 1 hora los sábados** | Cada uno explica lo que hizo. En la presentación le pueden preguntar cualquier cosa a cualquiera |
-| **Nadie mergea su propio PR** | Además de evitar errores, el historial de PRs es la evidencia de que trabajamos los tres |
-| **Cero secretos en el repo** | Van a AWS Secrets Manager. Un secreto subido a GitHub queda en el historial para siempre |
+| **Cada uno commitea lo suyo** | Si uno commitea todo, en el historial parece que trabajó una sola persona. Con nota individual, eso perjudica al resto |
+| **Reunión de 1 hora los sábados** | Se reparte la bolsa de la semana y cada uno explica lo que hizo |
+| **Nadie mergea su propio PR** | Evita errores y deja evidencia de revisión cruzada |
+| **Cero secretos en el repo** | Van a Secrets Manager. Un secreto subido queda en el historial para siempre |
 
-### Lo que revisa el CI automáticamente
+### Lo que debería revisar el CI
 
-En cada PR a `development`:
+⚠️ **Todavía no existe: hay 0 workflows en el repo.** Está en la bolsa de la Semana 1.
 
 1. Que **compile** y que **pasen los tests**
 2. **gitleaks** — que no se cuele ninguna contraseña ni llave
 3. **Trivy** — vulnerabilidades en las imágenes de Docker
-4. **Dependabot** activo para mantener las dependencias al día
+4. **Dependabot** activo
 
 ---
 
 ## ✅ Checklist final: lo que tiene que quedar funcionando
 
-Se marca a medida que avanza el proyecto. La columna "explica" es quién lo cuenta en la
-presentación — **pero los tres tienen que poder responder sobre cualquier fila.**
+Se marca a medida que avanza el proyecto. **Los tres tienen que poder responder sobre
+cualquier fila**, la haya hecho quien la haya hecho.
 
-### Identidad y frontend — 🔑 Integrante 1
+### Identidad y frontend *(60% del EP1)*
 
 - [ ] **Cognito creado** — consola con usuarios, grupos y política de contraseñas
 - [ ] **Registro de usuario** — crear una cuenta nueva desde el frontend, en vivo
 - [ ] **Login con Google** — entrar con una cuenta de Google
-- [ ] **Authorization Code + PKCE** — DevTools mostrando `code_challenge`, `S256`, `state` y `nonce`
-- [ ] **Los tres tokens** — `id_token`, `access_token` y `refresh_token` visibles y decodificados
+- [ ] **Authorization Code + PKCE** — DevTools con `code_challenge`, `S256`, `state` y `nonce`
+- [ ] **Los tres tokens** — `id_token`, `access_token` y `refresh_token` decodificados
 - [ ] **Roles y permisos del token** — la pantalla muestra `cognito:groups` y `scope`
 - [ ] **Guard e interceptor** — ruta protegida que redirige · el header `Authorization` en DevTools
 
-### Seguridad y backend — 🛡️ Integrante 2
+### Seguridad y backend *(40% del EP1)*
 
 - [ ] **200 con token, 401 sin token** — probado en Postman
 - [ ] **403 con usuario sin permiso** — token válido pero sin el rol necesario
 - [ ] **Validación en el servicio** — el código que revisa `iss`, `client_id`, `token_use` y `exp`
 - [ ] **Mensajería** — el panel de RabbitMQ con las colas y la DLQ
-- [ ] **Historial de precios** — el gráfico con al menos 3 semanas de datos reales
+- [ ] **Historial de precios** — el gráfico con datos reales
+  - ↳ ⚠️ *El scraper arrancó el **27-08**, no en la semana 0. Al freeze del 10-09 el historial
+    tendrá **14 días**, no las 3 semanas que decía este checklist. No es recuperable: conviene
+    decirlo en el informe antes de que lo pregunten.*
 
-### Nube y plataforma — ☁️ Integrante 3
+### Nube y plataforma
 
 - [ ] **Client credentials** — el scraper saca su token y llama a `POST /ingesta`
 - [ ] **API Gateway** — consola con las rutas, los stages `dev`/`prod` y las integraciones
 - [ ] **CORS** — orígenes explícitos en consola + el preflight OPTIONS en DevTools
-- [ ] **Microservicios desplegados** — las tareas de Fargate corriendo
+- [ ] **Servicios desplegados** — la EC2 con los cuatro contenedores corriendo
+- [ ] **Red** — los servicios en subred privada, sin IP pública
 - [ ] **Frontend desplegado** — la URL de CloudFront funcionando
-- [ ] **CI/CD** — historial de workflows verdes + un despliegue automático
+- [ ] **CI/CD** — historial de workflows verdes

@@ -28,7 +28,7 @@ No describe tecnologías: esas están justificadas en [`ARQUITECTURA.md`](ARQUIT
 
 El alcance está acotado al **MVP**, que es lo que se entrega en el EP1 y se presenta en el EP2.
 Las historias marcadas como *post-MVP* están escritas para que se vea hacia dónde va el sistema,
-pero no se construyen antes del 13 de septiembre.
+pero no se construyen antes del code freeze del 10 de septiembre.
 
 ---
 

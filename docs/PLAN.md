@@ -35,9 +35,13 @@ un producto se promocionaba con 65% de descuento usando como referencia $198.900
 antes esa referencia rondaba los $100.000 — el descuento real era 30%. Hoy el comprador no tiene
 forma de saberlo.
 
-**Por qué es posible.** Las zapatillas de marcas terceras (Nike, adidas, Puma, New Balance) se
-venden en varias tiendas a la vez y traen un **style code** de fábrica (ej. `HV9774`) que funciona
-como identificador único compartido entre tiendas.
+**Por qué es posible.** Las zapatillas de marcas terceras se venden en varias tiendas a la vez y
+muchas traen un **style code** de fábrica (ej. `HV9774`, de Nike) que funciona como identificador
+único compartido entre tiendas.
+
+> ⚠️ **Medido el 27-08:** el style code **no viene en un formato único**. En Sparta el SKU cambia
+> de forma según la marca, y el patrón `174000HV9774-00121` es el de Nike. Donde no se pueda
+> extraer, el matching cae a marca + nombre normalizado (§5), igual que con Hites.
 
 **Para quién.** Alguien que está por gastar $80.000–$150.000 en zapatillas y quiere saber dónde
 está más barato, si el descuento es real, y si su talla está disponible.
@@ -48,7 +52,7 @@ está más barato, si el descuento es real, y si su talla está disponible.
 
 ### Entra
 - Calzado deportivo y urbano de **adulto**
-- Marcas terceras: **Nike, adidas, Puma, New Balance**
+- Marcas terceras: **New Balance, Adidas, Joma y Asics** (revisado el 27-08, ver aviso abajo)
 - Productos **nuevos**, vendidos online, con precio y stock visibles
 - Precios en CLP, tallas de adulto
 
@@ -65,18 +69,35 @@ está más barato, si el descuento es real, y si su talla está disponible.
 - **2 tiendas en el MVP** (Sparta + Hites), no más
 - 4 marcas, y dentro de ellas los modelos con más presencia
 - **3 capturas diarias** por tienda (08:00 / 15:00 / 22:00)
-- Historial desde el día en que el scraper empiece a correr
+- Historial **desde el 27-08-2026**, que es cuando arrancó el scraper
+
+> 🔴 **Las 4 marcas cambiaron el 27-08, con datos medidos.** El plan original decía *Nike,
+> adidas, Puma, New Balance*. Al consultar el catálogo real de Sparta filtrando por el atributo
+> `gral_marca`, resultó que **Sparta casi no vende Nike ni Puma**:
+>
+> | Marca | Productos | Zapatillas |
+> |---|---|---|
+> | New Balance | 857 | 408 |
+> | Adidas | 752 | 239 |
+> | Joma | 267 | 138 |
+> | Asics | 96 | 95 |
+> | Nike | 89 | **24** |
+> | Puma | 27 | **4** |
+>
+> Con 24 modelos de Nike no se sostiene un comparador. El scraper captura **las seis** —
+> capturar de más es barato, capturar de menos es irrecuperable — y el MVP se enfoca en las
+> cuatro de arriba. Nike y Puma quedan dentro del dato pero fuera de la promesa.
 
 ---
 
-## 3. Tiendas: estado verificado (18-08-2026)
+## 3. Tiendas: estado verificado (revisado el 27-08-2026)
 
 Probado con `curl` contra los endpoints reales, no supuesto.
 
 | Tienda | Plataforma | Cómo se obtienen los datos | Nivel | ¿MVP? |
 |---|---|---|---|---|
-| **Sparta** | Magento | **GraphQL público sin autenticación** ✅ Trae SKU con style code, precio, tallas y stock por talla | 1 · trivial | **Sí** |
-| **Hites** | Salesforce Commerce | `Search-UpdateGrid` devuelve la grilla en HTML (192 productos con `q=nike`) → Jsoup | 2 · medio | **Sí** |
+| **Sparta** | Magento | **GraphQL público sin autenticación** ✅ En producción desde el 27-08. Trae SKU, precio, precio de lista, tallas y stock por talla | 1 · trivial | **Sí, andando** |
+| **Hites** | Salesforce Commerce | ⚠️ `Search-UpdateGrid` **da 500 desde el 27-08**. Sirve `/search?q=` (24 productos por página con `data-pid`) → Jsoup | 2 · medio | **Sí, por escribir** |
 | Tricot | Salesforce Commerce | Mismo patrón que Hites (se reutiliza el scraper), pero casi no vende marca tercera | 2 · bajo valor | No |
 | Nike.cl | VTEX | Es VTEX (tiene API) pero está tras **Cloudflare con challenge JS** → Playwright | 3 · caro | Post-MVP |
 | Falabella | Next.js | Vía `curl` devuelve la home; hay `__NEXT_DATA__` con `skuId` y `brandName` → Playwright | 3 · caro | Post-MVP |
@@ -96,6 +117,18 @@ Probado con `curl` contra los endpoints reales, no supuesto.
 
 Dentro del SKU `174000**HV9774**-00121` está el style code de Nike. **Sparta es nuestra fuente
 canónica**: de ahí sale el catálogo de modelos, y contra ese catálogo se matchean las demás tiendas.
+
+> 🔴 **Corrección del 27-08 · la búsqueda por texto no filtra por marca.**
+> Pedir `search: "nike zapatillas"` devuelve **1126 resultados de los que solo 24 son Nike**: el
+> término "zapatillas" domina y las cuatro marcas devolvían casi los mismos productos. Hay que
+> usar el atributo `gral_marca`, cuyos ids salen de `aggregations`:
+>
+> ```graphql
+> products(filter: {gral_marca: {eq: "21"}}, pageSize: 50, currentPage: 1)
+> ```
+>
+> Ids: New Balance `21` · Adidas `3` · Joma `18644` · Asics `447` · Nike `23` · Puma `30`.
+> Con el filtro puesto, lo capturado calza exacto con lo que declara la tienda.
 
 ⚠️ **Hites no publica el style code**, solo un SKU interno (`956894`). El matching con Hites será
 por marca + nombre normalizado (ver §5).
@@ -181,9 +214,10 @@ no una opinión, y es lo que separa un informe bueno de uno promedio.
 
 ## 6. El descuento real: los tres números
 
-Con tres semanas de historial, nuestro "mínimo histórico" es en realidad *"el mínimo que hemos
-observado desde el 22 de agosto"*. Presentarlo como verdad absoluta es indefendible. La ficha
-muestra los tres números y deja que el usuario saque la conclusión:
+Con **dos semanas** de historial, nuestro "mínimo histórico" es en realidad *"el mínimo que
+hemos observado desde el **27 de agosto**"* — que es cuando arrancó el scraper. Presentarlo como
+verdad absoluta es indefendible. La ficha muestra los tres números y deja que el usuario saque
+la conclusión:
 
 ```
 Precio hoy                        $89.990
@@ -211,7 +245,7 @@ de paso, es nuestro respaldo si el crédito de AWS se agota (ver §7).
 | **Lambda + EventBridge** | Se "despierta" 3 veces al día, corre 30 segundos, se apaga. **90 invocaciones al mes** | **$0** — el free tier es 1.000.000 de requests/mes |
 | **S3 (crudo)** | ~90 archivos JSON de 1–2 MB al mes ≈ 150 MB | **~$0,003/mes** |
 | **RDS Postgres** | `db.t4g.micro` corriendo 24/7 | ⚠️ **~$15–25/mes** — el único costo real del proyecto |
-| **Fargate** | Los servicios corriendo | Depende de las tareas; usar **Fargate Spot** |
+| **EC2** | Los 4 servicios en un `docker compose` | `t3.small` ≈ **~$15/mes**; se apaga fuera de horario |
 
 **Estrategia de crédito:**
 
@@ -219,14 +253,14 @@ de paso, es nuestro respaldo si el crédito de AWS se agota (ver §7).
    RDS, los datos siguen intactos en S3 y se recargan después. El historial no se pierde nunca.
 2. **RDS recién desde la Semana 2.** Hasta entonces, Postgres local en Docker.
 3. **`aws s3 sync` a local una vez por semana** — respaldo del historial en el PC, gratis.
-4. **Fargate Spot** y apagar el ambiente `dev` de noche.
+4. **Apagar la EC2 fuera de horario de trabajo**: el crédito se consume solo si está prendida.
 5. ❌ **No usar EKS**: el control plane cuesta ~USD 73/mes y se come el crédito.
-6. ❌ **No usar Amazon MQ**: ~USD 22/mes. RabbitMQ va en un contenedor Fargate.
+6. ❌ **No usar Amazon MQ**: ~USD 22/mes. RabbitMQ es un contenedor más del compose.
 
 ### ⚠️ Sobre la persistencia de RabbitMQ
 
-"RabbitMQ en Fargate con volumen persistente" suena bien, pero requiere montar **EFS**, que no es
-trivial y agrega costo. **Decisión consciente: la cola es efímera.** Si RabbitMQ se reinicia y
+"RabbitMQ con volumen persistente" suena bien, pero amarra la cola al disco de una instancia
+concreta y agrega complejidad. **Decisión consciente: la cola es efímera.** Si RabbitMQ se reinicia y
 pierde mensajes, se reprocesan desde el crudo en S3.
 
 Escrito así, deja de ser una debilidad y pasa a ser una decisión con fundamento — que es
@@ -260,11 +294,11 @@ Si alguna tienda solicita que dejemos de consultarla, se retira del sistema.
 | **Alguien llega a EP2 sin dominar OIDC** | Semana 0: los tres construyen su propio flujo. Sincronización los sábados. Es nota individual |
 | **El historial queda vacío** | Scraper corriendo desde el 19 de agosto, aunque sea con cron local. **Riesgo número uno del proyecto** |
 | **Nada desplegado el día de EP2** | Hay que mostrar el sistema andando en la nube. Despliegue en la Semana 2, no en la 3 |
-| **La cuenta de AWS Academy bloquea Cognito** | Probarlo la Semana 0, no en la 2. Plan B: **Keycloak en Fargate** |
+| **La cuenta de AWS Academy bloquea Cognito** | 🔴 **Sigue sin probarse.** Plan B: **Keycloak como un contenedor más del compose** |
 | **Confusión con el `aud` de Cognito** | Documentado en [ARQUITECTURA.md §9](ARQUITECTURA.md#9-el-detalle-del-audience-en-cognito) |
 | **Sparta cambia o cierra su GraphQL** | Hites queda como segunda fuente; el crudo en S3 permite reprocesar lo capturado |
 | **El matching por nombre falla mucho** | Se mide con 30 productos en la Semana 2. Si es malo, el MVP muestra solo los matches confirmados y se reporta el número honesto |
-| **El crédito de AWS se agota** | S3 como fuente de verdad; sin EKS, sin Amazon MQ; Fargate Spot; apagar lo que no se use |
+| **El crédito de AWS se agota** | S3 como fuente de verdad; sin EKS, sin Amazon MQ, sin Fargate; apagar la EC2 fuera de horario |
 | **Nos bloquean por scrapear** | 1 request cada 1–2 s, User-Agent identificable, respetar `robots.txt` |
 | **La demo en vivo se cae** | Video de respaldo grabado el día anterior |
 

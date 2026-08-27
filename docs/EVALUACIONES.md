@@ -4,7 +4,7 @@
 > [rubricas/](rubricas/).
 > El checklist operativo de tareas está en [TAREAS.md](TAREAS.md).
 >
-> Documento vivo · Última revisión: 25-08-2026
+> Documento vivo · Última revisión: 27-08-2026
 
 ---
 
@@ -53,7 +53,11 @@ Para pasar de una columna a la otra se multiplica por 0,6.
 
 ### Mapa de puntaje
 
-**EP1 · Encargo (16% de los parciales = 9,6% de la nota final) — código por GitHub, 13-sep**
+**EP1 · Encargo (16% de los parciales = 9,6% de la nota final) — código por GitHub**
+
+> 📅 **Las tres fechas, en orden de importancia:** ☁️ **6-sep, sistema en la nube** (sin esto no
+> hay entrega) · 🔒 **10-sep, code freeze** · 📤 **13-sep 23:59, entrega formal**.
+> Del 10 al 13 no se toca código: es informe, ensayo y grabación.
 
 | Peso | Indicador | Dueño |
 |---|---|---|
@@ -76,7 +80,7 @@ Para pasar de una columna a la otra se multiplica por 0,6.
 > septiembre, el EP1 no se puede entregar aunque el código esté impecable.
 >
 > **Lo que NO entra en el EP1:** Kafka, la analítica por ventanas y la calidad del matching.
-> Se construyen después, y no se les dan horas antes del 13 de septiembre.
+> Se construyen después, y no se les dan horas antes del code freeze del 10 de septiembre.
 
 **EP2 · Presentación (24% de los parciales = 14,4% de la nota final) — nota individual, 5–10 minutos**
 
@@ -163,7 +167,7 @@ Son **5 a 10 minutos**. Casi todo demo en vivo, pocos slides. Orden sugerido:
 | 2–4 | **Registro de un usuario en vivo** → login → DevTools mostrando `code_challenge`, `state` y `nonce` |
 | 4–5 | El token decodificado en pantalla: claims, scopes y `cognito:groups` |
 | 5–7 | **Postman**: la misma ruta con token (**200**), sin token (**401**), y con usuario común en ruta admin (**403**) |
-| 7–8 | Consola de AWS: API Gateway con las rutas y CORS, tareas de Fargate corriendo |
+| 7–8 | Consola de AWS: API Gateway con las rutas y CORS, la EC2 con los contenedores corriendo |
 | 8–9 | El producto: buscar un modelo, ver el descuento real y el gráfico de historial |
 | 9–10 | Cierre: *"agregar alertas es suscribir un servicio nuevo al evento `precio.cambiado`, sin tocar el código existente"* |
 
