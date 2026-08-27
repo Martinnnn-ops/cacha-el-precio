@@ -1,0 +1,14 @@
+[Unit]
+Description=Captura de precios de Sparta (Cacha el Precio)
+Documentation=file:///home/kenny/cacha-el-precio/tools/scraper-rapido/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/kenny/cacha-el-precio/tools/scraper-rapido/sparta.py
+WorkingDirectory=/home/kenny/cacha-el-precio
+# Si no hay red al arrancar, reintenta un par de veces antes de rendirse.
+Restart=on-failure
+RestartSec=180
+TimeoutStartSec=1800

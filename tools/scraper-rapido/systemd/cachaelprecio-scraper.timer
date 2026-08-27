@@ -1,0 +1,16 @@
+[Unit]
+Description=3 capturas diarias de Sparta (08:00 / 15:00 / 22:00), segun PLAN.md
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+OnCalendar=*-*-* 15:00:00
+OnCalendar=*-*-* 22:00:00
+# Clave en un portatil: si el equipo estaba apagado a la hora, la captura se
+# ejecuta al encender en vez de perderse. Un hueco en el historial no se
+# recupera despues.
+Persistent=true
+# Que las 3 capturas no caigan al segundo exacto sobre la tienda.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
