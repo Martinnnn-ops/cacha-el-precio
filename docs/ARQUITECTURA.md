@@ -20,8 +20,9 @@
 8. [¿Por qué Cognito?](#8-por-qué-cognito)
 9. [El detalle del `audience` en Cognito](#9-el-detalle-del-audience-en-cognito)
 10. [Cómo escala el sistema](#10-cómo-escala-el-sistema)
-11. [Lo que decidimos NO hacer](#11-lo-que-decidimos-no-hacer)
-12. [Registro de decisiones (ADR)](#12-registro-de-decisiones-adr)
+11. [Dónde vive esto en AWS](#11-dónde-vive-esto-en-aws)
+12. [Lo que decidimos NO hacer](#12-lo-que-decidimos-no-hacer)
+13. [Registro de decisiones (ADR)](#13-registro-de-decisiones-adr)
 
 ---
 
@@ -41,7 +42,7 @@
                                └─────────────┬─────────────┘
                                              ▼
                                     ┌─────────────────┐
-                                    │  api-gateway    │  (BFF en Micronaut, Fargate)
+                                    │  api-gateway    │  (BFF en Micronaut, EC2)
                                     │  agrega datos   │  valida iss/aud/exp/firma/rol
                                     └───┬─────────┬───┘
                                         ▼         ▼
@@ -264,7 +265,7 @@ corresponde** poner en el código de la aplicación:
 
 | Función | Por qué va en el borde y no en el código |
 |---|---|
-| **Validar el JWT** | Un token inválido se rechaza **antes** de gastar cómputo en Fargate. Es más barato y más seguro |
+| **Validar el JWT** | Un token inválido se rechaza **antes** de llegar a la instancia EC2. Es más barato y más seguro |
 | **CORS** | Es una política de infraestructura. Cambiar los orígenes permitidos no debería requerir un deploy |
 | **Throttling y cuotas** | Protege contra abuso sin que la aplicación tenga que preocuparse |
 | **Stages (`dev` / `prod`)** | Permite versionar la API y probar sin afectar producción |
@@ -356,8 +357,8 @@ código necesario. Eso tiene dos consecuencias medibles:
    una parte importante del tiempo de ejecución sería el framework levantándose. Con Micronaut es
    despreciable. Este es el argumento más fuerte y es concreto.
 
-2. **El crédito de AWS Academy es limitado.** En Fargate se paga por vCPU y por GB de RAM
-   asignados. Cuatro servicios que necesitan 4x menos memoria son cuatro servicios que cuestan
+2. **El crédito de AWS Academy es limitado.** Cuatro servicios que necesitan 4x menos memoria
+   caben en una instancia EC2 más chica. Cuatro servicios que cuestan
    menos, y eso decide si llegamos al final del semestre con crédito.
 
 3. **Es la idea central de "cloud native".** Un framework diseñado para arrancar rápido, ocupar
@@ -375,7 +376,7 @@ tiene experiencia previa con Java.
 | Alternativa | Por qué no |
 |---|---|
 | **Autenticación propia** | Guardar contraseñas es un riesgo que no hay razón para tomar. Además el ramo pide un **IDaaS** |
-| **Keycloak self-hosted** | Es excelente, pero lo mantenemos nosotros, consume una tarea de Fargate 24/7 del crédito, y **no es un servicio administrado** — que es justamente lo que el ramo quiere enseñar |
+| **Keycloak self-hosted** | Es excelente, pero lo mantenemos nosotros, hay que mantenerlo corriendo 24/7 en la instancia, y **no es un servicio administrado** — que es justamente lo que el ramo quiere enseñar |
 | **Azure Entra / Auth0** | Ambos válidos. Cognito gana porque **todo el cómputo ya está en AWS**: el JWT Authorizer de API Gateway se integra nativamente y no hay que configurar nada extra |
 
 **Lo que Cognito nos da sin escribir código:** registro con verificación por email, política de
@@ -475,8 +476,10 @@ y no hardcodeadas.
 
 - El frontend es estático en **S3 + CloudFront** → escala solo, es CDN.
 - El **API Gateway** administrado absorbe el tráfico sin configuración nuestra.
-- El **BFF y `price-service` escalan horizontalmente** en Fargate: no guardan estado, así que
-  levantar más tareas funciona sin coordinación.
+- El **BFF y `price-service` no guardan estado**, así que escalan horizontalmente sin
+  coordinación. Hoy corren como contenedores en una instancia EC2; el día que el tráfico lo
+  pida, moverlos a ECS Fargate o a un Auto Scaling Group es cambiar dónde se ejecuta el mismo
+  contenedor, no rediseñar (ver [ADR-008](adr/008-ec2-docker-compose.md)).
 - Cuello de botella real: **RDS**. Se resuelve con réplicas de lectura, porque el sistema es
   mayoritariamente de lectura.
 
@@ -499,14 +502,86 @@ saber cuál es el siguiente paso es parte de defender el diseño.
 
 ---
 
-## 11. Lo que decidimos NO hacer
+## 11. Dónde vive esto en AWS
+
+> Cerrado el **27-08-2026**. El detalle del porqué está en
+> [ADR-008](adr/008-ec2-docker-compose.md).
+
+### La red
+
+Todo vive dentro de **una VPC propia**, repartida en **dos zonas de disponibilidad**. No es
+decoración: es lo que permite decir que ningún servicio está expuesto directo a internet.
+
+```
+                        Internet
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   ▼                   │
+        │            API Gateway  ·  CloudFront │   (servicios administrados de AWS,
+        │                   │             │     │    fuera de la VPC)
+        └───────────────────┼─────────────┼─────┘
+                            │             ▼
+   ╔════════════════════════│═════════╗  S3 (frontend estático)
+   ║  VPC                   ▼         ║
+   ║  ┌─────────────────────────────┐ ║
+   ║  │ Subred PÚBLICA (AZ-a / AZ-b)│ ║   NAT Gateway
+   ║  │   · NAT Gateway             │ ║   → deja SALIR a las privadas,
+   ║  └──────────────┬──────────────┘ ║     no deja ENTRAR
+   ║                 │                ║
+   ║  ┌──────────────▼──────────────┐ ║
+   ║  │ Subred PRIVADA (AZ-a / AZ-b)│ ║
+   ║  │   · EC2 con Docker Compose: │ ║
+   ║  │       api-gateway (BFF)     │ ║
+   ║  │       catalog-service       │ ║
+   ║  │       price-service         │ ║
+   ║  │       RabbitMQ              │ ║
+   ║  │   · RDS Postgres            │ ║
+   ║  └─────────────────────────────┘ ║
+   ╚══════════════════════════════════╝
+```
+
+**Por qué el NAT Gateway.** Las subredes privadas necesitan salir a internet (bajar imágenes de
+Docker, consultar el JWKS de Cognito), pero **nadie desde internet puede iniciar una conexión
+hacia ellas**. El NAT es de una sola vía. Es la pieza que hace verdadera la frase "ningún
+servicio expuesto directo a internet" del checklist.
+
+**Por qué dos zonas de disponibilidad.** RDS lo exige para poder crear un subnet group, y
+permite decir en la defensa que el diseño soporta la caída de una zona. En el MVP la EC2 está
+en una sola AZ: la redundancia real es de RDS, y conviene decirlo así en vez de exagerar.
+
+### Dónde corre cada cosa
+
+| Pieza | Dónde | Por qué ahí |
+|---|---|---|
+| **Frontend** (React compilado) | **S3 + CloudFront** | Son archivos estáticos. Dedicarles una máquina es una instancia más que parchar |
+| **API Manager** | **API Gateway HTTP API** | Valida el JWT en el borde y tiene stages. Un reverse proxy no hace ninguna de las dos |
+| **BFF + catalog + price + RabbitMQ** | **Una EC2 con Docker Compose**, subred privada | Es el mismo `docker-compose.yml` que se usa en local. Un comando, no cuatro servicios de AWS que aprender |
+| **Base de datos** | **RDS Postgres**, subred privada | Fuera del compose a propósito: si la instancia se cae, **el historial no se recupera hacia atrás** |
+| **Scrapers** | **Lambda + EventBridge** | Corren 3 veces al día. 90 invocaciones al mes contra un free tier de 1 millón |
+| **Secretos** | **Secrets Manager** | Nunca en el repo ni en el `docker-compose.yml` |
+
+### Lo que esta decisión nos cuesta
+
+Hay que decirlo antes de que lo pregunten:
+
+- **No hay auto-escalado.** Si la EC2 se llena, se cambia a mano por una más grande. Con dos
+  tiendas y tres capturas diarias, no es un problema real.
+- **La instancia es una sola.** Si se cae, se cae todo menos el frontend y la base de datos.
+  Es un MVP de un semestre, no un sistema con SLA.
+- **El despliegue es `docker compose up`, no un pipeline de ECS.** Menos elegante, pero cabe en
+  el calendario — y el calendario es la restricción que de verdad manda.
+
+---
+
+## 12. Lo que decidimos NO hacer
 
 Un diseño se defiende tanto por lo que descarta como por lo que incluye.
 
 | Descartado | Por qué | Qué hacemos en cambio |
 |---|---|---|
-| **EKS (Kubernetes)** | El control plane cuesta ~USD 73/mes y se come el crédito. Además, orquestar 4 servicios no necesita Kubernetes | **ECS Fargate** |
-| **Amazon MQ** | ~USD 22/mes por RabbitMQ administrado | **RabbitMQ en un contenedor Fargate** |
+| **EKS (Kubernetes)** | El control plane cuesta ~USD 73/mes y se come el crédito. Además, orquestar 4 servicios no necesita Kubernetes | **Docker Compose en una EC2** |
+| **Amazon MQ** | ~USD 22/mes por RabbitMQ administrado | **RabbitMQ como un contenedor más del compose** |
+| **ECS Fargate** | Suma ECR, task definitions, roles de IAM y configuración de logs. Cada uno es un día donde quedarse pegado, y el EP1 **no reparte ni un punto por el cómputo** | **Docker Compose en una EC2**, con la fecha real encima (6-sep) |
 | **Volumen persistente para RabbitMQ** | Requiere montar EFS: complejidad y costo | **La cola es efímera**; si se pierde algo, se reprocesa desde S3 |
 | **Elasticsearch** | Complejidad sin un problema que la justifique | **`pg_trgm` en Postgres**, que ya está ahí |
 | **Base de datos por servicio** | Correcto en teoría, pero con crédito limitado son 2+ instancias RDS | **Una instancia, un esquema por servicio**. Aísla el modelo sin duplicar el costo |
@@ -521,7 +596,7 @@ Un diseño se defiende tanto por lo que descarta como por lo que incluye.
 
 ---
 
-## 12. Registro de decisiones (ADR)
+## 13. Registro de decisiones (ADR)
 
 Cada decisión importante va en `adr/` como un archivo de una página con este formato:
 
@@ -555,11 +630,11 @@ Lo bueno y lo malo que aceptamos. **Especialmente lo malo.**
 | 005 | El scraper ingesta por el API Manager, no directo a la cola | §5 |
 | 006 | Cognito como IDaaS | §8 |
 | 007 | La búsqueda de precios es pública, sin token | [ARQUITECTURA.md §8](ARQUITECTURA.md#8-por-qué-cognito) |
-| 008 | ECS Fargate en vez de EKS | §11 |
-| 009 | RabbitMQ autoadministrado en vez de Amazon MQ | §11 |
-| 010 | Una instancia RDS con esquema por servicio | §11 |
+| 008 | EC2 con Docker Compose en vez de ECS Fargate y de EKS | §11, §12 |
+| 009 | RabbitMQ autoadministrado en vez de Amazon MQ | §12 |
+| 010 | Una instancia RDS con esquema por servicio | §11, §12 |
 | 011 | S3 como fuente de verdad, no la base de datos | §10 |
-| 012 | Cola efímera, sin EFS | §11 |
+| 012 | Cola efímera, sin EFS | §12 |
 | 013 | Java 25 y Maven como base del backend | [`ADR-013`](adr/013-java-25-maven.md) |
 | 014 | Versionado semántico independiente por microservicio | [`ADR-014`](adr/014-versionado-semantico-por-servicio.md) |
 

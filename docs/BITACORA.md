@@ -26,9 +26,9 @@ Decisiones tomadas:
 - **Code freeze el 10-sep**, tres días de margen antes de la entrega del 13.
 - El repo queda en la cuenta `Martinnnn-ops` (la de los runners de Actions).
 
-**Integrante 1 —**
+**Martín —**
 
-**Integrante 2 — Backend**
+**Orion —**
 
 Se configuró el monorepo Maven con Java 25 y se agregó `catalog-service` como primer módulo
 Micronaut, todavía sin lógica de negocio. Se verificó el arranque y el endpoint de salud. Queda
@@ -42,7 +42,7 @@ Se habilitó el versionado de rutas mediante headers y se crearon los primeros c
 catálogo junto con su DTO de respuesta. Queda pendiente incorporar pruebas HTTP antes de conectar
 la capa de aplicación y la persistencia.
 
-**Integrante 3 —**
+**Panditax —**
 
 **Del equipo:** (decisiones tomadas, cosas que cambiaron respecto del plan)
 
@@ -50,16 +50,16 @@ la capa de aplicación y la persistencia.
 
 ## Semana 1 · 24–30 ago 2026
 
-**Integrante 1 —** (27-08) Levanté el scraper de arranque de Sparta, que estaba pendiente desde
+**Martín —** (27-08) Levanté el scraper de arranque de Sparta, que estaba pendiente desde
 la semana 0. Está en `tools/scraper-rapido/` y ya corre solo: 3 capturas diarias por timer de
 systemd (08:00 / 15:00 / 22:00), guardando el JSON crudo comprimido en `capturas/`. Primera
 captura real el 27-08 a las 18:40: **2.088 productos, 908 zapatillas, 9.125 filas talla-stock,
 142 KB, 110 segundos**. Lo que me costó fue descubrir que la query que teníamos estaba mal
 (ver abajo). Queda pendiente que el Integrante 3 lo migre a Lambda y el crudo suba a S3.
 
-**Integrante 2 —**
+**Orion —**
 
-**Integrante 3 —**
+**Panditax —**
 
 **Del equipo:**
 
@@ -121,11 +121,11 @@ recuperable; conviene ajustar esa casilla y decirlo en el informe en vez de que 
 
 ## Semana 2 · 31 ago – 6 sep 2026
 
-**Integrante 1 —**
+**Martín —**
 
-**Integrante 2 —**
+**Orion —**
 
-**Integrante 3 —**
+**Panditax —**
 
 **Del equipo:**
 
@@ -133,10 +133,10 @@ recuperable; conviene ajustar esa casilla y decirlo en el informe en vez de que 
 
 ## Semana 3 · 7–13 sep 2026 · Entrega EP1
 
-**Integrante 1 —**
+**Martín —**
 
-**Integrante 2 —**
+**Orion —**
 
-**Integrante 3 —**
+**Panditax —**
 
 **Del equipo:**
