@@ -1,0 +1,112 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Cacha el Precio · entorno local
+# ─────────────────────────────────────────────────────────────────────────────
+#
+#  Levanta las dos piezas de infraestructura que los microservicios necesitan
+#  para correr en tu computador: la base de datos y la cola de mensajes.
+#
+#      docker compose up -d        levantar
+#      docker compose ps           ver si están sanos
+#      docker compose logs -f      mirar qué están haciendo
+#      docker compose down         apagar (los datos se conservan)
+#      docker compose down -v      apagar Y BORRAR los datos
+#
+#  ⚠️ Este mismo archivo es el que va a correr en la EC2 en producción
+#  (ADR-008). Por eso no hay nada acá que solo sirva para desarrollo: los
+#  puertos, las credenciales y las imágenes salen todos del .env, así que
+#  cambiar de entorno es cambiar ese archivo, no este.
+#
+#  Antes de la primera vez:   cp .env.example .env   y rellena las contraseñas.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: cachaelprecio
+
+services:
+
+  # ───────────────────────────────────────────────────────────────────────────
+  #  PostgreSQL — la base de datos
+  # ───────────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: cep-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cachaelprecio}
+      POSTGRES_USER: ${DB_USER:-cachaelprecio}
+      # Sin valor por defecto A PROPÓSITO: si el .env no tiene contraseña,
+      # queremos que falle acá y no que arranque con una contraseña adivinable.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?falta DB_PASSWORD en el .env}
+
+    ports:
+      # Solo escucha en 127.0.0.1, no en toda la red. Así tu Postgres de pruebas
+      # no queda expuesto si estás conectado al wifi de la universidad.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+
+    volumes:
+      # Acá viven los datos de verdad. Sobrevive a `down`, muere con `down -v`.
+      - postgres-datos:/var/lib/postgresql/data
+      # Todo lo que esté en esta carpeta se ejecuta solo, en orden alfabético,
+      # la primera vez que el volumen se crea vacío.
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      # `docker compose ps` dice "healthy" recién cuando Postgres acepta
+      # conexiones de verdad, no cuando el contenedor arrancó. Es la diferencia
+      # entre "está prendido" y "está listo para trabajar".
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cachaelprecio} -d ${DB_NAME:-cachaelprecio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    networks: [cep]
+
+  # ───────────────────────────────────────────────────────────────────────────
+  #  RabbitMQ — la cola de mensajes
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Desacopla la ingesta del procesamiento: si el normalizador está caído, las
+  #  ofertas esperan en la cola en vez de perderse (ARQUITECTURA.md §6).
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: cep-rabbitmq
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-cachaelprecio}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?falta RABBITMQ_PASSWORD en el .env}
+
+    ports:
+      # 5672  → por acá hablan los microservicios (protocolo AMQP)
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      # 15672 → el panel web. Se abre en http://localhost:15672
+      #         Es la pantalla que hay que mostrar en la demo del EP2 para
+      #         evidenciar las colas y la DLQ.
+      - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
+
+    volumes:
+      - rabbitmq-datos:/var/lib/rabbitmq
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    networks: [cep]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Volúmenes: donde Docker guarda los datos para que no se pierdan al apagar
+# ─────────────────────────────────────────────────────────────────────────────
+volumes:
+  postgres-datos:
+  rabbitmq-datos:
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Red interna: los contenedores se ven entre ellos por su nombre de servicio.
+#  Desde el BFF, la base de datos es el host `postgres`, no `localhost`.
+# ─────────────────────────────────────────────────────────────────────────────
+networks:
+  cep:
+    driver: bridge

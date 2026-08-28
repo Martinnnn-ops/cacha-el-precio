@@ -146,8 +146,10 @@ computador de cada uno.
       `exp`, `token_use`, `cognito:groups`
 
 **Infraestructura de trabajo**
-- [ ] **`docker-compose.yml`** con Postgres + RabbitMQ para desarrollo local
+- [x] **`docker-compose.yml`** con Postgres + RabbitMQ para desarrollo local ✅ 27-08
   - ↳ *Doble valor: es el mismo archivo que después corre en la EC2 ([ADR-008](adr/008-ec2-docker-compose.md))*
+  - ↳ *Incluye `pg_trgm`, `unaccent` y los esquemas `catalog` y `price` (ADR-010), creados solos
+    al primer arranque desde `infra/postgres/init/`*
 - [ ] **CI en GitHub Actions**: que compile y corra los tests en cada PR
   - ↳ *Hoy son 0 workflows. `TAREAS.md` lo daba por hecho desde la semana 0*
 
@@ -269,6 +271,8 @@ Si algo se cae el día 11 y no hay margen, no hay entrega. Por eso el freeze es 
 - [ ] **Kafka** — topic `precios.cambiados`. Es EP5 y EP6, **no** el EP1
 - [ ] `alert-service` suscrito a `precio.cambiado` → avisos de restock por talla
 - [ ] Nike.cl y Falabella con navegador headless
+- [ ] **Ampliar a vestuario** además de calzado — es la dirección del proyecto, pero necesita el
+      matching medido primero (ver [PLAN.md §2](PLAN.md#2-alcance))
 - [ ] Migrar de EC2 a ECS Fargate si el ramo lo pide ([ADR-008](adr/008-ec2-docker-compose.md))
 - [ ] Mercado Libre con OAuth
 

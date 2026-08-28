@@ -60,10 +60,21 @@ está más barato, si el descuento es real, y si su talla está disponible.
 | Fuera | Razón |
 |---|---|
 | Marcas propias del retail (Basement, Sybilla, H&M, Zara) | Existen en una sola tienda: no hay nada que comparar |
-| Vestuario de marca | En el alcance del proyecto, **fuera del MVP**: los nombres son genéricos y sin código, el matching es el problema difícil |
+| Vestuario de marca | **Fuera del MVP, no fuera del proyecto** — ver el aviso de abajo |
 | Segunda mano, réplicas, ventas por Instagram | Sin catálogo estructurado |
 | Carrito, pagos, checkout | La app informa y deriva a la tienda. No vendemos |
 | App móvil | Web responsive |
+
+> 👕 **Zapatillas es el recorte de la primera entrega, no la ambición del proyecto.**
+> El plan a futuro es cubrir **ropa además de calzado**. Se parte por zapatillas porque es donde
+> el problema se puede resolver bien: traen *style code* de fábrica, se venden en varias tiendas
+> a la vez y el mismo modelo es comparable sin ambigüedad. En vestuario los nombres son
+> genéricos y sin código, así que el matching es el problema difícil — y meterlo antes de tener
+> el flujo completo andando sería cambiar un MVP que funciona por uno que casi funciona.
+>
+> Concretamente: **el EP1 va solo con calzado.** La ropa entra cuando el matching esté medido y
+> el sistema desplegado, y el modelo de datos ya la soporta sin cambios (`modelo_canonico` tiene
+> `categoria`, y `variante` tiene `talla` y `color`, que sirven igual para una polera).
 
 ### Límites duros del semestre
 - **2 tiendas en el MVP** (Sparta + Hites), no más
@@ -194,6 +205,12 @@ seguimiento        (id, usuario_sub, modelo_id, talla, creado_en)
 
 1. **Normalizar** el nombre: minúsculas, sin tildes, y quitar palabras de ruido
    (`zapatillas`, `hombre`, `mujer`, `urbano`, `running`, `deportivo`).
+> ✅ **Umbrales validados el 27-08** contra Postgres 16 con nombres reales de la captura:
+> mismo modelo escrito distinto entre tiendas da **0,87** (por encima de 0,85 → se acepta solo),
+> dos modelos distintos de la misma marca dan **0,57** (por debajo de 0,60 → se rechaza solo), y
+> «Básquetbol» contra «Basquetbol» da **1,00** pasando por `unaccent`. Los umbrales estaban
+> puestos a ojo; ahora son un número medido y defendible.
+
 2. **Comparar** con **`pg_trgm`**, extensión que ya viene en Postgres de RDS y aporta
    `similarity(a, b)` → número entre 0 y 1.
 3. **Umbrales:**
