@@ -10,10 +10,14 @@ infra/db/catalog/   → esquema catalog, dueño: catalog-service
 infra/db/price/     → esquema price,   dueño: price-service
 ```
 
-> 📌 **Esto es temporal.** Lo natural en Micronaut es que cada servicio lleve sus migraciones en
-> `src/main/resources/db/migration`. `price-service` **todavía no existe como módulo**, y meter
-> su DDL dentro de `catalog-service` sería dejarlo en el servicio equivocado. Cuando cada módulo
-> exista, su carpeta se mueve adentro y esta desaparece.
+> 📌 **Esto sigue siendo temporal, pero ya por otra razón.** `price-service` **ya existe** como
+> módulo (creado el 27-08). Lo natural en Micronaut es que cada servicio lleve sus migraciones en
+> `src/main/resources/db/migration` y las aplique Flyway al arrancar — pero eso requiere además
+> el driver JDBC, la configuración del datasource y las credenciales, que recién se resuelven
+> cuando exista la base en RDS (Semana 2).
+>
+> **Moverlas ahora dejaría a los servicios intentando conectarse a una base que todavía no
+> tienen configurada.** Se mueven junto con el cableado de Flyway, no antes.
 
 ## Aplicarlas a mano
 

@@ -25,6 +25,10 @@
   </properties>
 
   <modules>
+    <!-- El BFF va primero porque es la puerta de entrada del sistema. -->
+    <module>gateway</module>
     <module>catalog-service</module>
+    <module>price-service</module>
+    <module>scraper-service</module>
   </modules>
 </project>

@@ -73,11 +73,11 @@ Estado real, verificado contra el repo y contra AWS — no de memoria.
 |---|---|---|
 | ✅ | Repo, ramas y acuerdos de trabajo | Andando. `main` protegido, `development` libre |
 | ✅ | **Scraper de Sparta** | 🟢 **Capturando 3 veces al día desde el 27-08.** 2.088 productos por corrida |
-| ✅ | `catalog-service` | Base con rutas versionadas y `/health`, mergeada |
+| ✅ | **Los 4 módulos del backend** | `gateway`, `catalog-service`, `price-service` y `scraper-service`. Los cuatro compilan, pasan sus tests y responden `/health` |
 | ✅ | Decisión de cómputo | **EC2 + Docker Compose**, cerrada y escrita en [ADR-008](adr/008-ec2-docker-compose.md) |
 | 🔴 | **Cognito en AWS Academy** | **Sin probar.** Es el riesgo número uno del proyecto |
 | ⬜ | Frontend | No existe |
-| ⬜ | BFF / validación de JWT | No existe |
+| 🟡 | BFF / validación de JWT | El módulo `gateway` existe y arranca; **falta la validación**, que es el 40% del EP1 |
 | ⬜ | API Gateway | No existe |
 | ⬜ | RDS, VPC, despliegue | No existe |
 | ⬜ | Scraper de Hites | No existe. El endpoint del plan original **da 500** |
