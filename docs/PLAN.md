@@ -39,9 +39,18 @@ forma de saberlo.
 muchas traen un **style code** de fábrica (ej. `HV9774`, de Nike) que funciona como identificador
 único compartido entre tiendas.
 
-> ⚠️ **Medido el 27-08:** el style code **no viene en un formato único**. En Sparta el SKU cambia
-> de forma según la marca, y el patrón `174000HV9774-00121` es el de Nike. Donde no se pueda
-> extraer, el matching cae a marca + nombre normalizado (§5), igual que con Hites.
+> 🔴 **Medido el 27-08 sobre 2.088 productos: el style code NO sirve para comparar entre
+> tiendas.** Solo Nike lo trae de forma extraíble (86 de 89, 96%); New Balance, Adidas, Joma,
+> Asics y Puma dan **0%**, porque cada marca esconde su código con su propio prefijo y sin
+> formato común. Y sobre todo: **Hites no publica ninguno**.
+>
+> Donde sí está, el style code hace bien su trabajo: en Sparta el SKU se descompone en
+> `174000` + `FJ7791` (modelo) + `-50096` (color), así que agrupa los colores de un mismo modelo
+> — se verificó con las 4 versiones del Nike G.T. Hustle Academy.
+>
+> **Conclusión: el style code es identidad interna, no mecanismo de comparación.** Ese rol lo
+> toma el matching por nombre con `pg_trgm` (§5), que pasa a ser el mecanismo **principal** y no
+> el respaldo.
 
 **Para quién.** Alguien que está por gastar $80.000–$150.000 en zapatillas y quiere saber dónde
 está más barato, si el descuento es real, y si su talla está disponible.
@@ -52,7 +61,7 @@ está más barato, si el descuento es real, y si su talla está disponible.
 
 ### Entra
 - Calzado deportivo y urbano de **adulto**
-- Marcas terceras: **New Balance, Adidas, Joma y Asics** (revisado el 27-08, ver aviso abajo)
+- Marcas terceras: **New Balance, Adidas, Nike y Puma** (cerrado el 27-08, ver aviso abajo)
 - Productos **nuevos**, vendidos online, con precio y stock visibles
 - Precios en CLP, tallas de adulto
 
@@ -82,22 +91,33 @@ está más barato, si el descuento es real, y si su talla está disponible.
 - **3 capturas diarias** por tienda (08:00 / 15:00 / 22:00)
 - Historial **desde el 27-08-2026**, que es cuando arrancó el scraper
 
-> 🔴 **Las 4 marcas cambiaron el 27-08, con datos medidos.** El plan original decía *Nike,
-> adidas, Puma, New Balance*. Al consultar el catálogo real de Sparta filtrando por el atributo
-> `gral_marca`, resultó que **Sparta casi no vende Nike ni Puma**:
+> 🎯 **Las 4 marcas del MVP, cerradas el 27-08 con el criterio correcto.**
 >
-> | Marca | Productos | Zapatillas |
-> |---|---|---|
-> | New Balance | 857 | 408 |
-> | Adidas | 752 | 239 |
-> | Joma | 267 | 138 |
-> | Asics | 96 | 95 |
-> | Nike | 89 | **24** |
-> | Puma | 27 | **4** |
+> Hubo dos vueltas acá y la primera fue un error, así que conviene dejar escrito el porqué.
 >
-> Con 24 modelos de Nike no se sostiene un comparador. El scraper captura **las seis** —
-> capturar de más es barato, capturar de menos es irrecuperable — y el MVP se enfoca en las
-> cuatro de arriba. Nike y Puma quedan dentro del dato pero fuera de la promesa.
+> **Primera medición:** al filtrar el catálogo de Sparta por el atributo `gral_marca` apareció
+> que Sparta casi no vende Nike ni Puma, y se propuso cambiar las marcas a New Balance, Adidas,
+> **Joma y Asics** por volumen.
+>
+> **El error:** el volumen de una tienda es el criterio equivocado para un **comparador**. Una
+> marca sirve solo si está en **las dos** tiendas. Consultando la faceta de marcas de Hites:
+>
+> | Marca | Zapatillas en Sparta | ¿En Hites? | ¿Comparable? |
+> |---|---|---|---|
+> | **New Balance** | 408 | ✅ | **Sí — el núcleo** |
+> | **Adidas** | 239 | ✅ | **Sí — el núcleo** |
+> | **Nike** | 24 | ✅ | Sí, poco volumen |
+> | **Puma** | 4 | ✅ | Sí, muy poco |
+> | Joma | 138 | ❌ **no la vende** | **No: no hay contra qué compararla** |
+> | Asics | 95 | ❌ **no la vende** | **No** |
+>
+> **Joma y Asics quedan fuera**: tienen catálogo en Sparta pero Hites no las vende, así que
+> aportarían cero pares comparables. Las 4 del MVP vuelven a ser las originales del plan, ahora
+> por un motivo medido: **son las que existen en ambas tiendas**. El volumen real lo ponen New
+> Balance y Adidas; Nike y Puma entran porque son comparables, no porque muevan la aguja.
+>
+> El scraper captura **las seis** de todas formas: capturar de más es barato, capturar de menos
+> es irrecuperable.
 
 ---
 
@@ -205,11 +225,25 @@ seguimiento        (id, usuario_sub, modelo_id, talla, creado_en)
 
 1. **Normalizar** el nombre: minúsculas, sin tildes, y quitar palabras de ruido
    (`zapatillas`, `hombre`, `mujer`, `urbano`, `running`, `deportivo`).
-> ✅ **Umbrales validados el 27-08** contra Postgres 16 con nombres reales de la captura:
-> mismo modelo escrito distinto entre tiendas da **0,87** (por encima de 0,85 → se acepta solo),
-> dos modelos distintos de la misma marca dan **0,57** (por debajo de 0,60 → se rechaza solo), y
-> «Básquetbol» contra «Basquetbol» da **1,00** pasando por `unaccent`. Los umbrales estaban
-> puestos a ojo; ahora son un número medido y defendible.
+> 🔴 **Los umbrales 0,85 / 0,60 NO resisten el catálogo real. Medido el 27-08** contra los
+> 1.496 modelos cargados de la captura de Sparta:
+>
+> | Comparación | Similitud | Qué debería pasar | Qué pasa |
+> |---|---|---|---|
+> | `574 Negra` vs `574 Negro` — **mismo zapato** | **0,696** | aceptar | cae a revisión manual |
+> | `574 Negra` vs `515 Negra` — **otro zapato** | **0,660** | rechazar | cae a revisión manual |
+>
+> El correcto queda **bajo** el umbral que acepta y el equivocado queda **sobre** el que
+> rechaza: entre acertar y equivocarse hay **0,04**. Con nombres reales casi todo cae en la
+> banda gris.
+>
+> **La causa:** el número del modelo (574 vs 515) es lo único que distingue dos zapatillas
+> completamente distintas, y el trigrama casi no lo pesa porque comparten todas las demás
+> palabras.
+>
+> **Consecuencia para el matcher:** no puede ser solo trigrama sobre el nombre completo. Hay que
+> **extraer el número/token de modelo y exigir coincidencia exacta**, dejando el trigrama para
+> el resto. `unaccent` sí funciona: «Básquetbol» contra «Basquetbol» da 1,00.
 
 2. **Comparar** con **`pg_trgm`**, extensión que ya viene en Postgres de RDS y aporta
    `similarity(a, b)` → número entre 0 y 1.

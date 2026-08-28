@@ -90,19 +90,69 @@ versionado**, y eso choca con el acuerdo de cero secretos en el repo. La topolog
 Micronaut con `@RabbitClient` y `@RabbitListener`, como ya decía `ARQUITECTURA.md §6`.
 Consecuencia: **las colas aparecen en el panel recién cuando los servicios se conecten.**
 
-### ✅ Los umbrales de matching quedaron validados (27-08)
+### ⚠️ Umbrales de matching: primero los di por buenos, y no lo son
 
-`PLAN.md §5` fijaba 0.85 para aceptar y 0.60 para rechazar, puestos a ojo. Probados contra
-Postgres 16 con nombres reales de la captura de Sparta:
+Al levantar el entorno probé los umbrales de `PLAN.md §5` (0,85 acepta / 0,60 rechaza) con un
+par de nombres que escribí a mano, dieron 0,87 y 0,57, y los di por validados. **Eso estaba
+mal: un par inventado por uno mismo no valida nada.**
 
-| Caso | `similarity()` | Contra el umbral |
-|---|---|---|
-| Mismo modelo escrito distinto entre tiendas | **0,87** | > 0,85 → se acepta solo |
-| Dos modelos distintos de la misma marca | **0,57** | < 0,60 → se rechaza solo |
-| «Básquetbol» vs «Basquetbol» con `unaccent` | **1,00** | las tildes dejan de importar |
+Al cargar los 1.496 modelos reales de la captura y consultarlos de verdad:
 
-Los umbrales quedan como **número medido**, no como suposición. Es material directo para el
-informe y para la defensa.
+| Comparación | Similitud | Debería | Pasa |
+|---|---|---|---|
+| `574 Negra` vs `574 Negro` — **el mismo zapato** | **0,696** | aceptar | revisión manual |
+| `574 Negra` vs `515 Negra` — **otro zapato** | **0,660** | rechazar | revisión manual |
+
+El correcto queda **bajo** el 0,85 y el equivocado **sobre** el 0,60. Entre acertar y
+equivocarse hay **0,04**, y con nombres reales casi todo cae en la banda gris.
+
+**La causa:** el número del modelo (574 vs 515) es lo único que distingue dos zapatillas
+completamente distintas, y el trigrama casi no lo pesa porque comparten todas las demás
+palabras.
+
+**Qué hay que hacer:** el matcher no puede ser solo trigrama sobre el nombre completo. Tiene que
+**extraer el número/token de modelo y exigir coincidencia exacta**, y usar el trigrama solo para
+el resto. Si no, el comparador va a emparejar zapatos distintos con total seguridad — que es
+exactamente lo que el producto promete no hacer.
+
+`unaccent` sí funciona: «Básquetbol» vs «Basquetbol» da 1,00.
+
+### 🗄️ Modelo de datos validado contra datos reales (27-08)
+
+`PLAN.md §4` decía que el modelo era *"propuesta base"* y que había que contrastarlo con datos
+reales antes de escribir migraciones. Hecho: se cargaron los **2.088 productos** de la captura
+en Postgres (1.496 modelos, 7.355 variantes y ofertas) y se ejecutaron las consultas del
+producto. **Cinco cosas del modelo no aguantaron.**
+
+**1. El style code no puede ser el mecanismo de comparación.** Solo Nike lo trae extraíble
+(86/89 = 96%); New Balance, Adidas, Joma, Asics y Puma dan **0%**, y Hites no publica ninguno.
+Pasa a ser `NULL`able. Donde sí está hace bien su trabajo: agrupa los colores de un modelo
+—verificado con las 4 versiones del Nike G.T. Hustle Academy, que comparten `FJ7791`—.
+
+**2. La talla no es un campo simple.** Sparta usa **20 atributos distintos** de talla. Se parte
+en `talla_original` + `escala` + `talla_valor`.
+
+**3. La escala no se puede deducir del nombre del atributo.** Sparta llama a un campo
+`talla_us_nb_mujer` pero le mete 37.5, 38, 40 — números **europeos**. De 3.993 variantes
+rotuladas "US", **3.229 traían numeración europea**. Hay un `CHECK` de rango por escala que
+impide que ese error entre en silencio.
+
+**4. Sparta nunca devuelve productos agotados.** Los 2.088 vienen `IN_STOCK` sin excepción:
+Magento los filtra. El campo `stock` no sirve. Se reemplaza por `vista_en` + `activa`, porque
+**la señal de agotado es la ausencia**. Ya se ve en los datos: entre dos capturas New Balance
+pasó de 857 a 856.
+
+**5. Faltaba dónde poner lo que aún no se matchea.** Se agrega `producto_tienda`: sin ella, un
+producto que llega de una tienda y todavía no se sabe a qué modelo corresponde habría que
+descartarlo.
+
+**Lo que sí resistió:** la clave del upsert. `(variante, tienda)` es única en las 9.125 filas,
+sin un solo duplicado. Y la separación `oferta` = estado / `precio_historico` = serie.
+
+Las restricciones se probaron insertando datos malos a propósito: las cuatro rechazan (talla US
+con número europeo, talla ALFA con número, precio 0 —hay 3 en la captura— y style code repetido).
+
+Migraciones en `infra/db/`, con su README.
 
 ### 👕 Alcance aclarado (27-08)
 
@@ -142,8 +192,11 @@ del MVP**:
 
 Esto importa porque `PLAN.md` usa Nike como **ejemplo canónico del style code** (`HV9774`) y
 declara a Sparta *fuente canónica del catálogo*. Si el catálogo canónico se arma sobre Nike,
-se arma sobre 24 productos. **Hay que decidir en equipo si las 4 marcas del MVP pasan a ser
-New Balance, Adidas, Joma y Asics.**
+se arma sobre 24 productos. **Decidido el 27-08, pero NO como decía acá.** Mirar solo el volumen de Sparta era el criterio
+equivocado para un comparador: una marca sirve solo si está en **las dos** tiendas. La faceta de
+marcas de Hites muestra que **Joma y Asics no las vende**, así que aportarían cero pares
+comparables pese a tener catálogo en Sparta. Las 4 del MVP vuelven a ser **New Balance, Adidas,
+Nike y Puma** — las originales del plan, ahora por un motivo medido.
 
 Dato a favor de la tesis del proyecto: **1.277 de los 2.088 productos tienen descuento activo
 declarado**, con casos de 38% — o sea que hay bastante que contrastar contra el mínimo

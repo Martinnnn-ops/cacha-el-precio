@@ -156,8 +156,12 @@ computador de cada uno.
 **Datos**
 - [ ] **Adaptador de Hites** con Jsoup, usando `https://www.hites.com/search?q=`
   - ↳ *El `Search-UpdateGrid` del plan original **devuelve 500 desde el 27-08***
-- [ ] Revisar el **modelo de datos contra los datos reales** que ya está capturando el scraper
-  - ↳ *Hay 2.088 productos por captura esperando en `capturas/`. Ya no hay que suponer nada*
+- [x] Revisar el **modelo de datos contra los datos reales** ✅ 27-08
+  - ↳ *Se cargaron los 2.088 productos en Postgres y se corrigieron 5 cosas del modelo.
+    Migraciones en `infra/db/`. Detalle en [BITACORA.md](BITACORA.md)*
+- [ ] 🔴 **Matcher: extraer el número de modelo y exigir coincidencia exacta**
+  - ↳ *Medido: `574 Negra` vs `515 Negra` da 0,660 — **son zapatos distintos** y el trigrama no
+    los separa. Solo con `pg_trgm` sobre el nombre completo, el comparador va a emparejar mal*
 
 ### ✅ Al terminar la semana
 
