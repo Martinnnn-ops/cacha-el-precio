@@ -76,21 +76,61 @@ respetando `robots.txt`. Ver [`docs/PLAN.md`](docs/PLAN.md#8-consideraciones-leg
 |---|---|
 | [`docs/PLAN.md`](docs/PLAN.md) | La idea, el alcance, las tiendas, el modelo de datos, los riesgos |
 | [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) | Por qué el sistema está armado así |
-| [`docs/TAREAS.md`](docs/TAREAS.md) | Roadmap, reparto del equipo y modo de trabajo |
+| [`docs/TAREAS.md`](docs/TAREAS.md) | Plan semana a semana y modo de trabajo |
 | [`docs/EVALUACIONES.md`](docs/EVALUACIONES.md) | Qué pide el ramo y cómo lo cumplimos |
 | [`docs/BITACORA.md`](docs/BITACORA.md) | Registro semanal de avance |
+| [`docs/REQUISITOS.md`](docs/REQUISITOS.md) | Historias de usuario, requisitos funcionales y no funcionales |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura, una por archivo |
+| [`infra/db/README.md`](infra/db/README.md) | Las migraciones y por qué el modelo cambió |
 
 ## Cómo levantarlo
 
-Requiere **JDK 25**. El Maven Wrapper descarga la versión de Maven definida por el proyecto.
+Requiere **JDK 25** y **Docker**. El Maven Wrapper descarga la versión de Maven del proyecto.
+
+### 1. La infraestructura
 
 ```bash
-./mvnw verify
-./mvnw -pl catalog-service mn:run
+cp .env.example .env      # y rellena las contraseñas
+docker compose up -d
+docker compose ps         # los dos deben decir (healthy)
 ```
 
-Con `catalog-service` arriba, su estado se consulta en `http://localhost:8081/health`.
+Levanta **Postgres 16** y **RabbitMQ 3.13**. El panel de RabbitMQ queda en
+`http://localhost:15672`. Es el mismo archivo que corre en la EC2 en producción
+([ADR-008](docs/adr/008-ec2-docker-compose.md)).
+
+### 2. La base de datos
+
+```bash
+set -a && . ./.env && set +a
+docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
+  < infra/db/catalog/V1__catalogo_base.sql
+docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
+  < infra/db/price/V1__precios_base.sql
+```
+
+Detalle en [`infra/db/README.md`](infra/db/README.md).
+
+### 3. Los servicios
+
+```bash
+./mvnw verify                      # compila y testea los 4
+./mvnw -pl gateway mn:run          # o el que necesites
+```
+
+| Servicio | Puerto | `/health` |
+|---|---|---|
+| `gateway` (BFF) | 8080 | `http://localhost:8080/health` |
+| `catalog-service` | 8081 | `http://localhost:8081/health` |
+| `price-service` | 8082 | `http://localhost:8082/health` |
+| `scraper-service` | 8083 | `http://localhost:8083/health` |
+
+Los puertos salen del `.env`, así que el mismo build sirve en local y en la nube.
+
+### 4. El scraper de arranque
+
+Captura precios de Sparta 3 veces al día. Ver
+[`tools/scraper-rapido/README.md`](tools/scraper-rapido/README.md).
 
 ## Equipo
 

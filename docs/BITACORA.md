@@ -117,6 +117,29 @@ exactamente lo que el producto promete no hacer.
 
 `unaccent` sí funciona: «Básquetbol» vs «Basquetbol» da 1,00.
 
+### 🧱 Los 4 módulos del backend, creados (27-08)
+
+El monorepo tenía **solo `catalog-service`**. Se agregaron los tres que faltaban —`gateway`
+(el BFF), `price-service` y `scraper-service`— siguiendo exactamente la misma estructura, para
+que nadie tenga que inventar andamiaje en la semana crítica.
+
+Cada uno arranca, responde `/health` y **nada más**: la lógica se escribe encima. Los cuatro
+compilan y pasan sus tests con Java 25 (`./mvnw clean test`, exit 0).
+
+| Módulo | Puerto | Qué será |
+|---|---|---|
+| `gateway` | 8080 | El BFF: valida el JWT y arma las respuestas de la pantalla |
+| `catalog-service` | 8081 | Modelos, variantes y matching |
+| `price-service` | 8082 | Ofertas, historial y descuento real |
+| `scraper-service` | 8083 | Trae los datos; el único que sale a internet |
+
+Los puertos salen del `.env`, así que el mismo build sirve en local y en la EC2. Verificado:
+`PRICE_PORT=9099` levanta el servicio en 9099. `/health` responde sin autenticación a propósito
+—lo consulta el healthcheck del contenedor, que no tiene token ni debería tenerlo—.
+
+Se dejó a propósito **sin controladores de relleno**: endpoints que no hacen nada son código que
+igual hay que mantener. `/health` ya prueba que el servicio está vivo.
+
 ### 🗄️ Modelo de datos validado contra datos reales (27-08)
 
 `PLAN.md §4` decía que el modelo era *"propuesta base"* y que había que contrastarlo con datos
