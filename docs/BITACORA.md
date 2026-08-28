@@ -55,13 +55,61 @@ la semana 0. Está en `tools/scraper-rapido/` y ya corre solo: 3 capturas diaria
 systemd (08:00 / 15:00 / 22:00), guardando el JSON crudo comprimido en `capturas/`. Primera
 captura real el 27-08 a las 18:40: **2.088 productos, 908 zapatillas, 9.125 filas talla-stock,
 142 KB, 110 segundos**. Lo que me costó fue descubrir que la query que teníamos estaba mal
-(ver abajo). Queda pendiente que el Integrante 3 lo migre a Lambda y el crudo suba a S3.
+(ver abajo). Queda pendiente migrarlo a Lambda y que el crudo suba a S3.
+
+También levanté el **entorno local con Docker** (Postgres + RabbitMQ) y de paso validé los
+umbrales del matching contra datos reales — los dos detalles están más abajo.
 
 **Orion —**
 
 **Panditax —**
 
 **Del equipo:**
+
+### 🐳 Entorno local levantado (27-08)
+
+Ya existe `docker-compose.yml` con **Postgres 16 + RabbitMQ 3.13**. Antes no había ninguno, así
+que cada uno iba a terminar armándose el suyo distinto.
+
+Tres cosas que quedaron decididas al escribirlo:
+
+- **El mismo archivo va a correr en la EC2** ([ADR-008](adr/008-ec2-docker-compose.md)). Todo sale
+  del `.env`, así que cambiar de entorno es cambiar ese archivo, no el compose.
+- **Los puertos escuchan solo en `127.0.0.1`**, no en toda la red — un Postgres de pruebas
+  expuesto en el wifi de la universidad es un problema evitable.
+- **Las contraseñas usan `${VAR:?}`**: si faltan, el compose no arranca. Es preferible que falle
+  a que levante con una contraseña adivinable.
+
+`infra/postgres/init/` crea solo, al primer arranque, las extensiones `pg_trgm` y `unaccent` y
+los esquemas `catalog` y `price` (ADR-010).
+
+**Lo que se decidió NO hacer:** pre-declarar los exchanges y colas con un `definitions.json`.
+Habría dejado la DLQ visible en el panel desde el día uno —que es evidencia del EP2— pero
+RabbitMQ obliga a declarar también el usuario, con su contraseña hasheada **dentro de un archivo
+versionado**, y eso choca con el acuerdo de cero secretos en el repo. La topología la declara
+Micronaut con `@RabbitClient` y `@RabbitListener`, como ya decía `ARQUITECTURA.md §6`.
+Consecuencia: **las colas aparecen en el panel recién cuando los servicios se conecten.**
+
+### ✅ Los umbrales de matching quedaron validados (27-08)
+
+`PLAN.md §5` fijaba 0.85 para aceptar y 0.60 para rechazar, puestos a ojo. Probados contra
+Postgres 16 con nombres reales de la captura de Sparta:
+
+| Caso | `similarity()` | Contra el umbral |
+|---|---|---|
+| Mismo modelo escrito distinto entre tiendas | **0,87** | > 0,85 → se acepta solo |
+| Dos modelos distintos de la misma marca | **0,57** | < 0,60 → se rechaza solo |
+| «Básquetbol» vs «Basquetbol» con `unaccent` | **1,00** | las tildes dejan de importar |
+
+Los umbrales quedan como **número medido**, no como suposición. Es material directo para el
+informe y para la defensa.
+
+### 👕 Alcance aclarado (27-08)
+
+**Zapatillas es el recorte del EP1, no la ambición del proyecto.** El plan es cubrir ropa además
+de calzado. Se parte por calzado porque es donde el problema se resuelve bien —hay style code de
+fábrica y el mismo modelo se vende en varias tiendas—; en vestuario los nombres son genéricos y
+el matching es el problema difícil. El modelo de datos ya soporta ropa sin cambios.
 
 ### 🔴 Hallazgo del 27-08 · la búsqueda de Sparta no filtra por marca
 
