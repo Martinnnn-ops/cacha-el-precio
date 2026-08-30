@@ -373,6 +373,9 @@ tiene experiencia previa con Java.
 
 ## 8. ¿Por qué Cognito?
 
+> Cómo funciona el flujo, qué valida el BFF y cómo se replica en otra cuenta:
+> [IDENTIDAD.md](IDENTIDAD.md). La decisión, en el [ADR-006](adr/006-cognito-como-idaas.md).
+
 | Alternativa | Por qué no |
 |---|---|
 | **Autenticación propia** | Guardar contraseñas es un riesgo que no hay razón para tomar. Además el ramo pide un **IDaaS** |
@@ -506,6 +509,7 @@ saber cuál es el siguiente paso es parte de defender el diseño.
 
 > Cerrado el **27-08-2026**. El detalle del porqué está en
 > [ADR-008](adr/008-ec2-docker-compose.md).
+> El **orden concreto para desplegarlo** está en [DESPLIEGUE.md](DESPLIEGUE.md).
 
 ### La red
 
@@ -628,7 +632,7 @@ Lo bueno y lo malo que aceptamos. **Especialmente lo malo.**
 | 003 | BFF además del API Manager | §4, §5 |
 | 004 | RabbitMQ en vez de llamadas HTTP directas | §6 |
 | 005 | El scraper ingesta por el API Manager, no directo a la cola | §5 |
-| 006 | Cognito como IDaaS | §8 |
+| 006 | Cognito como IDaaS | [`ADR-006`](adr/006-cognito-como-idaas.md) |
 | 007 | La búsqueda de precios es pública, sin token | [ARQUITECTURA.md §8](ARQUITECTURA.md#8-por-qué-cognito) |
 | 008 | EC2 con Docker Compose en vez de ECS Fargate y de EKS | §11, §12 |
 | 009 | RabbitMQ autoadministrado en vez de Amazon MQ | §12 |
@@ -637,6 +641,7 @@ Lo bueno y lo malo que aceptamos. **Especialmente lo malo.**
 | 012 | Cola efímera, sin EFS | §12 |
 | 013 | Java 25 y Maven como base del backend | [`ADR-013`](adr/013-java-25-maven.md) |
 | 014 | Versionado semántico independiente por microservicio | [`ADR-014`](adr/014-versionado-semantico-por-servicio.md) |
+| 015 | Red privada con VPC Link, y el NAT y el ALB apagados cuando no se usan | [`ADR-015`](adr/015-red-privada-con-vpc-link.md) |
 
 **Por qué vale la pena:** el razonamiento ya está escrito acá, así que es mayormente copiar y
 pegar. Y en una defensa, un ADR que dice *"consideramos X, lo descartamos porque Y, y aceptamos

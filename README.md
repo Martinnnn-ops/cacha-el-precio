@@ -80,6 +80,8 @@ respetando `robots.txt`. Ver [`docs/PLAN.md`](docs/PLAN.md#8-consideraciones-leg
 | [`docs/EVALUACIONES.md`](docs/EVALUACIONES.md) | Qué pide el ramo y cómo lo cumplimos |
 | [`docs/BITACORA.md`](docs/BITACORA.md) | Registro semanal de avance |
 | [`docs/REQUISITOS.md`](docs/REQUISITOS.md) | Historias de usuario, requisitos funcionales y no funcionales |
+| [`docs/IDENTIDAD.md`](docs/IDENTIDAD.md) | Cómo funciona el login, cómo se valida el token y cómo se replica |
+| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | En qué orden se despliega en AWS y las restricciones del Learner Lab |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura, una por archivo |
 | [`infra/db/README.md`](infra/db/README.md) | Las migraciones y por qué el modelo cambió |
 
