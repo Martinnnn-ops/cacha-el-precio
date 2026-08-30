@@ -1,0 +1,586 @@
+Sondeo AWS Academy - region us-east-1 - 30-08-2026 01:30
+### sts get-caller-identity
+$ aws sts get-caller-identity --region us-east-1
+{
+    "UserId": "AROARWMVG2PL7XJTZ2WID:user3259170=Martin_Mora",
+    "Account": "<ID-DE-CUENTA>",
+    "Arn": "arn:aws:sts::<ID-DE-CUENTA>:assumed-role/voclabs/user3259170=Martin_Mora"
+}
+
+### listar user pools (lectura)
+$ aws cognito-idp list-user-pools --max-results 5 --region us-east-1
+{
+    "UserPools": []
+}
+
+### CREAR un user pool
+$ aws cognito-idp create-user-pool --pool-name sondeo-cachaelprecio-20260830-013059 --region us-east-1
+{
+    "UserPool": {
+        "Id": "us-east-1_jXsyH0bPO",
+        "Name": "sondeo-cachaelprecio-20260830-013059",
+        "Policies": {
+            "PasswordPolicy": {
+                "MinimumLength": 8,
+                "RequireUppercase": true,
+                "RequireLowercase": true,
+                "RequireNumbers": true,
+                "RequireSymbols": true,
+                "TemporaryPasswordValidityDays": 7
+            },
+            "SignInPolicy": {
+                "AllowedFirstAuthFactors": [
+                    "PASSWORD"
+                ]
+            }
+        },
+        "DeletionProtection": "INACTIVE",
+        "LambdaConfig": {},
+        "LastModifiedDate": 1788067863.598,
+        "CreationDate": 1788067863.598,
+        "SchemaAttributes": [
+            {
+                "Name": "sub",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": false,
+                "Required": true,
+                "StringAttributeConstraints": {
+                    "MinLength": "1",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "name",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "given_name",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "family_name",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "middle_name",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "nickname",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "preferred_username",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "profile",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "picture",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "website",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "email",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "email_verified",
+                "AttributeDataType": "Boolean",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false
+            },
+            {
+                "Name": "gender",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "birthdate",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "10",
+                    "MaxLength": "10"
+                }
+            },
+            {
+                "Name": "zoneinfo",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "locale",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "phone_number",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "phone_number_verified",
+                "AttributeDataType": "Boolean",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false
+            },
+            {
+                "Name": "address",
+                "AttributeDataType": "String",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "StringAttributeConstraints": {
+                    "MinLength": "0",
+                    "MaxLength": "2048"
+                }
+            },
+            {
+                "Name": "updated_at",
+                "AttributeDataType": "Number",
+                "DeveloperOnlyAttribute": false,
+                "Mutable": true,
+                "Required": false,
+                "NumberAttributeConstraints": {
+                    "MinValue": "0"
+                }
+            }
+        ],
+        "VerificationMessageTemplate": {
+            "DefaultEmailOption": "CONFIRM_WITH_CODE"
+        },
+        "UserAttributeUpdateSettings": {
+            "AttributesRequireVerificationBeforeUpdate": []
+        },
+        "MfaConfiguration": "OFF",
+        "EstimatedNumberOfUsers": 0,
+        "EmailConfiguration": {
+            "EmailSendingAccount": "COGNITO_DEFAULT"
+        },
+        "AdminCreateUserConfig": {
+            "AllowAdminCreateUserOnly": false,
+            "UnusedAccountValidityDays": 7
+        },
+        "Arn": "arn:aws:cognito-idp:us-east-1:<ID-DE-CUENTA>:userpool/us-east-1_jXsyH0bPO",
+        "AccountRecoverySetting": {
+            "RecoveryMechanisms": [
+                {
+                    "Priority": 1,
+                    "Name": "verified_email"
+                },
+                {
+                    "Priority": 2,
+                    "Name": "verified_phone_number"
+                }
+            ]
+        },
+        "UserPoolTier": "ESSENTIALS"
+    }
+}
+
+### CREAR dominio Hosted UI (cachaelprecio-20260830-013059)
+$ aws cognito-idp create-user-pool-domain --domain cachaelprecio-20260830-013059 --user-pool-id us-east-1_jXsyH0bPO --region us-east-1
+{
+    "ManagedLoginVersion": 1
+}
+
+### CREAR resource server con scope propio
+$ aws cognito-idp create-resource-server --user-pool-id us-east-1_jXsyH0bPO --identifier https://api.cachaelprecio.cl --name api --scopes ScopeName=ingesta,ScopeDescription=publicar ofertas --region us-east-1
+
+Error parsing parameter '--identifier': Unable to retrieve https://api.cachaelprecio.cl: Could not connect to the endpoint URL: "https://api.cachaelprecio.cl"
+
+### CREAR app client OIDC (authorization code)
+$ aws cognito-idp create-user-pool-client --user-pool-id us-east-1_jXsyH0bPO --client-name frontend-sondeo --generate-secret --allowed-o-auth-flows code --allowed-o-auth-flows-user-pool-client --allowed-o-auth-scopes openid email profile --callback-urls http://localhost:3000/callback --supported-identity-providers COGNITO --region us-east-1
+
+Error parsing parameter '--callback-urls': Unable to retrieve http://localhost:3000/callback: Could not connect to the endpoint URL: "http://localhost:3000/callback"
+
+### CREAR grupo de usuarios
+$ aws cognito-idp create-group --group-name mayorista --user-pool-id us-east-1_jXsyH0bPO --region us-east-1
+{
+    "Group": {
+        "GroupName": "mayorista",
+        "UserPoolId": "us-east-1_jXsyH0bPO",
+        "LastModifiedDate": 1788067868.007,
+        "CreationDate": 1788067868.007
+    }
+}
+
+### listar HTTP APIs (lectura)
+$ aws apigatewayv2 get-apis --max-results 5 --region us-east-1
+{
+    "Items": []
+}
+
+### CREAR una HTTP API
+$ aws apigatewayv2 create-api --name sondeo-20260830-013059 --protocol-type HTTP --region us-east-1
+{
+    "ApiEndpoint": "https://4tioyzprh2.execute-api.us-east-1.amazonaws.com",
+    "ApiId": "4tioyzprh2",
+    "ApiKeySelectionExpression": "$request.header.x-api-key",
+    "CreatedDate": "2026-08-30T05:31:10Z",
+    "DisableExecuteApiEndpoint": false,
+    "IpAddressType": "ipv4",
+    "Name": "sondeo-20260830-013059",
+    "ProtocolType": "HTTP",
+    "RouteSelectionExpression": "$request.method $request.path"
+}
+
+### CREAR authorizer JWT apuntando al user pool
+$ aws apigatewayv2 create-authorizer --api-id 4tioyzprh2 --authorizer-type JWT --identity-source $request.header.Authorization --name cognito-sondeo --jwt-configuration Audience=sondeo,Issuer=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jXsyH0bPO --region us-east-1
+{
+    "AuthorizerId": "wey7so",
+    "AuthorizerType": "JWT",
+    "IdentitySource": [
+        "$request.header.Authorization"
+    ],
+    "JwtConfiguration": {
+        "Audience": [
+            "sondeo"
+        ],
+        "Issuer": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jXsyH0bPO"
+    },
+    "Name": "cognito-sondeo"
+}
+
+### describir VPCs
+$ aws ec2 describe-vpcs --region us-east-1
+{
+    "Vpcs": [
+        {
+            "OwnerId": "<ID-DE-CUENTA>",
+            "InstanceTenancy": "default",
+            "CidrBlockAssociationSet": [
+                {
+                    "AssociationId": "vpc-cidr-assoc-0207bfc23c1a2c59f",
+                    "CidrBlock": "172.31.0.0/16",
+                    "CidrBlockState": {
+                        "State": "associated"
+                    }
+                }
+            ],
+            "IsDefault": true,
+            "BlockPublicAccessStates": {
+                "InternetGatewayBlockMode": "off"
+            },
+            "VpcId": "vpc-06a27706022ea1fa0",
+            "State": "available",
+            "CidrBlock": "172.31.0.0/16",
+            "DhcpOptionsId": "dopt-0f7144906d608c089"
+        }
+    ]
+}
+
+### describir instancias
+$ aws ec2 describe-instances --region us-east-1
+{
+    "Reservations": []
+}
+
+### run-instances --dry-run
+
+An error occurred (InvalidAMIID.Malformed) when calling the RunInstances operation: Invalid id: "ami-00000000000000000" (expecting "ami-...")
+
+### buscar LabRole
+$ aws iam get-role --role-name LabRole
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "LabRole",
+        "RoleId": "AROARWMVG2PL7CLVMDRHH",
+        "Arn": "arn:aws:iam::<ID-DE-CUENTA>:role/LabRole",
+        "CreateDate": "2026-08-30T05:25:49Z",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": [
+                            "ec2.application-autoscaling.amazonaws.com",
+                            "elasticmapreduce.amazonaws.com",
+                            "kms.amazonaws.com",
+                            "resource-groups.amazonaws.com",
+                            "elasticbeanstalk.amazonaws.com",
+                            "cloudformation.amazonaws.com",
+                            "deepracer.amazonaws.com",
+                            "states.amazonaws.com",
+                            "athena.amazonaws.com",
+                            "apigateway.amazonaws.com",
+                            "firehose.amazonaws.com",
+                            "backup.amazonaws.com",
+                            "servicecatalog.amazonaws.com",
+                            "codewhisperer.amazonaws.com",
+                            "rds.amazonaws.com",
+                            "forecast.amazonaws.com",
+                            "credentials.iot.amazonaws.com",
+                            "scheduler.amazonaws.com",
+                            "autoscaling.amazonaws.com",
+                            "batch.amazonaws.com",
+                            "pipes.amazonaws.com",
+                            "iot.amazonaws.com",
+                            "iotanalytics.amazonaws.com",
+                            "elasticfilesystem.amazonaws.com",
+                            "ecs-tasks.amazonaws.com",
+                            "lambda.amazonaws.com",
+                            "sns.amazonaws.com",
+                            "rekognition.amazonaws.com",
+                            "application-autoscaling.amazonaws.com",
+                            "elasticloadbalancing.amazonaws.com",
+                            "glue.amazonaws.com",
+                            "ec2.amazonaws.com",
+                            "cloudtrail.amazonaws.com",
+                            "events.amazonaws.com",
+                            "codecommit.amazonaws.com",
+                            "logs.amazonaws.com",
+                            "iotevents.amazonaws.com",
+                            "kinesis.amazonaws.com",
+                            "kinesisanalytics.amazonaws.com",
+                            "sqs.amazonaws.com",
+                            "codedeploy.amazonaws.com",
+                            "eks.amazonaws.com",
+                            "ecs.amazonaws.com",
+                            "dynamodb.amazonaws.com",
+                            "cognito-idp.amazonaws.com",
+                            "ssm.amazonaws.com",
+                            "s3.amazonaws.com",
+                            "redshift.amazonaws.com",
+                            "eks-fargate-pods.amazonaws.com",
+                            "sagemaker.amazonaws.com",
+                            "secretsmanager.amazonaws.com",
+                            "databrew.amazonaws.com"
+                        ],
+                        "AWS": "arn:aws:iam::<ID-DE-CUENTA>:role/LabRole"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        },
+        "Description": "",
+        "MaxSessionDuration": 3600,
+        "Tags": [
+            {
+                "Key": "cloudlab",
+                "Value": "c222317a5608281l16439084t1w<ID-DE-CUENTA>"
+            }
+        ],
+        "RoleLastUsed": {}
+    }
+}
+
+### intentar CREAR un rol propio (se espera que falle)
+$ aws iam list-roles --max-items 5
+{
+    "Roles": [
+        {
+            "Path": "/aws-service-role/ops.apigateway.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForAPIGateway",
+            "RoleId": "AROARWMVG2PLZABN7ORHF",
+            "Arn": "arn:aws:iam::<ID-DE-CUENTA>:role/aws-service-role/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway",
+            "CreateDate": "2024-04-25T14:36:57Z",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "ops.apigateway.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "Description": "The Service Linked Role is used by Amazon API Gateway.",
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForApplicationAutoScaling_DynamoDBTable",
+            "RoleId": "AROARWMVG2PL6OKZBVIRX",
+            "Arn": "arn:aws:iam::<ID-DE-CUENTA>:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable",
+            "CreateDate": "2024-09-09T22:45:22Z",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "dynamodb.application-autoscaling.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/autoscaling.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForAutoScaling",
+            "RoleId": "AROARWMVG2PLRJSCYDQE3",
+            "Arn": "arn:aws:iam::<ID-DE-CUENTA>:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+            "CreateDate": "2024-09-02T22:27:15Z",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "autoscaling.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "Description": "Default Service-Linked Role enables access to AWS Services and Resources used or managed by Auto Scaling",
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/cloud9.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForAWSCloud9",
+            "RoleId": "AROARWMVG2PLSEDNTGHJO",
+            "Arn": "arn:aws:iam::<ID-DE-CUENTA>:role/aws-service-role/cloud9.amazonaws.com/AWSServiceRoleForAWSCloud9",
+            "CreateDate": "2022-10-24T13:22:55Z",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "cloud9.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/events.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForCloudWatchEvents",
+            "RoleId": "AROARWMVG2PLYHXMJX6WL",
+            "Arn": "arn:aws:iam::<ID-DE-CUENTA>:role/aws-service-role/events.amazonaws.com/AWSServiceRoleForCloudWatchEvents",
+            "CreateDate": "2022-10-24T13:22:54Z",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "events.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        }
+    ],
+    "NextToken": "eyJNYXJrZXIiOiBudWxsLCAiYm90b190cnVuY2F0ZV9hbW91bnQiOiA1fQ=="
+}
+
+
+> Nota: el numero de cuenta de AWS se reemplazo por <ID-DE-CUENTA>. El repo es publico y el ID de cuenta sirve para enumerar roles; no aporta nada a la evidencia.
