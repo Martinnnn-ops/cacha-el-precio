@@ -60,6 +60,48 @@ captura real el 27-08 a las 18:40: **2.088 productos, 908 zapatillas, 9.125 fila
 También levanté el **entorno local con Docker** (Postgres + RabbitMQ) y de paso validé los
 umbrales del matching contra datos reales — los dos detalles están más abajo.
 
+(30-08) 🟢 **Cerrado el bloqueador que llevaba una semana abierto: Cognito SÍ se puede en la
+cuenta de AWS Academy.** Se sondeó con `tools/verificar-aws-academy.sh`, que crea todo lo que
+el EP1 necesita y después lo borra: User Pool, dominio de Hosted UI, resource server con el
+scope `ingesta`, app client OIDC con Authorization Code, grupos, HTTP API y **el JWT Authorizer
+de API Gateway apuntando al pool**. También se confirmó permiso para lanzar EC2 (`--dry-run`) y
+que existe `LabRole`. **El plan B de Keycloak queda descartado.** Razonamiento en el
+[ADR-006](adr/006-cognito-como-idaas.md), evidencia cruda en `docs/evidencia/`.
+
+Escribí además [`DESPLIEGUE.md`](DESPLIEGUE.md), que faltaba: los 8 pasos en orden para el
+6 de septiembre y las restricciones del Learner Lab que muerden en el despliegue (la sesión
+caduca y **apaga las EC2 solas**, la IP pública cambia al reiniciar, no se pueden crear roles
+de IAM). El paso 7 —actualizar las redirect URIs de Cognito al dominio de CloudFront— es el que
+hunde entregas: el login sigue andando en local y muere en producción sin decir por qué.
+
+(30-08) 🔑 **Identidad levantada de verdad, no en papel.** `tools/crear-cognito.sh` deja el
+User Pool completo y es **idempotente**: si algo ya existe lo reutiliza, así que se puede correr
+las veces que haga falta. Crea Hosted UI, resource server con el scope `ingesta`, el app client
+del frontend (sin secreto, PKCE), el del scraper (con secreto, `client_credentials`), los grupos
+`admin` y `usuario`, y dos usuarios de prueba para poder mostrar el 200 y el 403 en la defensa.
+Los identificadores quedan en `cognito.env`, que no se versiona porque cambia con cada cuenta.
+
+**Verificado end-to-end, no solo creado:** el JWKS entrega 2 llaves RS256, el Hosted UI responde
+200, y pedimos un `access_token` real por `client_credentials` que llegó con el scope correcto.
+De paso quedó **medida** la particularidad del `aud`: el `access_token` de Cognito **no trae ese
+claim**, trae `client_id`. Si el BFF usa la validación de audiencia por defecto de cualquier
+librería, **rechaza todos los tokens buenos** y el mensaje de error manda a buscar al lugar
+equivocado. Está escrito en [`IDENTIDAD.md`](IDENTIDAD.md) §5.
+
+**Hueco de diseño encontrado y cerrado.** El diagrama pone el backend en subred privada, pero
+API Gateway vive *fuera* de la VPC: sin **VPC Link** no llega, y el VPC Link necesita un
+balanceador detrás. No estaba en ningún documento. Se decidió la arquitectura completa
+([ADR-015](adr/015-red-privada-con-vpc-link.md)) con dos ajustes: **ALB en vez de NLB** (sus
+health checks dicen qué falla; con NLB es un 503 mudo) y **NAT y ALB se crean y se destruyen por
+script**, porque son las únicas piezas que cobran por hora aunque el laboratorio esté cerrado.
+
+Documentos nuevos: [`IDENTIDAD.md`](IDENTIDAD.md) — cómo funciona el login, qué valida el BFF,
+cómo se replica y cómo se defiende en el oral.
+
+⚠️ **Lo que falta y es todo lo que puntúa:** el frontend **no existe** (0 líneas, y es el 60%) y
+el `gateway` son 2 `.java` sin nada de seguridad (el 40%). La infraestructura no reparte puntos
+por sí sola.
+
 **Orion —**
 
 **Panditax —**
