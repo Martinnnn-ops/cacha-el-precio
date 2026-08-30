@@ -60,3 +60,9 @@ capturas/
 .DS_Store
 Thumbs.db
 *.log
+
+# La evidencia del EP1 si se versiona: es lo que se cita en el informe.
+!docs/evidencia/*.log
+
+# Configuracion de Cognito generada por tools/crear-cognito.sh (cambia por cuenta)
+cognito.env
