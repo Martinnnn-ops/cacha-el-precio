@@ -4,7 +4,7 @@
 > [rubricas/](rubricas/).
 > El checklist operativo de tareas está en [TAREAS.md](TAREAS.md).
 >
-> Documento vivo · Última revisión: 19-08-2026
+> Documento vivo · Última revisión: 27-08-2026
 
 ---
 
@@ -33,16 +33,56 @@ cuando preguntan *"¿por qué separaste esto en microservicios?"*. La lectura co
 > **La capa de seguridad se construye primero y se termina bien; el dominio crece alrededor
 > y no se deja para el final.**
 
+### Cómo se compone la nota del ramo
+
+Los seis EP **no se suman directo a la nota final**: entre los seis reparten el 100%
+del bloque de parciales, y ese bloque vale el **60% de la asignatura**. El otro 40%
+es la Evaluación Final Transversal.
+
+| | % de parciales | % de la nota final |
+|---|---|---|
+| EP1 · Encargo | 16% | **9,6%** |
+| EP2 · Presentación | 24% | **14,4%** |
+| EP3 · Encargo | 12% | 7,2% |
+| EP4 · Presentación | 18% | 10,8% |
+| EP5 · Encargo | 12% | 7,2% |
+| EP6 · Presentación | 18% | 10,8% |
+| **Evaluación Final Transversal** | — | **40%** |
+
+Para pasar de una columna a la otra se multiplica por 0,6.
+
 ### Mapa de puntaje
 
-**EP1 · Encargo (16% de la nota final) — código por GitHub, 13-sep**
+**EP1 · Encargo (16% de los parciales = 9,6% de la nota final) — código por GitHub**
+
+> 📅 **Las tres fechas, en orden de importancia:** ☁️ **6-sep, sistema en la nube** (sin esto no
+> hay entrega) · 🔒 **10-sep, code freeze** · 📤 **13-sep 23:59, entrega formal**.
+> Del 10 al 13 no se toca código: es informe, ensayo y grabación.
 
 | Peso | Indicador | Dueño |
 |---|---|---|
 | **60%** | Frontend: flujo de usuario OIDC completo, obtiene los tokens necesarios, guard de ruta, interceptor que adjunta el token, **lee roles y scopes desde los claims** | Integrante 1 |
 | **40%** | BFF: valida **issuer** y **audience**, verifica **firma** y **vigencia**, **autorización por rol**, responde **códigos de error adecuados** | Integrante 2 |
 
-**EP2 · Presentación (24% de la nota final) — nota individual, 5–10 minutos**
+> ### Lo que se confirmó en clase el 26-08
+>
+> La rúbrica no lo dice con estas palabras, pero el EP1 **no se entrega solo como código**:
+>
+> 1. **API Manager e IDaaS van sí o sí.** Son el mínimo del MVP, no un extra que se suma si
+>    alcanza el tiempo.
+> 2. **El sistema tiene que estar desplegado.** Corriendo en internet, no en `localhost`.
+> 3. **Informe ejecutivo de 5 páginas** contando la portada — o sea, 4 de contenido — y lo
+>    fundamental de ese informe es **justificar la elección de la herramienta de IDaaS y la
+>    del API Manager**.
+>
+> **Consecuencia para el calendario:** la [Semana 2](TAREAS.md#-semana-2--31-ago--6-sep--todo-a-la-nube)
+> deja de ser holgura y pasa a ser la ruta crítica. Si el sistema no está en la nube el 6 de
+> septiembre, el EP1 no se puede entregar aunque el código esté impecable.
+>
+> **Lo que NO entra en el EP1:** Kafka, la analítica por ventanas y la calidad del matching.
+> Se construyen después, y no se les dan horas antes del code freeze del 10 de septiembre.
+
+**EP2 · Presentación (24% de los parciales = 14,4% de la nota final) — nota individual, 5–10 minutos**
 
 | Peso | Indicador | Presenta |
 |---|---|---|
@@ -127,7 +167,7 @@ Son **5 a 10 minutos**. Casi todo demo en vivo, pocos slides. Orden sugerido:
 | 2–4 | **Registro de un usuario en vivo** → login → DevTools mostrando `code_challenge`, `state` y `nonce` |
 | 4–5 | El token decodificado en pantalla: claims, scopes y `cognito:groups` |
 | 5–7 | **Postman**: la misma ruta con token (**200**), sin token (**401**), y con usuario común en ruta admin (**403**) |
-| 7–8 | Consola de AWS: API Gateway con las rutas y CORS, tareas de Fargate corriendo |
+| 7–8 | Consola de AWS: API Gateway con las rutas y CORS, la EC2 con los contenedores corriendo |
 | 8–9 | El producto: buscar un modelo, ver el descuento real y el gráfico de historial |
 | 9–10 | Cierre: *"agregar alertas es suscribir un servicio nuevo al evento `precio.cambiado`, sin tocar el código existente"* |
 
