@@ -5,7 +5,7 @@
 
 ## Contexto
 
-Los cuatro servicios del backend (`api-gateway`/BFF, `catalog-service`, `price-service` y
+Los cuatro servicios del backend (`api-gateway`/BFF, `product-service`, `price-service` y
 RabbitMQ) tienen que estar **corriendo en internet el 6 de septiembre**. Esa es la fecha que
 manda: el EP1 no se puede entregar con el sistema en `localhost`, aunque el código esté
 impecable.

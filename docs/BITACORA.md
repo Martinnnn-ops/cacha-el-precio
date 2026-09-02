@@ -289,7 +289,10 @@ recuperable; conviene ajustar esa casilla y decirlo en el informe en vez de que 
 
 **Martín —**
 
-**Orion —**
+**Orion —** Reemplazó `catalog-service` por `product-service` porque ahora el módulo será dueño
+de catálogos y productos. Dejó una estructura simple (`model`, `repository`, `service` y
+`controller`), SQLite con Flyway y tres versiones reales de los listados HTTP. No se agregaron
+DTO todavía; el costo de ese acoplamiento quedó anotado en ADR-016 para no olvidarnos después.
 
 **Panditax —**
 

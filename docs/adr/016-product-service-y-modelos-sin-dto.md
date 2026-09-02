@@ -1,4 +1,4 @@
-# ADR-015 — Reemplazar catalog-service por product-service y partir sin DTO
+# ADR-016 — Reemplazar catalog-service por product-service y partir sin DTO
 
 **Estado:** aceptada
 

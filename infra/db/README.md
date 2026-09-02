@@ -6,7 +6,7 @@ Una carpeta por esquema, y los esquemas salen del [ADR-010](../../docs/adr/) —
 instancia de RDS con un esquema por servicio:
 
 ```
-infra/db/catalog/   → esquema catalog, dueño: catalog-service
+infra/db/catalog/   → esquema catalog, dueño: product-service
 infra/db/price/     → esquema price,   dueño: price-service
 ```
 

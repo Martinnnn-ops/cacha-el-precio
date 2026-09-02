@@ -112,7 +112,7 @@
           <mxGeometry x="478" y="248" width="78" height="78" as="geometry" />
         </mxCell>
 
-        <mxCell id="d-catalog" value="catalog-service&#10;normaliza y empareja" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="d-catalog" value="product-service&#10;normaliza y empareja" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="620" y="255" width="170" height="60" as="geometry" />
         </mxCell>
 

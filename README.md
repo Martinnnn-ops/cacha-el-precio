@@ -123,7 +123,7 @@ Detalle en [`infra/db/README.md`](infra/db/README.md).
 | Servicio | Puerto | `/health` |
 |---|---|---|
 | `gateway` (BFF) | 8080 | `http://localhost:8080/health` |
-| `catalog-service` | 8081 | `http://localhost:8081/health` |
+| `product-service` | 8081 | `http://localhost:8081/health` |
 | `price-service` | 8082 | `http://localhost:8082/health` |
 | `scraper-service` | 8083 | `http://localhost:8083/health` |
 
