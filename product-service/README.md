@@ -1,7 +1,17 @@
 # product-service
 
-Microservicio dueño de los catálogos y productos canónicos de **Cacha el Precio**. Está hecho con
-Micronaut, Maven y Java 25, manteniendo una estructura clásica para que sea fácil seguirle la pista:
+Microservicio encargado de administrar los catálogos y productos de **Cacha el Precio**.
+
+## Estado actual
+
+- Versión del microservicio: `0.1.0`.
+- Java 25, Micronaut y Maven.
+- Persistencia con SQLite y migraciones de Flyway.
+- API REST documentada con OpenAPI y Swagger UI.
+- Contratos Protobuf preparados para integrar gRPC.
+- Modelos utilizados directamente en las solicitudes y respuestas HTTP.
+
+## Estructura
 
 ```text
 controller -> service -> repository -> SQLite
@@ -9,9 +19,9 @@ controller -> service -> repository -> SQLite
                   model
 ```
 
-Por ahora no usamos DTO. El controller recibe y devuelve `Catalogo` y `Producto` directamente. Es
-una decisión válida para avanzar rápido, aunque significa que cambiar una entidad puede cambiar
-también la API; si el contrato crece o aparecen campos internos, ahí sí conviene agregar DTO.
+Por ahora no se utilizan DTO. Los controladores reciben y devuelven los modelos `Catalogo` y
+`Producto` directamente. Esta decisión se puede revisar si aparecen campos internos o si el
+contrato HTTP comienza a diferenciarse del modelo persistido.
 
 ## Ejecutar
 
@@ -31,27 +41,29 @@ Se pueden cambiar con `PRODUCT_PORT`, `PRODUCT_GRPC_PORT` y `PRODUCT_DB_URL`.
 
 ## Versionado HTTP
 
-Las versiones se seleccionan con el header `X-API-VERSION`. Las tres usan la misma ruta para que
-se vea claramente cómo evoluciona una operación sin romper la anterior:
+Las versiones se seleccionan mediante el header `X-API-VERSION` y utilizan el formato SemVer.
+Los listados mantienen la misma ruta y cambian su comportamiento según la versión solicitada.
 
 ```bash
-curl -H 'X-API-VERSION: 1' http://localhost:8081/productos
-curl -H 'X-API-VERSION: 2' http://localhost:8081/productos
-curl -H 'X-API-VERSION: 3' 'http://localhost:8081/productos?soloActivos=true'
+curl -H 'X-API-VERSION: 0.1.0' http://localhost:8081/productos
+curl -H 'X-API-VERSION: 0.2.0' http://localhost:8081/productos
+curl -H 'X-API-VERSION: 0.3.0' 'http://localhost:8081/productos?soloActivos=true'
 ```
 
-- `v1`: listado básico.
-- `v2`: listado ordenado alfabéticamente.
-- `v3`: filtros opcionales por `catalogoId` y estado activo.
+| Versión | Productos | Catálogos |
+| --- | --- | --- |
+| `0.1.0` | Listado básico | Listado básico |
+| `0.2.0` | Listado ordenado por nombre | Listado ordenado por nombre |
+| `0.3.0` | Filtros por catálogo y estado | Filtro por nombre |
 
-Los catálogos siguen la misma idea: básico en v1, ordenado en v2 y búsqueda por nombre en v3.
+Las operaciones CRUD comienzan en la versión `0.1.0`.
 
 ## Base de datos
 
-Flyway ejecuta las migraciones desde `src/main/resources/db/migration`. No edites las tablas a
-mano: el siguiente cambio debería ser `V2__algo_que_explique_el_cambio.sql`.
+Flyway ejecuta las migraciones ubicadas en `src/main/resources/db/migration`. Cada cambio de
+estructura debe agregarse en una migración nueva sin modificar las anteriores.
 
 ## Protobuf
 
-`src/main/proto/product.proto` ya se compila y genera fuentes Java. El archivo quedó sin RPC a
-propósito; primero hay que acordar el contrato y recién después implementar un servidor gRPC.
+El archivo `src/main/proto/product.proto` se compila y genera las fuentes Java. Los RPC se
+agregarán cuando se defina el contrato de comunicación con los demás microservicios.

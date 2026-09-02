@@ -5,10 +5,6 @@ import io.micronaut.data.annotation.Id;
 import io.micronaut.data.annotation.MappedEntity;
 import io.micronaut.serde.annotation.Serdeable;
 
-/**
- * Representa una agrupación simple de productos, por ejemplo notebooks o celulares.
- * No hay mucha magia acá: por ahora el mismo modelo se guarda en SQLite y se devuelve por la API.
- */
 @Serdeable
 @MappedEntity("catalogos")
 public class Catalogo {

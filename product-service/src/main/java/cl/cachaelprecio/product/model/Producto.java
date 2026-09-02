@@ -8,10 +8,6 @@ import io.micronaut.serde.annotation.Serdeable;
 
 import java.math.BigDecimal;
 
-/**
- * Producto canónico del sistema. Todavía es un modelo chico porque primero queremos que funcione
- * el flujo completo y después agregar variantes, marcas y el resto de cosas entretenidas.
- */
 @Serdeable
 @MappedEntity("productos")
 public class Producto {

@@ -9,10 +9,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 
-/**
- * Lógica de productos. Por ahora es intencionalmente directa; si después aparecen reglas más
- * pesadas, este es el lugar donde deberían vivir y no en el controller.
- */
 @Singleton
 public class ProductoService {
 

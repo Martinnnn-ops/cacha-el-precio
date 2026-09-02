@@ -10,9 +10,6 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 
-/**
- * Junta la lógica relacionada con catálogos para que el controller se dedique solamente a HTTP.
- */
 @Singleton
 public class CatalogoService {
 

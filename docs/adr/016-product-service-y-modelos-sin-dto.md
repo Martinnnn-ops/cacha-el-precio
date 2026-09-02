@@ -16,7 +16,7 @@ etapa también queremos una estructura conocida y fácil de explicar en clases.
 - El código de negocio se separará solamente en `model`, `repository`, `service` y `controller`.
 - Los controllers recibirán y devolverán los modelos directamente, sin DTO por ahora.
 - Las rutas HTTP se versionarán por el header `X-API-VERSION`.
-- Los listados de productos y catálogos tendrán v1, v2 y v3 sobre la misma ruta.
+- Los listados de productos y catálogos tendrán las versiones `0.1.0`, `0.2.0` y `0.3.0` sobre la misma ruta.
 - SQLite será la base local y los cambios de esquema se harán con Flyway.
 - Swagger documentará HTTP y Protobuf quedará preparado para futuros contratos gRPC.
 

@@ -5,5 +5,3 @@ package cl.cachaelprecio.product.v1;
 option java_multiple_files = true;
 option java_package = "cl.cachaelprecio.product.grpc.v1";
 option java_outer_classname = "ProductProto";
-
-// El soporte Protobuf ya compila. Los RPC se agregan cuando definamos su contrato de verdad.

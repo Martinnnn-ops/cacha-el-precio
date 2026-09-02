@@ -19,10 +19,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Endpoints HTTP de los catálogos. Se ejecutan en el pool bloqueante porque SQLite usa JDBC y no
- * conviene dejar una consulta esperando en los hilos de Netty.
- */
 @ExecuteOn(TaskExecutors.BLOCKING)
 @Controller("/catalogos")
 @Tag(name = "Catálogos")
@@ -34,44 +30,31 @@ public class CatalogoController {
         this.catalogoService = catalogoService;
     }
 
-    /**
-     * Versión inicial: devuelve los catálogos tal como vienen de la base de datos. Es la opción
-     * más básica y queda viva para no romper clientes antiguos.
-     */
     @Get
-    @Version("1")
-    @Operation(summary = "Lista los catálogos", description = "Versión 1: listado básico sin ordenar.")
-    public List<Catalogo> listarVersion1() {
+    @Version("0.1.0")
+    @Operation(summary = "Lista los catálogos", description = "Versión 0.1.0: listado básico sin ordenar.")
+    public List<Catalogo> listar() {
         return catalogoService.listar();
     }
 
-    /**
-     * Versión 2 del mismo GET. La única mejora por ahora es ordenar por nombre, que parece poca
-     * cosa, pero sirve para mostrar una evolución real del contrato.
-     */
     @Get
-    @Version("2")
-    @Operation(summary = "Lista los catálogos ordenados", description = "Versión 2: orden alfabético.")
-    public List<Catalogo> listarVersion2() {
+    @Version("0.2.0")
+    @Operation(summary = "Lista los catálogos ordenados", description = "Versión 0.2.0: orden alfabético.")
+    public List<Catalogo> listarOrdenados() {
         return catalogoService.listarOrdenados();
     }
 
-    /**
-     * Versión 3: además de ordenar permite buscar por una parte del nombre. Si no llega el filtro,
-     * se comporta igual que la versión 2 y listo.
-     */
     @Get
-    @Version("3")
-    @Operation(summary = "Lista o busca catálogos", description = "Versión 3: acepta el filtro opcional nombre.")
-    public List<Catalogo> listarVersion3(@QueryValue Optional<String> nombre) {
+    @Version("0.3.0")
+    @Operation(summary = "Lista o busca catálogos", description = "Versión 0.3.0: permite filtrar por nombre.")
+    public List<Catalogo> listarConFiltro(@QueryValue Optional<String> nombre) {
         return nombre.filter(texto -> !texto.isBlank())
                 .map(catalogoService::buscarPorNombre)
                 .orElseGet(catalogoService::listarOrdenados);
     }
 
-    /** Busca un catálogo puntual. De momento esta operación parte en la versión 1. */
     @Get("/{id}")
-    @Version("1")
+    @Version("0.1.0")
     @Operation(summary = "Busca un catálogo por id")
     public HttpResponse<Catalogo> buscarPorId(Long id) {
         return catalogoService.buscarPorId(id)
@@ -79,17 +62,15 @@ public class CatalogoController {
                 .orElseGet(HttpResponse::notFound);
     }
 
-    /** Crea un catálogo usando directamente el modelo, porque por ahora decidimos no usar DTO. */
     @Post
-    @Version("1")
+    @Version("0.1.0")
     @Operation(summary = "Crea un catálogo")
     public HttpResponse<Catalogo> crear(@Body Catalogo catalogo) {
         return HttpResponse.created(catalogoService.crear(catalogo));
     }
 
-    /** Actualiza todo el catálogo indicado; si el id no existe devuelve 404 y era. */
     @Put("/{id}")
-    @Version("1")
+    @Version("0.1.0")
     @Operation(summary = "Actualiza un catálogo")
     public HttpResponse<Catalogo> actualizar(Long id, @Body Catalogo catalogo) {
         return catalogoService.actualizar(id, catalogo)
@@ -97,9 +78,8 @@ public class CatalogoController {
                 .orElseGet(HttpResponse::notFound);
     }
 
-    /** Elimina un catálogo si existe. SQLite protege los productos asociados con una FK. */
     @Delete("/{id}")
-    @Version("1")
+    @Version("0.1.0")
     @Operation(summary = "Elimina un catálogo")
     public HttpResponse<?> eliminar(Long id) {
         return catalogoService.eliminar(id) ? HttpResponse.noContent() : HttpResponse.notFound();

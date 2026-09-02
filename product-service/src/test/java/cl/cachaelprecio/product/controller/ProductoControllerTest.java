@@ -45,16 +45,16 @@ class ProductoControllerTest {
 
     @Test
     void respondeLasTresVersionesDelListado() {
-        assertEquals(2, listarConVersion("1", "/productos").size());
-        assertEquals(2, listarConVersion("2", "/productos").size());
-        assertEquals(1, listarConVersion("3", "/productos").size());
+        assertEquals(2, listarConVersion("0.1.0", "/productos").size());
+        assertEquals(2, listarConVersion("0.2.0", "/productos").size());
+        assertEquals(1, listarConVersion("0.3.0", "/productos").size());
     }
 
     @Test
     void respondeLasTresVersionesDeCatalogos() {
-        assertEquals(1, listarCatalogosConVersion("1", "/catalogos").size());
-        assertEquals(1, listarCatalogosConVersion("2", "/catalogos").size());
-        assertEquals(1, listarCatalogosConVersion("3", "/catalogos?nombre=note").size());
+        assertEquals(1, listarCatalogosConVersion("0.1.0", "/catalogos").size());
+        assertEquals(1, listarCatalogosConVersion("0.2.0", "/catalogos").size());
+        assertEquals(1, listarCatalogosConVersion("0.3.0", "/catalogos?nombre=note").size());
     }
 
     private List<Producto> listarConVersion(String version, String ruta) {

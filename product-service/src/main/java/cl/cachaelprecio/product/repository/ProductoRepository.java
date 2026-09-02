@@ -7,10 +7,6 @@ import io.micronaut.data.repository.CrudRepository;
 
 import java.util.List;
 
-/**
- * Repositorio de productos. Los nombres de estos métodos son importantes: Micronaut los lee y
- * arma las consultas por nosotros, bastante cómodo para no llenar el proyecto de SQL repetido.
- */
 @JdbcRepository(dialect = Dialect.SQLITE)
 public interface ProductoRepository extends CrudRepository<Producto, Long> {
 
