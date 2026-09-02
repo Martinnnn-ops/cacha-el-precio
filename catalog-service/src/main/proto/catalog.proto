@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package cl.cachaelprecio.catalog.v1;
-
-option java_multiple_files = true;
-option java_package = "cl.cachaelprecio.catalog.grpc.v1";
-option java_outer_classname = "CatalogProto";
-
-// Agrega aqui los mensajes y servicios RPC del contrato del catalogo.

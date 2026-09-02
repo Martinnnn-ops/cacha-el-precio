@@ -25,6 +25,6 @@
   </properties>
 
   <modules>
-    <module>catalog-service</module>
+    <module>product-service</module>
   </modules>
 </project>
