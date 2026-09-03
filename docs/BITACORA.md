@@ -289,6 +289,44 @@ recuperable; conviene ajustar esa casilla y decirlo en el informe en vez de que 
 
 **Martín —**
 
+(03-09) 🐛 **El script de Cognito prometía una reproducibilidad que no tenía.** Al ir a sacar un
+token de usuario para probar el BFF, el login falló con `NotAuthorizedException: Incorrect
+username or password` — con los dos usuarios de prueba, y también usando el UUID en vez del
+correo, así que no era un problema de alias.
+
+La causa estaba en `crear_usuario()`: el `admin-set-user-password` vivía **dentro del `else`**,
+o sea que solo se ejecutaba al crear el usuario. Pero si no se le pasa `CLAVE_PRUEBA`, el script
+**genera una clave nueva en cada corrida y la escribe en `cognito.env`**. Como el script es
+idempotente a propósito y se corrió varias veces, el archivo terminó declarando una clave que
+nunca se le aplicó a nadie.
+
+Es peor de lo que suena: [`IDENTIDAD.md`](IDENTIDAD.md) §6 promete que en una cuenta de AWS
+nueva basta correr el script y entrar. Eso **no era cierto** desde la segunda corrida, y se
+habría descubierto el día que la cuenta del Learner Lab se resetee — probablemente durante la
+semana de la entrega. Arreglado: la clave y el grupo se aplican siempre, exista o no el usuario.
+Verificado corriendo el script completo sin `CLAVE_PRUEBA` (el escenario que fallaba) y entrando
+con la clave recién generada.
+
+(03-09) 🧪 **App client `pruebas`, para poder testear sin navegador.** El client `frontend` solo
+acepta `ALLOW_USER_SRP_AUTH`, y el SRP no se puede hacer desde la CLI: habría que calcular el
+`SRP_A` a mano. Sin un client aparte, conseguir un token de usuario obliga a pasar por el Hosted
+UI, y **un test automatizado no puede hacer eso**.
+
+Se creó uno nuevo en vez de habilitarle el flujo al `frontend` por dos motivos:
+`update-user-pool-client` **reemplaza** la configuración entera —todo campo que no se le pase
+vuelve al valor por defecto, así que se habrían perdido las callback URLs— y porque el argumento
+que se defiende en el EP1 es que el frontend es PKCE puro y sin secreto. El client `pruebas` no
+tiene OAuth ni callbacks: solo sirve para pedir un token con usuario y clave.
+
+**Consecuencia de diseño para el BFF, encontrada antes de escribir el código:** el token de ese
+client trae **otro `client_id`**. Como Cognito no manda `aud` en el `access_token` y hay que
+validar contra `client_id`, validar contra un solo valor haría que los tests con tokens reales
+dieran **401 contra nuestra propia validación**. El script ahora emite
+`COGNITO_CLIENT_IDS_VALIDOS` con los dos.
+
+Reconfirmado de paso, con un token medido hoy: `aud` no viene, `token_use` es `access` y
+`cognito:groups` trae `["admin"]` — o sea que el 403 de la demo se puede construir de verdad.
+
 **Orion —**
 
 **Panditax —**
