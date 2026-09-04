@@ -1,0 +1,37 @@
+/* Estilos de las pantallas de sesión. Entrar y registrarse comparten la misma
+   pantalla —con Google son el mismo acto— así que también el mismo estilo. */
+.acceso__tarjeta {
+  width: 100%;
+  max-width: 400px;
+}
+.acceso__titulo {
+  margin: 0 0 var(--cep-sp-2);
+  font-size: var(--cep-fs-2xl);
+}
+.acceso__bajada {
+  margin: 0 0 var(--cep-sp-6);
+  color: var(--cep-muted);
+}
+.acceso__error {
+  margin: var(--cep-sp-4) 0 0;
+  padding: var(--cep-sp-25) var(--cep-sp-3);
+  background: var(--cep-bg);
+  border-left: 3px solid var(--cep-alerta);
+  border-radius: var(--cep-r-sm);
+  font-size: var(--cep-fs-sm);
+}
+.acceso__nota {
+  margin: var(--cep-sp-4) 0 0;
+  font-size: var(--cep-fs-sm);
+  color: var(--cep-muted);
+}
+.acceso__legal {
+  margin: 0;
+  font-size: var(--cep-fs-xs);
+  line-height: var(--cep-lh-snug);
+  color: var(--cep-muted);
+}
+.acceso__legal a {
+  color: var(--cep-accent);
+  font-weight: 600;
+}

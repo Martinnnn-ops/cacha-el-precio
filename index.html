@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Cacha el Precio — compara antes de comprar</title>
+    <meta
+      name="description"
+      content="Compara el precio de la misma prenda en varias tiendas antes de comprar. Seguimos los precios todos los días para que sepas dónde está más barata."
+    />
+
+    <link rel="canonical" href="https://cacha-el-precio.com/" />
+    <meta name="theme-color" content="#eae6d9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1d17" media="(prefers-color-scheme: dark)" />
+
+    <!-- Cómo se ve al compartir el enlace en WhatsApp, Instagram o X. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Cacha el Precio" />
+    <meta property="og:locale" content="es_CL" />
+    <meta property="og:title" content="Cacha el Precio — compara antes de comprar" />
+    <meta
+      property="og:description"
+      content="El precio de la misma prenda en varias tiendas, lado a lado."
+    />
+    <meta property="og:url" content="https://cacha-el-precio.com/" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- El SVG primero: los navegadores que lo entienden lo prefieren y se ve
+         nítido en cualquier densidad de pantalla. El .ico queda de reserva. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Las fuentes vienen de Google: precargar la conexión ahorra el tiempo
+         de DNS y TLS antes de que el CSS las pida. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <noscript>
+      <p style="font-family: system-ui; padding: 24px; text-align: center">
+        Cacha el Precio necesita JavaScript para comparar precios.
+        Actívalo en tu navegador y vuelve a cargar la página.
+      </p>
+    </noscript>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

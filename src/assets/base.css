@@ -1,0 +1,376 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SISTEMA DE DISEÑO
+   Lenguaje visual de "papel y tinta": fondo crema, tarjetas que imitan un
+   ticket de compra (con sus muescas troqueladas) y un sello circular para el
+   descuento. La idea es que comparar precios se parezca a revisar boletas.
+
+   Todo valor repetido es un token. Si un componente escribe un hex o un píxel
+   a mano se sale del sistema, y el día que haya tema oscuro habrá que ir a
+   buscarlo uno por uno.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ——— tipografías ——— */
+  --cep-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --cep-font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --cep-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* ——— escala tipográfica (en rem: respeta el tamaño del navegador) ——— */
+  /* 11px es para ETIQUETAS —versalitas, contadores, la marca "Publicidad"— y
+     para lo accesorio, no para contenido. La jerarquía la marcan el color y el
+     peso: un texto secundario va en --cep-muted a tamaño legible, no encogido
+     hasta que cueste leerlo. */
+  --cep-fs-2xs: 0.6875rem; /* 11 */
+  --cep-fs-xs: 0.75rem; /*    12 */
+  --cep-fs-sm: 0.8125rem; /*  13 */
+  --cep-fs-md: 0.875rem; /*   14 */
+  --cep-fs-base: 0.9375rem; /*15 */
+  --cep-fs-lg: 1.0625rem; /*  17 */
+  --cep-fs-xl: 1.25rem; /*    20 */
+  --cep-fs-2xl: 1.5rem; /*    24 */
+  --cep-fs-3xl: 2rem; /*      32 */
+  --cep-fs-4xl: 2.625rem; /*  42 */
+
+  --cep-lh-tight: 1.18;
+  --cep-lh-snug: 1.35;
+  --cep-lh-normal: 1.55;
+
+  /* ——— espaciado (base 4, con medios pasos en la zona densa) ——— */
+  --cep-sp-05: 2px;
+  --cep-sp-1: 4px;
+  --cep-sp-15: 6px;
+  --cep-sp-2: 8px;
+  --cep-sp-25: 10px;
+  --cep-sp-3: 12px;
+  --cep-sp-4: 16px;
+  --cep-sp-5: 20px;
+  --cep-sp-6: 24px;
+  --cep-sp-7: 28px;
+  --cep-sp-8: 32px;
+  --cep-sp-10: 40px;
+  --cep-sp-12: 48px;
+  --cep-sp-16: 64px;
+
+  /* ——— maquetación ——— */
+  --cep-container: 1180px;
+  --cep-gutter: var(--cep-sp-5);
+
+  /* ——— radios ——— */
+  --cep-r-xs: 2px;
+  --cep-r-sm: 3px;
+  --cep-r-md: 4px;
+  --cep-r-lg: 6px;
+  --cep-r-pill: 999px;
+
+  /* ——— controles ——— */
+  --cep-control-h-sm: 32px;
+  --cep-control-h: 40px;
+  --cep-control-h-lg: 46px;
+
+  /* ——— movimiento ——— */
+  --cep-dur-1: 120ms;
+  --cep-dur-2: 180ms;
+  --cep-dur-3: 260ms;
+  --cep-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  /* ——— capas ——— */
+  --cep-z-nav: 20;
+  --cep-z-dropdown: 30;
+  --cep-z-skip: 60;
+
+  /* ——— color ——— */
+  --cep-bg: #eae6d9;
+  --cep-sunken: #ddd7c4;
+  --cep-surface: #ffffff;
+  --cep-ink: #22271f;
+  --cep-on-ink: #eae6d9;
+  --cep-on-accent: #ffffff;
+  --cep-accent: #1e4a85;
+  --cep-exito: #2f6b4f;
+  --cep-alerta: #b23a2b;
+  --cep-rate: #b8863c;
+
+  /* Este gris está calculado, no elegido a ojo: con el #8b8674 del proyecto
+     original el texto secundario quedaba en 2.5 de contraste sobre la
+     superficie hundida, o sea ilegible para bastante gente. */
+  --cep-muted: #615e51;
+
+  --cep-line: rgb(34 39 31 / 13%);
+  --cep-line-media: rgb(34 39 31 / 20%);
+  /* Borde de un control: necesita 3:1 contra su fondo o no se distingue. */
+  --cep-line-fuerte: rgb(34 39 31 / 53%);
+  --cep-wash: rgb(34 39 31 / 6%);
+  --cep-wash-2: rgb(34 39 31 / 10%);
+
+  /* Borde de las tarjetas.
+     En claro no hace falta: la tarjeta es blanca sobre crema (1.25 de
+     diferencia) y con la sombra ya se separa sola. Un borde encima sería un
+     tercer mecanismo para el mismo trabajo, y eso es lo que hace que una
+     interfaz se vea recargada.
+     En oscuro sí: la diferencia baja a 1.11 y la sombra —negra sobre casi
+     negro— no se ve, así que sin borde la tarjeta se disolvería en el fondo. */
+  --cep-borde-tarjeta: transparent;
+
+  --cep-shadow-1: 0 1px 3px rgb(24 28 20 / 9%);
+  --cep-shadow-2: 0 4px 12px rgb(24 28 20 / 10%);
+  --cep-shadow-3: 0 10px 28px rgb(24 28 20 / 18%);
+
+  color-scheme: light;
+}
+
+/* ═══════════════════════════ TEMA OSCURO ═══════════════════════════
+   Se activa con [data-tema="oscuro"] en <html>, que pone shared/stores/ui.
+   `color-scheme` no es decorativo: sin él las barras de desplazamiento, los
+   controles nativos y el autorrelleno del navegador se quedan en claro. */
+[data-tema='oscuro'] {
+  --cep-bg: #1b1d17;
+  --cep-sunken: #262820;
+  --cep-surface: #242620;
+  --cep-ink: #ede9dd;
+  --cep-on-ink: #1b1d17;
+  /* En oscuro el acento se aclara: encima va tinta, no blanco. */
+  --cep-on-accent: #10161d;
+  --cep-accent: #6fa8dc;
+  --cep-exito: #5fbb8d;
+  --cep-alerta: #e2775f;
+  --cep-rate: #d1a054;
+  --cep-muted: #9c9686;
+
+  --cep-line: rgb(237 233 221 / 12%);
+  --cep-line-media: rgb(237 233 221 / 20%);
+  --cep-line-fuerte: rgb(237 233 221 / 38%);
+  --cep-wash: rgb(237 233 221 / 6%);
+  --cep-wash-2: rgb(237 233 221 / 11%);
+
+  --cep-borde-tarjeta: rgb(237 233 221 / 14%);
+
+  --cep-shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --cep-shadow-2: 0 4px 12px rgb(0 0 0 / 45%);
+  --cep-shadow-3: 0 10px 28px rgb(0 0 0 / 55%);
+
+  color-scheme: dark;
+}
+
+/* ——————————————————————— reset ——————————————————————— */
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#app {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--cep-bg);
+  color: var(--cep-ink);
+  font-family: var(--cep-font-sans);
+  font-size: var(--cep-fs-md);
+  line-height: var(--cep-lh-normal);
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background var(--cep-dur-2) var(--cep-ease),
+    color var(--cep-dur-2) var(--cep-ease);
+}
+h1,
+h2,
+h3 {
+  line-height: var(--cep-lh-tight);
+}
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--cep-accent);
+  outline-offset: 2px;
+  border-radius: var(--cep-r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (pointer: coarse) {
+  :root {
+    --cep-control-h-sm: 40px;
+    --cep-control-h: 44px;
+  }
+}
+
+/* ——————————————————————— carga ———————————————————————
+   Pulso de las pantallas esqueleto. Vive aquí y no en cada vista porque lo
+   comparten todos los esqueletos; el bloque prefers-reduced-motion de más
+   arriba ya lo neutraliza para quien pidió menos movimiento. */
+@keyframes cep-latido {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ——————————————————————— tipografía ——————————————————————— */
+.display {
+  font-family: var(--cep-font-display);
+  line-height: var(--cep-lh-tight);
+}
+.mono {
+  font-family: var(--cep-font-mono);
+}
+.muted {
+  color: var(--cep-muted);
+}
+.eyebrow {
+  margin: 0 0 var(--cep-sp-1);
+  font-family: var(--cep-font-mono);
+  font-size: var(--cep-fs-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cep-muted);
+}
+.seccion-titulo {
+  margin: 0 0 var(--cep-sp-3);
+  font-family: var(--cep-font-display);
+  font-size: var(--cep-fs-xl);
+}
+.divisor {
+  height: 1px;
+  margin: var(--cep-sp-4) 0;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--cep-line-media) 0 6px,
+    transparent 6px 12px
+  );
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ——————————————————————— ticket ———————————————————————
+   La tarjeta base. Las muescas son un degradado radial que dibuja los
+   troqueles del papel; van del color del fondo, así que "recortan" el borde. */
+.ticket {
+  position: relative;
+  background: var(--cep-surface);
+  border: 1px solid var(--cep-borde-tarjeta);
+  border-radius: var(--cep-r-xs);
+  box-shadow: var(--cep-shadow-1);
+}
+.ticket__cuerpo {
+  padding: var(--cep-sp-4);
+}
+.ticket__muescas {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    var(--cep-bg) 3.4px,
+    transparent 3.6px
+  );
+  background-size: 16px 16px;
+  background-position: 8px center;
+  background-repeat: repeat-x;
+}
+.ticket__muescas--arriba {
+  top: -5px;
+}
+.ticket__muescas--abajo {
+  bottom: -5px;
+}
+
+/* Ticket pulsable */
+.ticket--enlace {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--cep-dur-2) var(--cep-ease),
+    box-shadow var(--cep-dur-2) var(--cep-ease),
+    transform var(--cep-dur-2) var(--cep-ease);
+}
+.ticket--enlace:hover {
+  border-color: var(--cep-accent);
+  box-shadow: var(--cep-shadow-2);
+  transform: translateY(-2px);
+}
+.ticket--enlace:active {
+  transform: translateY(0);
+  box-shadow: var(--cep-shadow-1);
+}
+
+/* ——————————————————————— insignias ——————————————————————— */
+.insignia {
+  display: inline-block;
+  padding: var(--cep-sp-1) var(--cep-sp-2);
+  border: 1px solid;
+  border-radius: var(--cep-r-sm);
+  font-family: var(--cep-font-mono);
+  font-size: var(--cep-fs-2xs);
+  white-space: nowrap;
+}
+.precio {
+  font-family: var(--cep-font-display);
+  font-size: var(--cep-fs-2xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tachado {
+  font-size: var(--cep-fs-xs);
+  color: var(--cep-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--cep-alerta);
+}
+
+/* ——————————————————————— fila etiqueta/valor ——————————————————————— */
+.fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--cep-sp-25);
+  padding: var(--cep-sp-15) 0;
+}
+.fila__etiqueta {
+  font-family: var(--cep-font-mono);
+  font-size: var(--cep-fs-2xs);
+  color: var(--cep-muted);
+}
+.fila__valor {
+  font-family: var(--cep-font-mono);
+  font-size: var(--cep-fs-base);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ——————————————————————— acentos de bloque ———————————————————————
+   Los tres colores que rotan en banners y categorías. */
+.acento-0 {
+  background: var(--cep-accent);
+}
+.acento-1 {
+  background: var(--cep-exito);
+}
+.acento-2 {
+  background: var(--cep-ink);
+}
