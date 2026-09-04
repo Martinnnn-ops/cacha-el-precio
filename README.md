@@ -89,17 +89,18 @@ respetando `robots.txt`. Ver [`docs/PLAN.md`](docs/PLAN.md#8-consideraciones-leg
 
 Requiere **JDK 25** y **Docker**. El Maven Wrapper descarga la versión de Maven del proyecto.
 
-### 1. La infraestructura
+### 1. Infraestructura y product-service
 
 ```bash
 cp .env.example .env      # y rellena las contraseñas
 docker compose up -d
-docker compose ps         # los dos deben decir (healthy)
+docker compose ps
 ```
 
-Levanta **Postgres 16** y **RabbitMQ 3.13**. El panel de RabbitMQ queda en
-`http://localhost:15672`. Es el mismo archivo que corre en la EC2 en producción
-([ADR-008](docs/adr/008-ec2-docker-compose.md)).
+Levanta **Postgres 16**, **RabbitMQ 3.13** y **product-service 0.1.0**. Postgres y RabbitMQ deben
+aparecer como `healthy`, mientras que product-service debe aparecer como `running`. El panel de
+RabbitMQ queda en `http://localhost:15672` y product-service en `http://localhost:8081`. Es el
+mismo archivo que corre en la EC2 en producción ([ADR-008](docs/adr/008-ec2-docker-compose.md)).
 
 ### 2. La base de datos
 

@@ -63,6 +63,21 @@ docker run --rm \
 
 El servicio queda disponible en `http://localhost:8081`. Para detenerlo se utiliza `Ctrl + C`.
 
+También se puede administrar desde el Compose ubicado en la raíz del repositorio:
+
+```bash
+docker compose build product-service
+docker compose up product-service
+```
+
+Para construir la imagen y levantar el contenedor en un solo paso:
+
+```bash
+docker compose up --build product-service
+```
+
+El volumen `product-service-datos` conserva la base SQLite cuando el contenedor se detiene.
+
 ## Versionado HTTP
 
 Las versiones se seleccionan mediante el header `X-API-VERSION` y utilizan el formato SemVer.

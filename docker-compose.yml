@@ -2,8 +2,8 @@
 #  Cacha el Precio · entorno local
 # ─────────────────────────────────────────────────────────────────────────────
 #
-#  Levanta las dos piezas de infraestructura que los microservicios necesitan
-#  para correr en tu computador: la base de datos y la cola de mensajes.
+#  Levanta la infraestructura local y los microservicios incorporados al
+#  entorno de contenedores.
 #
 #      docker compose up -d        levantar
 #      docker compose ps           ver si están sanos
@@ -96,12 +96,38 @@ services:
 
     networks: [cep]
 
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Product service — catálogos y productos
+  # ───────────────────────────────────────────────────────────────────────────
+  product-service:
+    build:
+      context: .
+      dockerfile: product-service/Dockerfile
+    image: cachaelprecio/product-service:${PRODUCT_VERSION:-0.1.0}
+    container_name: cep-product-service
+    restart: unless-stopped
+
+    environment:
+      PRODUCT_PORT: 8081
+      PRODUCT_GRPC_PORT: 50051
+      PRODUCT_DB_URL: "${PRODUCT_DOCKER_DB_URL:-jdbc:sqlite:/app/data/product.db?foreign_keys=on&busy_timeout=5000&journal_mode=WAL}"
+
+    ports:
+      - "127.0.0.1:${PRODUCT_PORT:-8081}:8081"
+      - "127.0.0.1:${PRODUCT_GRPC_PORT:-50051}:50051"
+
+    volumes:
+      - product-service-datos:/app/data
+
+    networks: [cep]
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Volúmenes: donde Docker guarda los datos para que no se pierdan al apagar
 # ─────────────────────────────────────────────────────────────────────────────
 volumes:
   postgres-datos:
   rabbitmq-datos:
+  product-service-datos:
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Red interna: los contenedores se ven entre ellos por su nombre de servicio.
