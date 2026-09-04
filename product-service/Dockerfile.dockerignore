@@ -1,0 +1,8 @@
+**
+
+!pom.xml
+!product-service/
+!product-service/pom.xml
+!product-service/openapi.properties
+!product-service/src/
+!product-service/src/**

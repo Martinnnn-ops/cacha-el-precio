@@ -39,6 +39,30 @@ JAVA_HOME=/usr/lib/jvm/java-25-openjdk ./mvnw -pl product-service mn:run
 
 Se pueden cambiar con `PRODUCT_PORT`, `PRODUCT_GRPC_PORT` y `PRODUCT_DB_URL`.
 
+## Docker
+
+La imagen se construye desde la raíz del repositorio porque el módulo utiliza el `pom.xml` padre:
+
+```bash
+docker build \
+  --file product-service/Dockerfile \
+  --tag cachaelprecio/product-service:0.1.0 \
+  .
+```
+
+Para ejecutar solamente este microservicio y conservar la base SQLite en un volumen:
+
+```bash
+docker run --rm \
+  --name product-service \
+  --publish 8081:8081 \
+  --publish 50051:50051 \
+  --volume product-service-data:/app/data \
+  cachaelprecio/product-service:0.1.0
+```
+
+El servicio queda disponible en `http://localhost:8081`. Para detenerlo se utiliza `Ctrl + C`.
+
 ## Versionado HTTP
 
 Las versiones se seleccionan mediante el header `X-API-VERSION` y utilizan el formato SemVer.
