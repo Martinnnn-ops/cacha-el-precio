@@ -308,6 +308,139 @@ try {
 
   check('el filtro por categoría acota', (() => { st.categoria = 'Camisas'; const n = st.totalResultados; st.limpiarFiltros(); return n === 1 })())
 
+  console.log('\n=== carrusel ===')
+  {
+    const { estadoDesplazamiento, indiceActivo, pasoDeFlecha, fueArrastre } =
+      await load('/src/shared/utils/carrusel.js')
+
+    // El caso que estaba roto, con números de verdad: 6 tarjetas de 288px con
+    // 16px de hueco en un carril de 1000px. Caben ~3 a la vez.
+    const ANCHO = 288
+    const HUECO = 16
+    const PASO = ANCHO + HUECO
+    const carril = { scrollWidth: 6 * PASO - HUECO, clientWidth: 1000 }
+    const tope = carril.scrollWidth - carril.clientWidth
+    const posiciones = [0, 1, 2, 3, 4, 5].map((i) => i * PASO)
+
+    const en = (scrollLeft) => estadoDesplazamiento({ ...carril, scrollLeft })
+
+    check('al principio no se puede ir a la izquierda', en(0).puedeIzquierda === false)
+    check('  pero sí a la derecha', en(0).puedeDerecha === true)
+
+    // ——— EL FALLO ———
+    //
+    // Con el tope alcanzado, la última tarjeta NO está pegada al borde
+    // izquierdo: quedan dos a su derecha ocupando la ventana. El índice más
+    // cercano es el 3, no el 5. La comprobación vieja (`activo >= total - 1`)
+    // daba 3 >= 5 → falso → flecha derecha encendida y sin efecto al pulsarla.
+    const alFinal = en(tope)
+    const indiceMasCercanoAlFinal = posiciones
+      .map((x, i) => [Math.abs(x - tope), i])
+      .sort((a, b) => a[0] - b[0])[0][1]
+
+    check('  al final la última tarjeta no llega al borde izquierdo',
+      indiceMasCercanoAlFinal < posiciones.length - 1,
+      `la más cercana es la ${indiceMasCercanoAlFinal + 1} de ${posiciones.length}`)
+    check('  aun así, la flecha derecha se apaga al llegar al tope',
+      alFinal.puedeDerecha === false,
+      'con índices en vez de píxeles se quedaba encendida y no hacía nada')
+    check('  y la izquierda se enciende', alFinal.puedeIzquierda === true)
+
+    // Y el punto correspondiente: los últimos tienen que poder encenderse.
+    check('  el último punto se enciende al llegar al final',
+      indiceActivo({ posiciones, scrollLeft: tope, ...alFinal }) === posiciones.length - 1)
+    check('  el primero, al volver al principio',
+      indiceActivo({ posiciones, scrollLeft: 0, ...en(0) }) === 0)
+    check('  y por el medio manda el más cercano',
+      indiceActivo({ posiciones, scrollLeft: PASO * 2 + 10, ...en(PASO * 2 + 10) }) === 2)
+
+    // Medio píxel de más por el zoom no puede dejar la flecha encendida.
+    check('  medio píxel de redondeo no reactiva la flecha',
+      en(tope - 0.5).puedeDerecha === false)
+
+    // Si cabe todo, no hay flechas ni puntos que enseñar.
+    const cabeTodo = estadoDesplazamiento({ scrollWidth: 900, clientWidth: 1000, scrollLeft: 0 })
+    check('sin desbordamiento no se enseñan los controles',
+      cabeTodo.hayDesbordamiento === false && cabeTodo.desplazable === 0)
+    check('  con desbordamiento sí', en(0).hayDesbordamiento === true)
+
+    // ——— la flecha avanza una tarjeta ———
+    check('la flecha avanza una tarjeta y su hueco', pasoDeFlecha(ANCHO, HUECO, 1000) === PASO)
+    check('  y si aún no hay tarjetas, una ventana entera',
+      pasoDeFlecha(0, HUECO, 1000) === 1000 + HUECO)
+
+    // ——— arrastrar no puede abrir una ficha ———
+    check('un temblor de mano sigue siendo un clic', fueArrastre(3) === false)
+    check('  un arrastre de verdad no abre la tarjeta', fueArrastre(40) === true)
+
+    // El comportamiento del arrastre necesita un navegador de verdad y aquí no
+    // lo hay, así que al menos se vigila que el cableado siga puesto: si
+    // alguien quita un manejador, esto lo caza.
+    const fuente = readFileSync('src/shared/components/BaseCarousel.vue', 'utf8')
+
+    check('el carril escucha el puntero para poder arrastrarlo',
+      ['@pointerdown', '@pointermove', '@pointerup', '@pointercancel']
+        .every((ev) => fuente.includes(ev)))
+    check('  el táctil se queda con su desplazamiento nativo',
+      /pointerType === 'touch'/.test(fuente))
+    check('  suelta la captura del puntero al terminar',
+      /releasePointerCapture/.test(fuente))
+    check('  y el clic de después del arrastre se anula en captura',
+      /@click\.capture/.test(fuente) && /fueArrastre\(recorrido\)/.test(fuente))
+    check('  mientras se arrastra se apaga el anclaje',
+      /\.carrusel__carril--arrastrando \{[^}]*scroll-snap-type: none/.test(fuente))
+    check('  y no se selecciona el texto de las tarjetas',
+      /\.carrusel__carril--arrastrando \{[^}]*user-select: none/.test(fuente))
+
+    // ——— dónde vive la botonera ———
+    //
+    // Iban superpuestas sobre las tarjetas (left/right: 2px) y la izquierda se
+    // sentaba justo encima del título de la primera. Con estas tarjetas el
+    // texto empieza pegado al borde, así que cualquier control flotando ahí
+    // tapa contenido.
+    check('las flechas van en una botonera, no flotando sobre las tarjetas',
+      /class="carrusel__mando"/.test(fuente) &&
+        !/carrusel__flecha--izq/.test(fuente) &&
+        !/carrusel__flecha--der/.test(fuente))
+    check('  y no están posicionadas en absoluto',
+      !/\.carrusel__flecha \{[^}]*position: absolute/.test(fuente))
+    check('  la botonera va después del carril en el marcado',
+      fuente.indexOf('carrusel__mando') > fuente.indexOf('ref="carril"'))
+
+    // La regla global que da 44px de ancho a todo botón convertía el punto de
+    // 7px en un óvalo, y la hilera empujaba las flechas fuera de la pantalla.
+    check('  los puntos se libran del ancho mínimo global',
+      /\.carrusel__punto \{\s*min-width: 0/.test(fuente),
+      'su zona tocable ya la pone el ::after')
+
+    // ——— la tarjeta de novedades ———
+    const banner = readFileSync(
+      'src/modules/comparador/components/RecienteBanner.vue', 'utf8')
+
+    // El epígrafe decía «Recién agregado · hace 1 día», que repite el título de
+    // la sección y no cabía en una línea: rompía en dos y dejaba el título de
+    // cada tarjeta a una altura distinta.
+    // Se mira el ELEMENTO, no el archivo entero: la primera versión buscaba la
+    // cadena «Recién agregado» en todo el fichero y la encontraba… en el
+    // comentario que explica por qué se quitó.
+    check('el epígrafe de la tarjeta cabe en una línea',
+      /<p class="mono banner__eyebrow truncar">\{\{ antiguedad \}\}<\/p>/.test(banner))
+    check('  la tarjeta no recorta en silencio lo que crezca',
+      /min-height: 168px/.test(banner) && !/^\s*height: 168px/m.test(banner))
+    check('  el botón queda al fondo, alineado con el de al lado',
+      /\.banner__cta \{[^}]*margin-top: auto/.test(banner))
+    check('  y el hueco de la percha se reserva sólo donde estorba',
+      /\.banner__sub \{[^}]*padding-right/.test(banner) &&
+        !/\.banner__texto \{[^}]*padding-right/.test(banner),
+      'reservarlo en todo el bloque dejaba el título en 152px')
+
+    // Las flechas NO pueden volver a decidirse por índice.
+    check('las flechas se apagan por posición, no por índice',
+      /:disabled="!puedeIzquierda"/.test(fuente) &&
+        /:disabled="!puedeDerecha"/.test(fuente),
+      'con índices, la derecha nunca se apagaba')
+  }
+
   console.log('\n=== preferencias de interfaz ===')
   {
     setActivePinia(createPinia())
