@@ -2269,6 +2269,86 @@ console.log('\n=== las tarjetas aguantan cualquier contenido ===')
     /\.truncar \{[^}]*min-width: 0/.test(baseCss))
 }
 
+console.log('\n=== móvil: dedos y no punteros ===')
+{
+  const baseCss = readFileSync('src/assets/base.css', 'utf8')
+  const coarse = /@media \(pointer: coarse\) \{([\s\S]*?)\n\}/.exec(baseCss)?.[1] ?? ''
+
+  // Medido en el navegador con puntero grueso emulado: 139 de 152 controles del
+  // comparador estaban por debajo de 44x44. El bloque (pointer: coarse) es lo
+  // que lo arregla sin engordar la interfaz de ratón.
+  check('los controles crecen con el dedo', coarse !== '')
+  check('  a los 44px de mínimo',
+    /--cep-control-h: 44px/.test(coarse) && /--cep-control-h-sm: 44px/.test(coarse))
+  check('  y también de ancho, no sólo de alto',
+    /min-width: 44px/.test(coarse), 'un botón de icono de 39px falla igual')
+  check('  los enlaces sueltos ganan altura',
+    ['.migas__enlace', '.pie__enlace', '.barra__enlace'].every((c) => coarse.includes(c)))
+  check('  el deslizador y las casillas dejan de ser imposibles',
+    /input\[type='range'\]/.test(coarse) && /input\[type='checkbox'\]/.test(coarse))
+  check('  y la letra más pequeña sube a 12px',
+    /--cep-fs-2xs: 0\.75rem/.test(coarse), '11px en un móvil no se lee')
+
+  // El botón usaba píxeles a pelo, así que el aumento táctil no le llegaba.
+  const boton = readFileSync('src/shared/components/BaseButton.vue', 'utf8')
+  check('el botón toma su altura del token, no en píxeles fijos',
+    /min-height: var\(--cep-control-h\)/.test(boton) &&
+      !/min-height: 40px/.test(boton))
+
+  // El campo medía 24px dentro de una caja de 44: los bordes de arriba y abajo
+  // parecían buscador pero al tocarlos no pasaba nada.
+  const buscador = readFileSync('src/shared/components/BaseSearchInput.vue', 'utf8')
+  check('el campo de búsqueda llena su caja',
+    /\.buscador__campo \{[^}]*align-self: stretch/.test(buscador))
+
+  // Los puntos del carrusel miden 7px y así deben verse: la zona tocable se
+  // amplía con un pseudo-elemento, comprobado con elementFromPoint.
+  const carrusel = readFileSync('src/shared/components/BaseCarousel.vue', 'utf8')
+  check('los puntos del carrusel se tocan aunque midan 7px',
+    /\.carrusel__punto::after \{/.test(carrusel) && /height: 44px/.test(carrusel))
+
+  // ——— el desplome del comparador en móvil ———
+  //
+  // Con el panel desplegado había que bajar 3.574px —4,7 pantallas— antes de
+  // ver el primer producto. En escritorio se ven a los 323px.
+  const comp = readFileSync('src/modules/comparador/views/ComparadorView.vue', 'utf8')
+
+  check('en móvil los filtros van plegados tras un botón',
+    /class="filtros-movil"/.test(comp) && /aria-expanded="filtrosAbiertos"/.test(comp))
+  check('  el botón dice cuántos filtros hay puestos',
+    /filtros-movil__cuenta/.test(comp))
+  check('  y a partir de 900px el panel se enseña siempre',
+    /@media \(min-width: 900px\)[\s\S]*?\.comparador__lateral--plegado \{\s*display: flex/
+      .test(comp))
+
+  // Las dos reglas son de una sola clase: gana la última. Con --plegado ANTES,
+  // el display:flex de la base lo anulaba y el panel no se plegaba nunca.
+  const iBase = comp.search(/^\.comparador__lateral \{/m)
+  const iPlegado = comp.search(/^\.comparador__lateral--plegado \{/m)
+  check('  la regla de plegado va después de la base, o no gana',
+    iBase !== -1 && iPlegado > iBase, `base ${iBase} / plegado ${iPlegado}`)
+
+  // ——— los puntos de corte ———
+  //
+  // No se impone un único sistema —un componente puede cambiar cuando SU
+  // contenido lo pide—, pero sí se congela la lista: si aparece uno nuevo hay
+  // que añadirlo aquí a conciencia, y así no se van acumulando por descuido.
+  const CONOCIDOS = new Set([479, 560, 620, 719, 720, 899, 900, 1024, 1099, 1180])
+  const usados = new Set()
+
+  for (const f of readdirSync('src', { recursive: true })) {
+    if (typeof f !== 'string' || !(f.endsWith('.vue') || f.endsWith('.css'))) continue
+
+    for (const m of readFileSync('src/' + f, 'utf8').matchAll(/\((?:min|max)-width: *(\d+)px\)/g)) {
+      usados.add(Number(m[1]))
+    }
+  }
+
+  const nuevos = [...usados].filter((v) => !CONOCIDOS.has(v))
+  check('no aparecen puntos de corte nuevos sin querer',
+    nuevos.length === 0, nuevos.join(', '))
+}
+
 console.log('\n=== disciplina de diseño ===')
 {
   const css = readFileSync('src/assets/base.css', 'utf8')

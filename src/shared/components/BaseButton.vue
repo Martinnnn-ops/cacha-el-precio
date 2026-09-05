@@ -56,7 +56,9 @@ const atributos = computed(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
+  /* Del token, NO en píxeles a pelo: el bloque (pointer: coarse) sube ese
+     token a 44px y con un valor fijo aquí el aumento no llegaba nunca. */
+  min-height: var(--cep-control-h);
   padding: 0 16px;
   border: 1.5px solid transparent;
   border-radius: 6px;
@@ -107,14 +109,14 @@ const atributos = computed(() => {
   border-color: transparent;
   color: var(--cep-accent);
   padding: 0 4px;
-  min-height: 32px;
+  min-height: var(--cep-control-h-sm);
 }
 .btn--texto:hover:not(:disabled) {
   text-decoration: underline;
 }
 
 .btn--chico {
-  min-height: 32px;
+  min-height: var(--cep-control-h-sm);
   padding: 0 12px;
   font-size: 13px;
 }

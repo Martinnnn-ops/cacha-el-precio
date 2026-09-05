@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
@@ -20,6 +20,10 @@ const BLOQUE_LISTADO = import.meta.env.VITE_ADSENSE_SLOT_LISTADO ?? ''
 
 const route = useRoute()
 const store = useComparadorStore()
+
+// Plegado de partida en móvil. En escritorio da igual: el CSS lo enseña
+// siempre a partir de 900px, así que no hace falta escuchar el tamaño.
+const filtrosAbiertos = ref(false)
 
 // storeToRefs para el estado (mantiene la reactividad al desestructurar);
 // las acciones se toman directas del store.
@@ -75,7 +79,31 @@ watch(
     </header>
 
     <div class="comparador__cuerpo">
-      <aside class="comparador__lateral">
+      <!-- En móvil el panel va plegado detrás de un botón.
+           Desplegado ocupaba 3.500px: había que bajar casi cinco pantallas
+           enteras antes de ver el primer producto, cuando en escritorio se ven
+           a los 323px. Plegar los filtros en pantallas estrechas es lo normal
+           precisamente por esto. -->
+      <button
+        type="button"
+        class="filtros-movil"
+        :aria-expanded="filtrosAbiertos"
+        aria-controls="panel-filtros"
+        @click="filtrosAbiertos = !filtrosAbiertos"
+      >
+        <span>{{ filtrosAbiertos ? 'Ocultar filtros' : 'Filtrar' }}</span>
+
+        <!-- Cuántos filtros hay puestos, para que no se olviden al plegarlos. -->
+        <span v-if="filtrosActivos.length > 0" class="filtros-movil__cuenta mono">
+          {{ filtrosActivos.length }}
+        </span>
+      </button>
+
+      <aside
+        id="panel-filtros"
+        class="comparador__lateral"
+        :class="{ 'comparador__lateral--plegado': !filtrosAbiertos }"
+      >
         <PanelFiltros />
       </aside>
 
@@ -247,6 +275,47 @@ watch(
   gap: 24px;
   align-items: start;
 }
+.filtros-movil {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cep-sp-2);
+  width: 100%;
+  min-height: var(--cep-control-h);
+  padding: 0 var(--cep-sp-4);
+  background: var(--cep-surface);
+  color: var(--cep-ink);
+  border: 1.5px solid var(--cep-line-fuerte);
+  border-radius: var(--cep-r-md);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filtros-movil__cuenta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  background: var(--cep-ink);
+  color: var(--cep-on-ink);
+  border-radius: var(--cep-r-pill);
+  font-size: var(--cep-fs-2xs);
+}
+.comparador__lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Va DESPUÉS de la regla base a propósito: las dos son de una sola clase, así
+   que gana la última. Puesta antes, el `display: flex` de arriba la anulaba y
+   el panel no se plegaba nunca. */
+.comparador__lateral--plegado {
+  display: none;
+}
+
 @media (min-width: 900px) {
   .comparador__cuerpo {
     grid-template-columns: 230px minmax(0, 1fr);
@@ -255,11 +324,15 @@ watch(
     position: sticky;
     top: 24px;
   }
-}
-.comparador__lateral {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  /* Aquí ya hay columna lateral: el botón sobra y el panel se enseña siempre,
+     esté como esté el estado de plegado. El bloque va el último de todos para
+     que gane sin necesidad de !important. */
+  .filtros-movil {
+    display: none;
+  }
+  .comparador__lateral--plegado {
+    display: flex;
+  }
 }
 
 

@@ -90,6 +90,18 @@ function alternar(id) {
   height: 16px;
   cursor: pointer;
 }
+/* Con el dedo, 16px es un blanco imposible. El objetivo real es la etiqueta
+   entera —envuelve al input, así que tocar el nombre de la tienda la marca—
+   pero el cuadradito también se agranda para que se vea que es tocable. */
+@media (pointer: coarse) {
+  .filtro__opcion {
+    min-height: 44px;
+  }
+  .filtro__opcion input {
+    width: 22px;
+    height: 22px;
+  }
+}
 .filtro__punto {
   width: 9px;
   height: 9px;

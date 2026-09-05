@@ -83,11 +83,22 @@ function limpiar() {
 .buscador__campo {
   flex: 1;
   min-width: 0;
+  /* Estira el campo a los 44px de la caja. Sin esto el <input> medía 24px de
+     alto y quedaba centrado: los 10px de arriba y de abajo parecían parte del
+     buscador pero al tocarlos no pasaba nada. */
+  align-self: stretch;
   border: none;
   outline: none;
   background: none;
   font: inherit;
   color: var(--cep-ink);
+}
+/* Con el dedo la caja sube a 47: el borde de 1.5px se come casi 3, y sin esto
+   el campo de dentro se quedaba en 42 y no llegaba a los 44 de mínimo. */
+@media (pointer: coarse) {
+  .buscador {
+    min-height: 47px;
+  }
 }
 .buscador__campo::-webkit-search-cancel-button {
   display: none;

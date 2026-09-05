@@ -231,10 +231,72 @@ textarea {
     scroll-behavior: auto !important;
   }
 }
+/* ——————————————— dedos, no punteros ———————————————
+   Con un dedo el objetivo mínimo cómodo son 44x44 (Apple HIG; Material pide
+   48). Medido en el navegador, la mayoría de los controles se quedaba por
+   debajo, y algunos muy por debajo: los puntos del carrusel median 7x7.
+   Todo esto va bajo (pointer: coarse) para no engordar la interfaz de ratón,
+   donde 32-40px es lo correcto. */
 @media (pointer: coarse) {
   :root {
-    --cep-control-h-sm: 40px;
+    --cep-control-h-sm: 44px;
     --cep-control-h: 44px;
+  }
+
+  /* 11px es el tamaño de las micro-etiquetas. En un monitor a medio metro pasa;
+     en un móvil a 30cm y con reflejos, no. Sube a 12, que es el mínimo que se
+     recomienda para texto que alguien tiene que leer de verdad. */
+  :root {
+    --cep-fs-2xs: 0.75rem;
+  }
+
+  /* Ancho mínimo además del alto: un botón de icono de 39px de ancho falla
+     igual que uno de 39 de alto. */
+  button,
+  [role='button'],
+  select {
+    min-width: 44px;
+  }
+
+  /* Enlaces sueltos dentro de texto —migas de pan, pie— que sólo miden lo que
+     mide su línea. Se les da altura con relleno vertical, sin tocar el ancho
+     para que no se separen unos de otros. */
+  .migas__enlace,
+  .pie__enlace,
+  .acceso__enlace,
+  .pie__logo,
+  .barra__salto,
+  .barra__enlace {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* El deslizador del presupuesto medía 20px de alto: con el dedo se falla más
+     de lo que se acierta. Se le da carril y pulgar de tamaño usable. */
+  input[type='range'] {
+    height: 44px;
+  }
+  input[type='range']::-webkit-slider-thumb {
+    width: 26px;
+    height: 26px;
+  }
+  input[type='range']::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+  }
+
+  /* Las casillas nativas salen a 16x16. Se agrandan a 24 y, sobre todo, la
+     etiqueta que las envuelve pasa a ser el objetivo de 44px: es mucho más
+     fácil dar al nombre de la tienda que al cuadradito. */
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 24px;
+    height: 24px;
+  }
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    min-height: 44px;
   }
 }
 
