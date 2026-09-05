@@ -17,7 +17,7 @@ const CONTROL = /[\u0000-\u001f\u007f-\u009f]/
 /**
  * Devuelve una ruta interna segura, o null.
  *
- * Sin esto, /entrar?volver=https://sitio-falso.cl te lleva a ese sitio después
+ * Sin esto, /login?volver=https://sitio-falso.cl te lleva a ese sitio después
  * de iniciar sesión, con la confianza de venir de tu propia página. Es un
  * open redirect: la pieza típica para montar un phishing creíble.
  */

@@ -90,7 +90,10 @@ const iniciales = computed(() => {
         aria-label="Cacha el Precio — ir al inicio"
       >
         <BrandMark :tamano="30" />
-        <span class="barra__nombre display">cacha<em>°</em> el precio</span>
+        <span class="barra__nombre display">
+          <span class="barra__nombre-a">cacha<em>°</em></span>
+          <span class="barra__nombre-b">el precio</span>
+        </span>
       </RouterLink>
 
       <!-- ——— buscador, al centro ——— -->
@@ -231,7 +234,7 @@ const iniciales = computed(() => {
 
               <RouterLink
                 class="menu__opcion menu__opcion--boton"
-                :to="{ name: 'entrar' }"
+                :to="{ name: 'login' }"
                 @click="cerrar()"
               >
                 Entrar con Google
@@ -294,12 +297,37 @@ const iniciales = computed(() => {
 .barra__marca {
   display: inline-flex;
   align-items: center;
+  /* Con el nombre oculto en móvil, el enlace se queda en los 30px del símbolo.
+     Es el enlace a la portada: tiene que poder tocarse, de alto y de ancho. */
+  min-height: 44px;
+  min-width: 44px;
   gap: var(--cep-sp-2);
   flex: none;
   color: var(--cep-ink);
-  font-weight: 700;
-  font-size: var(--cep-fs-lg);
   text-decoration: none;
+}
+
+/* El nombre es la marca, no una etiqueta de menú: va al tamaño de un titular
+   y con el interletraje apretado, que es lo que separa un logotipo de un texto
+   suelto. Las dos palabras llevan peso y tono distintos para que el ojo agarre
+   «cacha°» primero y complete con «el precio». */
+.barra__nombre {
+  display: inline-flex;
+  align-items: baseline;
+  /* Separación en em: acompaña al tamaño cuando baja en pantallas medianas.
+     No es un espacio de texto porque Vue se come el salto de línea entre los
+     dos <span>. */
+  gap: 0.26em;
+  font-size: var(--cep-fs-2xl);
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+.barra__nombre-a {
+  font-weight: 700;
+}
+.barra__nombre-b {
+  font-weight: 500;
+  color: var(--cep-muted);
 }
 .barra__marca em {
   font-style: normal;
@@ -460,6 +488,13 @@ const iniciales = computed(() => {
   }
   .barra__acciones {
     margin-left: auto;
+  }
+}
+/* Entre 900 y 1100 el nombre comparte fila con el buscador y la navegación.
+   Baja un escalón para no estrujar el buscador, que es lo que la gente usa. */
+@media (min-width: 900px) and (max-width: 1099px) {
+  .barra__nombre {
+    font-size: var(--cep-fs-xl);
   }
 }
 @media (max-width: 479px) {

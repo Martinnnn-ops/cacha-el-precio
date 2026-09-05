@@ -23,18 +23,18 @@ const router = createRouter({
 router.beforeEach((to) => {
   const cuenta = useCuentaStore()
 
-  // Rutas sólo para invitados: quien ya tiene sesión no pinta en /entrar.
+  // Rutas sólo para invitados: quien ya tiene sesión no pinta en /login.
   if (to.meta.soloInvitados && cuenta.autenticado) {
     return { name: 'inicio' }
   }
 
-  // Rutas que exigen sesión: se manda a /entrar guardando a dónde iba, pero
+  // Rutas que exigen sesión: se manda a /login guardando a dónde iba, pero
   // sólo si ese destino es una ruta interna (ver rutaInternaSegura).
   if (to.meta.requiereSesion && !cuenta.autenticado) {
     const volver = rutaInternaSegura(to.fullPath)
 
     return {
-      name: 'entrar',
+      name: 'login',
       query: volver ? { volver } : undefined,
     }
   }

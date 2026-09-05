@@ -3,6 +3,9 @@
 .acceso__tarjeta {
   width: 100%;
   max-width: 400px;
+  /* Centrada a mano: la pantalla ya no vive en un layout que la centre con
+     flex, sino dentro de la columna de lectura del layout normal. */
+  margin: var(--cep-sp-6) auto var(--cep-sp-4);
 }
 .acceso__titulo {
   margin: 0 0 var(--cep-sp-2);

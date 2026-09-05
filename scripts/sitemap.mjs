@@ -16,7 +16,7 @@ const SITIO = (process.env.VITE_SITE_URL ?? 'https://cacha-el-precio.com').repla
 // Rutas que NO deben indexarse. Coincide con lo que bloquea robots.txt: las
 // pantallas de sesión no aportan nada en un buscador y sólo generan
 // resultados que no llevan a ninguna parte.
-const EXCLUIDAS = new Set(['entrar', 'registro', 'retorno-google', 'no-encontrado'])
+const EXCLUIDAS = new Set(['login', 'registro', 'retorno-google', 'no-encontrado'])
 
 // Cada cuánto merece la pena que un buscador vuelva a mirar.
 const FRECUENCIA = {
@@ -46,7 +46,11 @@ try {
       // Fuera las rutas con parámetro: /producto/:id no es una URL, es un
       // patrón. Para incluir los productos haría falta consultar la API, y eso
       // pertenece a un sitemap generado en el servidor, no aquí.
-      !ruta.path.includes(':'),
+      !ruta.path.includes(':') &&
+      // Fuera los redirects: /entrar sólo existe para no romper los enlaces
+      // viejos. La URL buena es su destino, y ésa ya va en la lista. Mandar a
+      // un buscador a las dos es pedirle que indexe contenido duplicado.
+      ruta.redirect === undefined,
   )
 
   const hoy = new Date().toISOString().slice(0, 10)

@@ -40,6 +40,11 @@ const BLOQUE_CIERRE = import.meta.env.VITE_ADSENSE_SLOT_CIERRE ?? ''
 
 const conAnuncios = computed(() => route.meta.sinAnuncios !== true)
 
+// Pantallas de poco contenido —la de sesión, por ejemplo—. Sin esto la tarjeta
+// se queda pegada a la cabecera y deja un vacío enorme hasta el pie en cuanto
+// la ventana es alta.
+const centrado = computed(() => route.meta.centrado === true)
+
 const ui = useUiStore()
 const cuenta = useCuentaStore()
 const comparador = useComparadorStore()
@@ -69,7 +74,10 @@ const categoriasDelPie = computed(() =>
     <main
       id="contenido"
       class="marco__contenido"
-      :class="{ 'marco__contenido--lectura': ancho === 'lectura' }"
+      :class="{
+        'marco__contenido--lectura': ancho === 'lectura',
+        'marco__contenido--centrado': centrado,
+      }"
     >
       <slot />
 
@@ -105,5 +113,10 @@ const categoriasDelPie = computed(() =>
 }
 .marco__contenido--lectura {
   max-width: 820px;
+}
+.marco__contenido--centrado {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 </style>

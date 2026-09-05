@@ -430,9 +430,14 @@ try {
 
   check('  y no se contradice diciendo que no hay afiliación',
     !/no est[áa] afiliad/i.test(portada))
+  // La ciudad se lee de la configuración, NO escrita a mano aquí: estaba
+  // fijada a «Santiago de Chile» y la prueba se rompió sola en cuanto el
+  // proyecto la cambió, sin que hubiera ningún defecto.
+  const { CIUDAD } = await load('/src/shared/config/sitio.js')
+
   check('  lleva el año en curso y la ciudad',
-    portada.includes(String(new Date().getFullYear())) &&
-      portada.includes('Santiago de Chile'))
+    portada.includes(String(new Date().getFullYear())) && portada.includes(CIUDAD),
+    CIUDAD)
   check('  dice cada cuánto se miden los precios y cuál manda',
     portada.includes('una vez al') && portada.includes('al pagar'))
 
@@ -485,21 +490,109 @@ try {
   check('  hay menú de cuenta', portada.includes('aria-label="Mi cuenta"'))
   // El contenido del menú sólo existe cuando está abierto, así que aquí se
   // comprueba la pantalla de sesión, que es donde vive el botón de verdad.
-  const entrar = await render('/entrar', () => {})
-  check('  /entrar ofrece el botón de Google',
+  const entrar = await render('/login', () => {})
+  check('  /login ofrece el botón de Google',
     entrar.includes('Continuar con Google') && entrar.includes('google__logo'))
   check('  /registro es la misma pantalla, con otra copia',
     (await render('/registro', () => {})).includes('Registrarme con Google'))
-  check('  usa el layout de sesión, sin buscador ni filtro de tiendas',
-    entrar.includes('acceso__barra') &&
-      !entrar.includes('buscar-cabecera') &&
-      !entrar.includes('Elegir tiendas'))
   check('  enlaza a términos y privacidad antes de entrar',
     entrar.includes('href="/terminos"') && entrar.includes('href="/privacidad"'))
+
+  // ——— /login lleva el marco completo ———
+  check('  /login lleva la cabecera completa, con buscador y filtro de tiendas',
+    entrar.includes('buscar-cabecera') && entrar.includes('Elegir tiendas'))
+  check('  y el pie completo, no el reducido',
+    entrar.includes('acceso__barra') === false &&
+      entrar.includes('pie__') && entrar.includes('href="/preguntas"'))
+  check('  la tarjeta va centrada, no pegada a la izquierda',
+    /\.acceso__tarjeta \{[^}]*margin:[^;]*auto/
+      .test(readFileSync('src/assets/acceso.css', 'utf8')))
+  // Con la cabecera y el pie puestos, una tarjeta de 400px pegada arriba deja
+  // un vacío de varios cientos de píxeles hasta el pie en pantallas altas.
+  check('  y también en vertical, que si no queda un hueco enorme',
+    entrar.includes('marco__contenido--centrado') &&
+      /\.marco__contenido--centrado \{[^}]*justify-content: center/
+        .test(readFileSync('src/layouts/DefaultLayout.vue', 'utf8')))
+
+  // El enlace vive dentro del menú de cuenta, que en SSR está cerrado y no
+  // renderiza. Así que se comprueba en el origen y en el router, no en el HTML.
+  {
+    const r = createRouter({ history: createMemoryHistory(), routes })
+    check('  el nombre de ruta «login» resuelve a /login',
+      r.resolve({ name: 'login' }).path === '/login')
+
+    const conEntrar = ['src/shared/components/AppHeader.vue',
+      'src/core/router/index.js',
+      'src/modules/cuenta/views/RetornoGoogleView.vue']
+      .filter((f) => readFileSync(f, 'utf8').includes("name: 'entrar'"))
+    check('  no queda ningún enlace apuntando al nombre viejo',
+      conEntrar.length === 0, conEntrar.join(' '))
+  }
+
+  // La URL vieja estuvo publicada: si deja de redirigir, se pierden los
+  // enlaces guardados y lo que Google tenga indexado.
+  {
+    const r = createRouter({ history: createMemoryHistory(), routes })
+    await r.push('/entrar')
+    check('  /entrar sigue redirigiendo a /login', r.currentRoute.value.path === '/login',
+      r.currentRoute.value.path)
+  }
+
+  // /auth/google se queda desnuda a propósito: es una pantalla de paso de dos
+  // segundos y cualquier enlace ahí interrumpe el proceso a medias.
+  const retorno = await render('/auth/google', () => {})
+  check('  la vuelta de Google sí se queda sin cabecera',
+    retorno.includes('acceso__barra') && !retorno.includes('buscar-cabecera'))
 
   check('  el logo de la cabecera es el mismo que el favicon',
     portada.includes('M5 16 15 5h10v10L14 27Z') &&
       readFileSync('public/favicon.svg', 'utf8').includes('M5 16 15 5h10v10L14 27Z'))
+
+  // ——— el nombre de la marca ———
+  const fuenteCabecera = readFileSync('src/shared/components/AppHeader.vue', 'utf8')
+  const marcaHtml = portada.slice(
+    portada.indexOf('barra__marca'), portada.indexOf('barra__buscador'))
+
+  const posA = marcaHtml.indexOf('barra__nombre-a')
+  const posB = marcaHtml.indexOf('barra__nombre-b')
+  check('el nombre sale entero y partido en dos piezas',
+    posA !== -1 && posB > posA &&
+      marcaHtml.includes('cacha') && marcaHtml.includes('el precio'))
+
+  check('  el ° va en color de acento, que es lo que distingue la marca',
+    /barra__nombre-a[^>]*>[^<]*<em[^>]*>°<\/em>/.test(marcaHtml) &&
+      /\.barra__marca em \{[^}]*color: var\(--cep-accent\)/.test(fuenteCabecera))
+
+  // El ojo tiene que agarrar «cacha°» antes que «el precio». Si las dos mitades
+  // acaban con el mismo peso y el mismo color, deja de ser un logotipo.
+  const pesoA = /\.barra__nombre-a \{[^}]*font-weight: (\d+)/.exec(fuenteCabecera)?.[1]
+  const pesoB = /\.barra__nombre-b \{[^}]*font-weight: (\d+)/.exec(fuenteCabecera)?.[1]
+  check('  la primera palabra pesa más que la segunda',
+    pesoA !== undefined && pesoB !== undefined && Number(pesoA) > Number(pesoB),
+    `${pesoA} vs ${pesoB}`)
+  check('  y la segunda va en otro tono',
+    /\.barra__nombre-b \{[^}]*color: var\(--cep-muted\)/.test(fuenteCabecera))
+
+  // Vue se come el salto de línea entre los dos <span>, así que en el HTML no
+  // queda espacio entre las palabras. Si alguien quita el gap del CSS, el
+  // nombre se lee «cacha°el precio».
+  const entre = /barra__nombre-a[\s\S]*?<\/span>([\s\S]*?)<span class="barra__nombre-b/
+    .exec(marcaHtml)?.[1]
+  const espacioEnMarcado = entre !== undefined && /\s/.test(entre)
+  check('  las dos palabras no se pegan',
+    espacioEnMarcado || /\.barra__nombre \{[^}]*gap:/.test(fuenteCabecera),
+    espacioEnMarcado ? 'espacio en el marcado' : 'hueco por gap en el CSS')
+
+  check('  va a tamaño de titular, no de etiqueta de menú',
+    /\.barra__nombre \{[^}]*font-size: var\(--cep-fs-2xl\)/.test(fuenteCabecera))
+  check('  con el interletraje apretado, como un logotipo',
+    /\.barra__nombre \{[^}]*letter-spacing: -/.test(fuenteCabecera))
+  check('  baja un escalón cuando comparte fila con el buscador',
+    /min-width: 900px\) and \(max-width: 1099px\)[\s\S]{0,140}?--cep-fs-xl/
+      .test(fuenteCabecera))
+  check('  y bajo 480px desaparece: ahí identifica el símbolo',
+    /max-width: 479px\)[\s\S]{0,200}?\.barra__nombre[\s\S]{0,120}?display: none/
+      .test(fuenteCabecera))
 
   console.log('\n=== páginas legales ===')
   for (const [ruta, titulo, marca] of [
@@ -1287,6 +1380,11 @@ try {
         '/terminos',
         '/privacidad',
         '/preguntas',
+        // /login y /registro los pidió el proyecto explícitamente. Ver el aviso
+        // de política justo debajo: son pantallas de sesión y AdSense trata ese
+        // tipo de página como inventario sin valor.
+        '/login',
+        '/registro',
       ]) {
         const html = await pintarRuta(ruta)
         const cuantos = (html.match(/class="adsbygoogle/g) ?? []).length
@@ -1301,8 +1399,6 @@ try {
       // la cuenta entera, y con ella todos los ingresos del sitio.
       for (const [ruta, motivo] of [
         ['/ruta-que-no-existe', 'página de error'],
-        ['/entrar', 'pantalla de sesión, sin contenido propio'],
-        ['/registro', 'pantalla de sesión, sin contenido propio'],
         ['/auth/google', 'pantalla de paso, sin contenido propio'],
       ]) {
         const html = await pintarRuta(ruta)
@@ -1310,6 +1406,11 @@ try {
         check(`${ruta} NO lleva anuncio`,
           !html.includes('class="adsbygoogle'), motivo)
       }
+
+      nota('AVISO: /login y /registro llevan anuncio por decisión del proyecto.')
+      nota('  «Valuable Inventory» de AdSense trata las pantallas de sesión como')
+      nota('  páginas sin contenido propio. Para quitarlos: meta.sinAnuncios en')
+      nota('  src/modules/cuenta/routes.js (una línea por ruta).')
     } finally {
       await conBloques.close()
     }

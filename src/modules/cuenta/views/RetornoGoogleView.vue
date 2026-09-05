@@ -49,7 +49,7 @@ onMounted(async () => {
       </p>
 
       <div class="retorno__acciones">
-        <BaseButton :to="{ name: 'entrar' }">Volver a intentarlo</BaseButton>
+        <BaseButton :to="{ name: 'login' }">Volver a intentarlo</BaseButton>
         <BaseButton variante="secundario" to="/">Ir al inicio</BaseButton>
       </div>
     </template>

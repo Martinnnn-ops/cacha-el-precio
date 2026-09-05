@@ -3,7 +3,7 @@
 
 export const CONTACTO = 'soporte@cacha-el-precio.com'
 
-export const CIUDAD = 'Santiago de Chile'
+export const CIUDAD = 'Valparaíso · Chile'
 
 export const NOMBRE = 'Cacha el Precio'
 
