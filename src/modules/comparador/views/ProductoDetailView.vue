@@ -243,14 +243,14 @@ const subtitulo = computed(() =>
 /* ——— cabecera: la prenda y su sello ——— */
 .cabecera {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-5);
   align-items: center;
   margin: var(--cep-sp-4) 0 var(--cep-sp-7);
 }
 @media (min-width: 560px) {
   .cabecera {
-    grid-template-columns: 0.8fr 1.2fr;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   }
 }
 .cabecera__titulo {
@@ -345,12 +345,12 @@ const subtitulo = computed(() =>
 /* ——— a favor / en contra ——— */
 .juicio {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-4);
 }
 @media (min-width: 560px) {
   .juicio {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 .juicio__pros {

@@ -289,13 +289,13 @@ onMounted(() => store.cargarProductos())
 /* ——— portada ——— */
 .hero {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-8);
   align-items: center;
 }
 @media (min-width: 900px) {
   .hero {
-    grid-template-columns: 1.1fr 0.9fr;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   }
 }
 .hero__titulo {
@@ -372,28 +372,28 @@ onMounted(() => store.cargarProductos())
 
 .outfits {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-4);
 }
 @media (min-width: 620px) {
   .outfits {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 .categorias {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-4);
 }
 @media (min-width: 720px) {
   .categorias {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (min-width: 1024px) {
   .categorias {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

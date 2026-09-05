@@ -2012,6 +2012,130 @@ console.log('\n=== publicidad (AdSense) ===')
 // Los siete puntos de "Practical Tips for Cheating at Design" (Refactoring UI),
 // convertidos en comprobaciones. No miden si algo es bonito —eso no se puede
 // medir— sino si se respetan las reglas que evitan los errores más comunes.
+console.log('\n=== las tarjetas aguantan cualquier contenido ===')
+{
+  // Los nombres de producto, de marca y de tienda los escriben las tiendas, no
+  // nosotros. Este bloque vigila las defensas estructurales que impiden que un
+  // texto largo —o uno vacío— deforme la rejilla. Son reglas de CSS, así que se
+  // comprueban leyendo las hojas: el render en servidor da HTML, no medidas.
+  const baseCss = readFileSync('src/assets/base.css', 'utf8')
+  const archivos = readdirSync('src', { recursive: true })
+    .filter((f) => typeof f === 'string' && (f.endsWith('.vue') || f.endsWith('.css')))
+    .map((f) => ['src/' + f, readFileSync('src/' + f, 'utf8')])
+
+  // ——— 1. las columnas de las rejillas ———
+  //
+  // `1fr` es en realidad `minmax(auto, 1fr)`: el mínimo es el contenido, así
+  // que UNA palabra larga ensancha la columna y descuadra la fila entera.
+  const rejillasMalas = []
+  for (const [ruta, texto] of archivos) {
+    for (const m of texto.matchAll(/grid-template-columns:\s*([^;]+)/g)) {
+      if (/\d*\.?\d+fr/.test(m[1]) && !m[1].includes('minmax(0')) {
+        rejillasMalas.push(`${ruta.replace('src/', '')}: ${m[1].trim()}`)
+      }
+    }
+  }
+  check('ninguna rejilla deja que el contenido ensanche su columna',
+    rejillasMalas.length === 0, rejillasMalas.slice(0, 3).join(' | '))
+
+  // ——— 2. la red de seguridad del texto ———
+  check('ninguna palabra puede salirse de su caja',
+    /body \{[^}]*overflow-wrap: break-word/.test(baseCss))
+
+  // ——— 3. la columna del ticket ———
+  //
+  // Dos trampas que ya mordieron una vez, las dos silenciosas.
+  const reglaColumna = /\.ticket\.ticket--columna \{([^}]*)\}/.exec(baseCss)?.[1]
+  check('la tarjeta en columna gana a la tarjeta-enlace',
+    reglaColumna !== undefined,
+    'hace falta la doble clase .ticket.ticket--columna: si no, el '
+      + 'display:block de .ticket--enlace la anula por ir después')
+  check('  y no se da el alto con un porcentaje',
+    reglaColumna !== undefined && !/height:\s*100%/.test(reglaColumna),
+    'un alto en % anula el align-self:stretch de la rejilla')
+  check('  el cuerpo del ticket crece para llenarla',
+    /\.ticket--columna > \.ticket__contenido \{[^}]*flex: 1/.test(baseCss))
+
+  // ——— 4. las utilidades de recorte reservan el alto ———
+  //
+  // Recortar sin reservar deja las tarjetas de una fila con alturas distintas,
+  // que es la mitad del problema que se venía a resolver.
+  for (const n of [1, 2, 3]) {
+    // Las propiedades vienen de DOS reglas: una agrupada con lo común y otra
+    // propia con el número de líneas. Hay que sumar las dos, y por eso no vale
+    // buscar `.recorte-N {`: ese patrón también engancha el selector agrupado.
+    const declaraciones = [...baseCss.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selector]) =>
+        selector.split(',').some((sel) => sel.trim() === `.recorte-${n}`))
+      .map(([, , cuerpo]) => cuerpo)
+      .join(' ')
+
+    check(`  .recorte-${n} recorta Y reserva el alto`,
+      /line-clamp/.test(declaraciones) && /min-height/.test(declaraciones),
+      declaraciones === '' ? 'no se encontró la regla' : '')
+  }
+
+  // ——— 5. la tarjeta de producto, que es la que más se repite ———
+  const tarjeta = readFileSync(
+    'src/modules/comparador/components/ProductoCard.vue', 'utf8')
+
+  check('la tarjeta de producto se estira a la celda', /\bcolumna\b/.test(tarjeta))
+  check('  el nombre se recorta a dos líneas', /tarjeta__nombre recorte-2/.test(tarjeta))
+  check('  y deja el nombre entero en el title',
+    /:title="producto\.nombre"/.test(tarjeta))
+  check('  la marca y la categoría no desbordan',
+    /tarjeta__marca truncar/.test(tarjeta))
+  check('  el nombre de la tienda cede antes que el precio',
+    /tarjeta__tienda truncar/.test(tarjeta) &&
+      /\.tarjeta__monto \{[^}]*flex: none/.test(tarjeta))
+  check('  el pie queda pegado abajo, alineado con el de al lado',
+    /\.tarjeta__pie \{[^}]*margin-top: auto/.test(tarjeta))
+
+  // La silueta tiene que medir lo mismo que la tarjeta real, o al llegar los
+  // datos la rejilla pega un salto.
+  check('  la silueta se estira igual que la tarjeta',
+    /\bcolumna\b/.test(readFileSync(
+      'src/modules/comparador/components/ProductoCardSkeleton.vue', 'utf8')))
+
+  // ——— 6. las pastillas del filtro ———
+  const panel = readFileSync(
+    'src/modules/comparador/components/PanelFiltros.vue', 'utf8')
+  check('las pastillas del filtro no se salen del panel',
+    /\.pildora \{[^}]*max-width: 100%/.test(panel))
+  check('  y su cuenta no se recorta nunca',
+    /\.pildora__cuenta \{[^}]*flex: none/.test(panel))
+  check('  el nombre de cada pastilla sí',
+    (panel.match(/<span class="truncar">/g) ?? []).length >= 4,
+    `${(panel.match(/<span class="truncar">/g) ?? []).length} de 4`)
+
+  // ——— 7. el banner del carrusel ———
+  //
+  // Tiene alto fijo y `overflow: hidden`: un título de cuatro líneas empujaba
+  // el botón «Ver ficha» fuera de la tarjeta y desaparecía sin dejar rastro.
+  const banner = readFileSync(
+    'src/modules/comparador/components/RecienteBanner.vue', 'utf8')
+  check('el banner de novedades no se traga su propio botón',
+    /banner__titulo recorte-2/.test(banner) && /banner__sub truncar/.test(banner))
+
+  // ——— 8. la columna de precios de «Elige tu tienda» ———
+  //
+  // Cada oferta es su PROPIA rejilla, así que con columnas `auto` cada fila las
+  // medía por su cuenta: un botón «Ver en Mango» y otro «Ver en Ripley» daban
+  // anchos distintos y los precios bailaban de fila en fila. En un comparador
+  // esa columna es justo lo que la gente recorre con la vista.
+  const elige = readFileSync(
+    'src/modules/comparador/components/EligeTuTienda.vue', 'utf8')
+  const anchaEnFila = /@media \(min-width: 560px\) \{\s*\.oferta \{[\s\S]*?grid-template-columns:([^;]+);/
+    .exec(elige)?.[1] ?? ''
+  check('los precios de las ofertas caen todos en la misma vertical',
+    anchaEnFila.includes('minmax') && !/\bauto\s+auto\b/.test(anchaEnFila),
+    anchaEnFila.trim())
+
+  // ——— 9. .truncar sólo funciona si puede encoger ———
+  check('.truncar lleva el min-width que lo hace funcionar dentro de un flex',
+    /\.truncar \{[^}]*min-width: 0/.test(baseCss))
+}
+
 console.log('\n=== disciplina de diseño ===')
 {
   const css = readFileSync('src/assets/base.css', 'utf8')

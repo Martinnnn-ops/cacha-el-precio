@@ -21,6 +21,7 @@ defineProps({
     class="silueta"
     :class="{ 'silueta--compacta': compacta }"
     :relleno="false"
+    columna
   >
     <div class="silueta__cabecera">
       <BaseSkeleton :alto="compacta ? 108 : 140" radio="var(--cep-r-sm)" />
@@ -49,10 +50,7 @@ defineProps({
 <style scoped>
 /* Las medidas son las mismas que las de ProductoCard: si aquí se cambia una,
    allí también hay que cambiarla o vuelve el salto de maquetación. */
-.silueta {
-  display: flex;
-  flex-direction: column;
-}
+/* La columna la pone `columna` de BaseTicket, igual que en ProductoCard. */
 .silueta--compacta {
   width: 260px;
 }

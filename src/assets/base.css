@@ -181,6 +181,14 @@ body,
 }
 body {
   margin: 0;
+  /* Red de seguridad para TODO el texto del sitio.
+     Los nombres de producto los escriben las tiendas, no nosotros: basta un
+     «PoleraOversizeAlgodónOrgánicoEdiciónLimitada» sin espacios para que la
+     palabra se salga de la tarjeta y arrastre la rejilla entera.
+     Va junto a los minmax(0, …) de las rejillas y no en su lugar: el minmax
+     impide que la COLUMNA se ensanche, y esto que la PALABRA se desborde de
+     la columna ya estrecha. Hacen falta los dos. */
+  overflow-wrap: break-word;
   background: var(--cep-bg);
   color: var(--cep-ink);
   font-family: var(--cep-font-sans);
@@ -251,6 +259,45 @@ textarea {
 .muted {
   color: var(--cep-muted);
 }
+
+/* ——— recorte de texto ———
+   Un título de dos palabras y otro de doce no pueden dar tarjetas de distinta
+   altura: en una rejilla eso se ve como una fila descuadrada.
+   Estas clases hacen las DOS cosas, y la segunda es la que casi siempre se
+   olvida: recortan a N líneas y además RESERVAN el alto de esas N líneas, para
+   que la tarjeta mida lo mismo tenga el texto que tenga. */
+.recorte-1,
+.recorte-2,
+.recorte-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.recorte-1 {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  min-height: calc(1em * var(--cep-lh-tight));
+}
+.recorte-2 {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  min-height: calc(2em * var(--cep-lh-tight));
+}
+.recorte-3 {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  min-height: calc(3em * var(--cep-lh-snug));
+}
+
+/* Una sola línea con puntos suspensivos. El `min-width: 0` va incluido a
+   propósito: sin él, dentro de un flex la caja se niega a encoger y los puntos
+   no aparecen nunca —el texto empuja al vecino y se sale. */
+.truncar {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .eyebrow {
   margin: 0 0 var(--cep-sp-1);
   font-family: var(--cep-font-mono);
@@ -295,6 +342,30 @@ textarea {
 .ticket__cuerpo {
   padding: var(--cep-sp-4);
 }
+/* Ticket que comparte fila con otros: se estira a la celda entera y deja que
+   su contenido se reparta en vertical. Es lo que iguala los pies de todas las
+   tarjetas de una fila cuando cada una trae distinta cantidad de datos. */
+/* Doble clase a propósito: más abajo `.ticket--enlace` pone `display: block`
+   y, con la misma especificidad, ganaría por ir después. Una tarjeta que
+   además es enlace —o sea, casi todas— se quedaba sin la columna.
+   Y NADA de `height: 100%`: al ser un porcentaje anula el `align-self:
+   stretch` de la rejilla, que es justo quien tiene que dar el alto. */
+.ticket.ticket--columna {
+  display: flex;
+  flex-direction: column;
+}
+.ticket--columna > .ticket__contenido {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* Hueco entre las piezas de la tarjeta. Se pasa por variable y no con un
+     `:deep()` desde cada tarjeta porque las custom properties SÍ cruzan la
+     frontera del componente hijo, y así BaseTicket no tiene que conocer a
+     nadie. */
+  gap: var(--ticket-hueco, 0);
+  min-height: 0;
+}
+
 .ticket__muescas {
   position: absolute;
   left: 0;

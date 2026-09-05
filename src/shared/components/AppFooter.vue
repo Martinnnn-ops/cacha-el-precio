@@ -183,19 +183,19 @@ const cobertura = computed(() => {
 /* La columna de marca ocupa más porque lleva la misión; el resto reparten. */
 .pie__interior:first-child {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-8);
   padding-top: var(--cep-sp-10);
   padding-bottom: var(--cep-sp-8);
 }
 @media (min-width: 720px) {
   .pie__interior:first-child {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (min-width: 1024px) {
   .pie__interior:first-child {
-    grid-template-columns: 1.7fr 1fr 1fr 1.2fr 1.2fr;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.2fr);
     gap: var(--cep-sp-6);
   }
 }

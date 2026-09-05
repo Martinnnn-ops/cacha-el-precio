@@ -38,14 +38,14 @@ import BaseTicket from '@/shared/components/BaseTicket.vue'
 <style scoped>
 .silueta__portada {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-6);
   align-items: center;
   margin: var(--cep-sp-5) 0 var(--cep-sp-7);
 }
 @media (min-width: 720px) {
   .silueta__portada {
-    grid-template-columns: 0.8fr 1.2fr;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   }
 }
 .silueta__titulo {

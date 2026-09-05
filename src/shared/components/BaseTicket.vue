@@ -13,6 +13,13 @@ const props = defineProps({
     validator: (v) => ['ambas', 'arriba', 'abajo', 'ninguna'].includes(v),
   },
   relleno: { type: Boolean, default: true },
+  // Tarjeta que vive en una rejilla junto a otras.
+  //
+  // Estira el ticket a todo el alto de su celda y convierte el cuerpo en una
+  // columna flexible, que es lo que permite a la tarjeta empujar su pie hacia
+  // abajo con `margin-top: auto`. Sin esto el <div> del cuerpo corta la cadena
+  // flex y los pies de una misma fila quedan a alturas distintas.
+  columna: { type: Boolean, default: false },
 })
 
 const etiqueta = computed(() => (props.to ? RouterLink : 'div'))
@@ -25,11 +32,11 @@ const abajo = computed(() => ['ambas', 'abajo'].includes(props.muescas))
     :is="etiqueta"
     :to="to ?? undefined"
     class="ticket"
-    :class="{ 'ticket--enlace': to }"
+    :class="{ 'ticket--enlace': to, 'ticket--columna': columna }"
   >
     <span v-if="arriba" class="ticket__muescas ticket__muescas--arriba" />
 
-    <div :class="{ ticket__cuerpo: relleno }">
+    <div :class="{ ticket__cuerpo: relleno, ticket__contenido: columna }">
       <slot />
     </div>
 

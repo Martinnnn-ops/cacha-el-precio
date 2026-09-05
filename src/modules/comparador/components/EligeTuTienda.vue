@@ -181,7 +181,7 @@ function condicionDe(oferta) {
 
 .oferta {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--cep-sp-2) var(--cep-sp-4);
   align-items: center;
   padding: var(--cep-sp-3) var(--cep-sp-4);
@@ -191,7 +191,15 @@ function condicionDe(oferta) {
 }
 @media (min-width: 560px) {
   .oferta {
-    grid-template-columns: 1fr auto auto;
+    /* Anchos MÍNIMOS, no `auto`.
+       Cada oferta es su propia rejilla, así que con `auto` cada fila medía sus
+       columnas por su cuenta: un botón «Ver en Mango» y otro «Ver en Ripley»
+       daban anchos distintos y la columna de precios bailaba de fila en fila.
+       En un comparador eso es lo peor que puede pasar, porque la columna de
+       precios es justo lo que la gente recorre con la vista.
+       Siguen siendo `minmax(…, auto)` y no anchos fijos para que un nombre de
+       tienda inesperadamente largo se salga de la fila en vez de recortarse. */
+    grid-template-columns: minmax(0, 1fr) minmax(7rem, auto) minmax(8.5rem, auto);
   }
 }
 /* La más barata se marca con un borde de acento a la izquierda, no con un

@@ -55,6 +55,7 @@ const subtitulo = computed(() =>
     :class="{ 'tarjeta--compacta': compacta }"
     :to="{ name: 'producto-detalle', params: { id: producto.id } }"
     :relleno="false"
+    columna
   >
     <div class="tarjeta__cabecera">
       <div class="tarjeta__arte">
@@ -64,9 +65,13 @@ const subtitulo = computed(() =>
         <span v-if="insignia" class="tarjeta__insignia mono">{{ insignia }}</span>
       </div>
 
-      <p v-if="subtitulo" class="eyebrow tarjeta__marca">{{ subtitulo }}</p>
+      <p v-if="subtitulo" class="eyebrow tarjeta__marca truncar">{{ subtitulo }}</p>
 
-      <h3 class="display tarjeta__nombre">{{ producto.nombre }}</h3>
+      <!-- `title` para que el nombre completo siga estando a mano cuando el
+           recorte se lo come. -->
+      <h3 class="display tarjeta__nombre recorte-2" :title="producto.nombre">
+        {{ producto.nombre }}
+      </h3>
 
       <p v-if="masBarato" class="tarjeta__precio">
         <span class="precio">{{ formatearPrecio(masBarato.precio) }}</span>
@@ -94,7 +99,7 @@ const subtitulo = computed(() =>
       >
         <span class="tarjeta__punto" :style="{ background: colorTienda(oferta.tienda) }" />
 
-        <span class="tarjeta__tienda">{{ nombreTienda(oferta.tienda) }}</span>
+        <span class="tarjeta__tienda truncar">{{ nombreTienda(oferta.tienda) }}</span>
 
         <span v-if="!oferta.stock" class="mono tarjeta__agotada">Agotado</span>
 
@@ -135,10 +140,7 @@ const subtitulo = computed(() =>
 </template>
 
 <style scoped>
-.tarjeta {
-  display: flex;
-  flex-direction: column;
-}
+/* El estirado y la columna los pone la prop `columna` de BaseTicket. */
 .tarjeta--compacta {
   width: 260px;
 }
@@ -173,12 +175,18 @@ const subtitulo = computed(() =>
 .tarjeta__nombre {
   margin: 0 0 var(--cep-sp-2);
   font-size: var(--cep-fs-lg);
+  /* El alto lo reserva .recorte-2. Aquí sólo hay que fijar la interlínea que
+     ese cálculo da por supuesta. */
+  line-height: var(--cep-lh-tight);
 }
 .tarjeta__precio {
   display: flex;
   align-items: baseline;
   gap: var(--cep-sp-2);
   margin: 0;
+  /* El precio manda: si no cabe todo, lo que se recorta es el nombre de la
+     tienda de al lado, nunca la cifra. */
+  flex-wrap: wrap;
 }
 .tarjeta__en {
   font-size: var(--cep-fs-xs);
@@ -226,15 +234,20 @@ const subtitulo = computed(() =>
   flex: none;
 }
 .tarjeta__tienda {
+  /* `min-width: 0` (dentro de .truncar) es lo que permite que encoja. Sin él
+     un nombre de tienda largo empuja al precio fuera de la tarjeta. */
   flex: 1;
 }
 .tarjeta__descuento {
   font-size: var(--cep-fs-xs);
   font-weight: 600;
   color: var(--cep-alerta);
+  flex: none;
 }
 .tarjeta__monto {
   font-variant-numeric: tabular-nums;
+  /* La cifra nunca se encoge ni se parte. */
+  flex: none;
 }
 .tarjeta__agotada {
   font-size: var(--cep-fs-xs);
@@ -246,13 +259,15 @@ const subtitulo = computed(() =>
 }
 
 .tarjeta__pie {
+  /* Empuja el pie abajo del todo: así los botones de todas las tarjetas de una
+     fila quedan a la misma altura aunque el contenido de arriba sea desigual. */
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--cep-sp-2);
   flex-wrap: wrap;
-  margin-top: var(--cep-sp-3);
-  padding: var(--cep-sp-25) var(--cep-sp-4) var(--cep-sp-4);
+  padding: var(--cep-sp-3) var(--cep-sp-4) var(--cep-sp-4);
 }
 .tarjeta__ahorro {
   margin: 0;

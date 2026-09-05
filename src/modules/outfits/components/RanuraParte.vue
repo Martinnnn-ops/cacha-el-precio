@@ -27,7 +27,7 @@ const oferta = computed(() =>
 </script>
 
 <template>
-  <BaseTicket class="ranura" :class="{ 'ranura--vacia': !producto }">
+  <BaseTicket class="ranura" :class="{ 'ranura--vacia': !producto }" columna>
     <p class="eyebrow ranura__parte">{{ parte.nombre }}</p>
 
     <!-- cubierta por una prenda de cuerpo completo -->

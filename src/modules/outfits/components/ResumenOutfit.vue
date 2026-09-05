@@ -151,7 +151,7 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
 }
 .fila {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--cep-sp-1) var(--cep-sp-3);
   align-items: baseline;
 }

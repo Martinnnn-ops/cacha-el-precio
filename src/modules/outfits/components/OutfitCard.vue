@@ -20,7 +20,7 @@ const resumen = computed(() => resumir(prendas.value))
 </script>
 
 <template>
-  <BaseTicket class="outfit">
+  <BaseTicket class="outfit" columna>
     <p class="eyebrow">{{ plantilla.prendas ? 'Selección propia' : 'Se arma solo' }}</p>
 
     <h3 class="display outfit__nombre">{{ plantilla.nombre }}</h3>
@@ -63,11 +63,11 @@ const resumen = computed(() => resumir(prendas.value))
 </template>
 
 <style scoped>
+/* El estirado y la columna los pone `columna` de BaseTicket: hacerlo aquí con
+   `height: 100%` no funcionaba, porque un alto en porcentaje anula el
+   `align-self: stretch` de la rejilla y el cuerpo del ticket seguía sin crecer. */
 .outfit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cep-sp-2);
-  height: 100%;
+  --ticket-hueco: var(--cep-sp-2);
 }
 .outfit__nombre {
   margin: 0;

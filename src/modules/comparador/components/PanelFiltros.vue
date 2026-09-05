@@ -77,7 +77,7 @@ const paso = computed(() => {
           :aria-pressed="categoria === c.nombre"
           @click="categoria = categoria === c.nombre ? '' : c.nombre"
         >
-          {{ c.nombre }}
+          <span class="truncar">{{ c.nombre }}</span>
           <span class="pildora__cuenta">{{ c.total }}</span>
         </button>
       </div>
@@ -97,7 +97,7 @@ const paso = computed(() => {
           :aria-pressed="marcas.includes(m.nombre)"
           @click="store.alternarMarca(m.nombre)"
         >
-          {{ m.nombre }}
+          <span class="truncar">{{ m.nombre }}</span>
           <span class="pildora__cuenta">{{ m.total }}</span>
         </button>
       </div>
@@ -117,7 +117,7 @@ const paso = computed(() => {
           :aria-pressed="talla === t.nombre"
           @click="talla = talla === t.nombre ? '' : t.nombre"
         >
-          {{ t.nombre }}
+          <span class="truncar">{{ t.nombre }}</span>
           <span class="pildora__cuenta">{{ t.total }}</span>
         </button>
       </div>
@@ -148,7 +148,7 @@ const paso = computed(() => {
           :aria-pressed="atributos[atributo.clave] === v.valor"
           @click="store.ponerAtributo(atributo.clave, v.valor)"
         >
-          {{ v.valor }}
+          <span class="truncar">{{ v.valor }}</span>
           <span class="pildora__cuenta">{{ v.total }}</span>
         </button>
       </div>
@@ -230,6 +230,9 @@ const paso = computed(() => {
 .pildora {
   display: inline-flex;
   align-items: center;
+  /* Los nombres de marca los ponen las tiendas. Sin este tope, uno largo hacía
+     la pastilla más ancha que el panel y se salía por el lado derecho. */
+  max-width: 100%;
   gap: var(--cep-sp-15);
   min-height: var(--cep-control-h-sm);
   padding: 0 var(--cep-sp-3);
@@ -256,6 +259,8 @@ const paso = computed(() => {
   font-family: var(--cep-font-mono);
   font-size: var(--cep-fs-2xs);
   opacity: 0.65;
+  /* La cuenta no se recorta nunca: es el dato, el nombre es la etiqueta. */
+  flex: none;
 }
 
 .pildora--talla {

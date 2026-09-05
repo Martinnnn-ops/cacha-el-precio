@@ -192,13 +192,13 @@ onMounted(() => catalogo.cargarProductos())
    comparan, se adivinan. */
 .columnas {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-4);
   align-items: start;
 }
 @media (min-width: 720px) {
   .columnas {
-    grid-template-columns: repeat(var(--cuantas), 1fr);
+    grid-template-columns: repeat(var(--cuantas), minmax(0, 1fr));
   }
 }
 

@@ -117,13 +117,13 @@ onMounted(() => catalogo.cargarProductos())
 
 .armar__cuerpo {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-6);
   align-items: start;
 }
 @media (min-width: 900px) {
   .armar__cuerpo {
-    grid-template-columns: 1.6fr 1fr;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   }
 }
 
@@ -135,12 +135,12 @@ onMounted(() => catalogo.cargarProductos())
 
 .ranuras {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--cep-sp-4);
 }
 @media (min-width: 560px) {
   .ranuras {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>
