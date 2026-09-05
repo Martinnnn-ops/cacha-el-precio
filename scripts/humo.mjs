@@ -82,6 +82,21 @@ try {
       ['on-accent', 'accent', 4.5, 'texto sobre el acento'],
     ]
 
+    // Las tres superficies tienen que formar una escalera. Esto NO es contraste
+    // de texto: es lo que hace que una tarjeta se lea como tarjeta y no como
+    // una mancha del fondo. El tema oscuro llegó a tener 1.02 entre la tarjeta
+    // y el pie —o sea, el mismo color— y la página entera se veía plana.
+    const SEPARACION = [
+      ['bg', 'surface', 1.15, 'la tarjeta se despega del fondo'],
+      ['bg', 'sunken', 1.12, 'lo hundido se despega del fondo'],
+      ['surface', 'sunken', 1.3, 'la tarjeta se despega de lo hundido'],
+    ]
+
+    // El orden importa tanto como la distancia: lo hundido va POR DEBAJO del
+    // fondo y la tarjeta POR ENCIMA, en los dos temas. Si se invierte, el pie
+    // sobresale y la tarjeta se hunde, que es justo al revés de lo que dicen.
+    const lumDe = (n, oscuro) => lum(rgb(token(n, oscuro)))
+
     for (const [tema, oscuro] of [['claro', false], ['oscuro', true]]) {
       console.log(`  · tema ${tema}`)
 
@@ -89,6 +104,18 @@ try {
         const v = ratio(fg, bg, oscuro)
         check(`  ${etiqueta} (${v.toFixed(2)}:1)`, v >= min, `min ${min}`)
       }
+
+      for (const [a, b, min, etiqueta] of SEPARACION) {
+        const v = ratio(a, b, oscuro)
+        check(`  ${etiqueta} (${v.toFixed(2)}:1)`, v >= min, `min ${min}`)
+      }
+
+      const hundido = lumDe('sunken', oscuro)
+      const fondo = lumDe('bg', oscuro)
+      const tarjeta = lumDe('surface', oscuro)
+
+      check('  lo hundido queda por debajo del fondo', hundido < fondo)
+      check('  y la tarjeta por encima', tarjeta > fondo)
     }
   }
 
@@ -304,6 +331,42 @@ try {
     const escrito = globalThis.document.documentElement.dataset.tema
     delete globalThis.document
     check('escribe data-tema en <html>', escrito === 'oscuro', String(escrito))
+
+    // ——— el fogonazo de tema ———
+    //
+    // Vue tarda en arrancar. Si data-tema sólo se pone desde el store, hasta
+    // entonces la página se pinta con los tokens claros y luego cambia a la
+    // vista del usuario. Con la transición de `body` encima, quien tiene el
+    // sistema en oscuro veía un desvanecido crema en CADA carga.
+    const indice = readFileSync('index.html', 'utf8')
+    const cabeza = indice.slice(0, indice.indexOf('</head>'))
+    const guion = /<script>([\s\S]*?)<\/script>/.exec(cabeza)?.[1] ?? ''
+
+    check('el tema se pinta antes del primer render',
+      guion.includes('documentElement.dataset.tema'))
+    check('  y el guion va en el <head>, no al final del body',
+      cabeza.includes('documentElement.dataset.tema'))
+
+    // El guion duplica la lógica del store por necesidad: tiene que correr
+    // antes que cualquier módulo. Lo que no puede es divergir.
+    const fuenteStore = readFileSync('src/shared/stores/ui.store.js', 'utf8')
+    const claveStore = /const CLAVE = '([^']+)'/.exec(fuenteStore)?.[1]
+    check('  usa la MISMA clave de almacenamiento que el store',
+      claveStore !== undefined && guion.includes(`'${claveStore}'`), claveStore)
+    check('  y respeta la preferencia del sistema, no asume claro',
+      guion.includes('prefers-color-scheme: dark'))
+    check('  con el localStorage capado sigue funcionando',
+      /try\s*\{[\s\S]*?localStorage[\s\S]*?\}\s*catch/.test(guion))
+
+    // La barra del navegador en móvil se pinta con este meta. Si se queda con
+    // el color viejo, el móvil enmarca la página en un tono que ya no existe.
+    const metaOscuro = /theme-color" content="(#[0-9a-f]{6})" media="\(prefers-color-scheme: dark\)/
+      .exec(indice)?.[1]
+    const bgOscuro = /\[data-tema='oscuro'\][\s\S]*?--cep-bg: *(#[0-9a-f]{6})/
+      .exec(readFileSync('src/assets/base.css', 'utf8'))?.[1]
+    check('  el theme-color oscuro es el fondo oscuro de verdad',
+      metaOscuro !== undefined && metaOscuro === bgOscuro,
+      `meta ${metaOscuro} vs token ${bgOscuro}`)
   }
 
   console.log('\n=== cuenta (Google OAuth 2.0 + PKCE) ===')

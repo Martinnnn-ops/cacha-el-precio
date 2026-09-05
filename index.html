@@ -12,7 +12,34 @@
 
     <link rel="canonical" href="https://cacha-el-precio.com/" />
     <meta name="theme-color" content="#eae6d9" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1b1d17" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#211f1a" media="(prefers-color-scheme: dark)" />
+
+    <!-- Pinta el tema ANTES del primer render.
+         Sin esto la página sale en claro y sólo cambia a oscuro cuando arranca
+         Vue: quien tiene el sistema en oscuro se come un fogonazo crema en
+         cada carga, y encima con la transición de `body` lo ve desvanecerse
+         despacio. Va aquí, en línea y sin depender de nada, porque tiene que
+         ejecutarse antes de que el navegador pinte.
+         Duplica a propósito la lógica de shared/stores/ui.store.js; el humo
+         comprueba que las dos no se separen. -->
+    <script>
+      ;(function () {
+        var t = null
+        try {
+          t = localStorage.getItem('cep:tema')
+        } catch (e) {
+          /* modo privado o cookies bloqueadas */
+        }
+        if (t !== 'claro' && t !== 'oscuro') {
+          t =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'oscuro'
+              : 'claro'
+        }
+        document.documentElement.dataset.tema = t
+      })()
+    </script>
 
     <!-- Cómo se ve al compartir el enlace en WhatsApp, Instagram o X. -->
     <meta property="og:type" content="website" />

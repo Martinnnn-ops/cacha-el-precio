@@ -109,8 +109,8 @@
      diferencia) y con la sombra ya se separa sola. Un borde encima sería un
      tercer mecanismo para el mismo trabajo, y eso es lo que hace que una
      interfaz se vea recargada.
-     En oscuro sí: la diferencia baja a 1.11 y la sombra —negra sobre casi
-     negro— no se ve, así que sin borde la tarjeta se disolvería en el fondo. */
+     En oscuro sí: la sombra —negra sobre casi negro— no se ve, así que el
+     canto de la tarjeta lo tiene que dibujar un borde. Ver el bloque oscuro. */
   --cep-borde-tarjeta: transparent;
 
   --cep-shadow-1: 0 1px 3px rgb(24 28 20 / 9%);
@@ -125,18 +125,32 @@
    `color-scheme` no es decorativo: sin él las barras de desplazamiento, los
    controles nativos y el autorrelleno del navegador se quedan en claro. */
 [data-tema='oscuro'] {
-  --cep-bg: #1b1d17;
-  --cep-sunken: #262820;
-  --cep-surface: #242620;
+  /* Las tres superficies forman una ESCALERA, no un montón de grises casi
+     iguales. Antes iban #1b1d17 / #242620 / #262820: el fondo y la tarjeta se
+     separaban 1.11, y la tarjeta y el pie 1.02, o sea nada. Todo se veía como
+     una única plancha plana y las tarjetas no se leían como tarjetas.
+     Ahora los escalones son 1.16 / 1.22 / 1.42, que es lo mismo que ya hacía
+     el tema claro (1.15 / 1.25 / 1.44). El orden también es el del claro: lo
+     hundido más oscuro que el fondo, y la tarjeta más clara.
+     Y el tono es cálido (matiz ~41) en vez del verde oliva de antes (~80):
+     el sitio es papel y tinta, y de noche tiene que seguir siéndolo. */
+  --cep-sunken: #100f0c;
+  --cep-bg: #211f1a;
+  --cep-surface: #322e28;
+
   --cep-ink: #ede9dd;
-  --cep-on-ink: #1b1d17;
+  --cep-on-ink: #211f1a;
   /* En oscuro el acento se aclara: encima va tinta, no blanco. */
   --cep-on-accent: #10161d;
   --cep-accent: #6fa8dc;
   --cep-exito: #5fbb8d;
-  --cep-alerta: #e2775f;
+  /* Estos dos se aclaran un punto respecto de antes. Al subir la tarjeta a
+     #322e28 el fondo bajo el texto es más claro, y con los valores viejos
+     (#9c9686 y #e2775f) el contraste caía a 4.57 y 4.52: aprobado raspado y
+     sin margen para el siguiente retoque. */
+  --cep-alerta: #e7816a;
+  --cep-muted: #a49e8e;
   --cep-rate: #d1a054;
-  --cep-muted: #9c9686;
 
   --cep-line: rgb(237 233 221 / 12%);
   --cep-line-media: rgb(237 233 221 / 20%);
@@ -144,7 +158,10 @@
   --cep-wash: rgb(237 233 221 / 6%);
   --cep-wash-2: rgb(237 233 221 / 11%);
 
-  --cep-borde-tarjeta: rgb(237 233 221 / 14%);
+  /* Se queda, pero más flojo que antes (era 14%). La tarjeta ya se separa sola
+     por luminosidad; el borde sólo remata el canto, porque la sombra —negra
+     sobre casi negro— sigue sin verse. */
+  --cep-borde-tarjeta: rgb(237 233 221 / 10%);
 
   --cep-shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
   --cep-shadow-2: 0 4px 12px rgb(0 0 0 / 45%);
