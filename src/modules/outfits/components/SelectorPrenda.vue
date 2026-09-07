@@ -76,7 +76,14 @@ const listadas = computed(() => {
           :aria-pressed="producto.id === elegido"
           @click="$emit('elegir', producto.id)"
         >
-          <PrendaArt :alto="52" />
+          <img
+            v-if="producto.imagen"
+            :src="producto.imagen"
+            :alt="producto.nombre"
+            loading="lazy"
+            class="opcion__foto"
+          />
+          <PrendaArt v-else :alto="52" />
 
           <span class="opcion__datos">
             <span class="opcion__nombre">{{ producto.nombre }}</span>
@@ -152,6 +159,14 @@ const listadas = computed(() => {
 .opcion--elegida {
   border-color: var(--cep-exito);
   background: color-mix(in srgb, var(--cep-exito) 10%, transparent);
+}
+.opcion__foto {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--cep-r-md);
+  flex-shrink: 0;
+  background: var(--cep-suave);
 }
 .opcion__datos {
   flex: 1;

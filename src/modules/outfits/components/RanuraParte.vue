@@ -43,7 +43,14 @@ const oferta = computed(() =>
     <!-- con prenda -->
     <template v-else-if="producto">
       <div class="ranura__prenda">
-        <PrendaArt :alto="72" />
+        <img
+          v-if="producto.imagen"
+          :src="producto.imagen"
+          :alt="producto.nombre"
+          loading="lazy"
+          class="ranura__foto"
+        />
+        <PrendaArt v-else :alto="72" />
 
         <div class="ranura__datos">
           <p class="ranura__nombre">{{ producto.nombre }}</p>
@@ -111,6 +118,14 @@ const oferta = computed(() =>
   gap: var(--cep-sp-3);
   align-items: center;
   flex: 1;
+}
+.ranura__foto {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--cep-r-md);
+  flex-shrink: 0;
+  background: var(--cep-suave);
 }
 .ranura__datos {
   min-width: 0;
