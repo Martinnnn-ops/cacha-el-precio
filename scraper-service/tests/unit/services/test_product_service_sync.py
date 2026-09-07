@@ -1,8 +1,7 @@
 """
 El sincronizador hacia Product Service se prueba con un cliente falso:
 sin red, sin SQLite y sin el microservicio Java, pero con el mismo
-comportamiento que su API (el catalogo se crea una vez, los productos
-se deduplican por nombre dentro del catalogo).
+comportamiento que su API.
 """
 
 from scraper.domain.product import Product
@@ -53,57 +52,79 @@ class ClienteProductServiceFalso:
         return id_
 
 
-def producto(nombre="Poleron", precio=79990, store="paris"):
-    return Product(external_id="MK4QJFISTR", store=store, name=nombre,
-                   brand="CK", price=precio, product_url="https://paris.cl/x")
+def producto(nombre="Poleron", precio=79990, store="paris", url="https://paris.cl/x"):
+    return Product(external_id="MK4QJFISTR", store=store, name=nombre, brand="CK",
+                   price=precio, product_url=url)
 
 
-def test_crea_catalogo_y_producto():
+def test_crea_catalogo_por_categoria_y_producto():
     cliente = ClienteProductServiceFalso()
     sync = ProductServiceSync(cliente)
 
-    sync.sincronizar(producto())
+    sync.sincronizar(producto(nombre="Poleron CK"))
 
-    assert len(cliente.catalogos) == 1
-    assert cliente.catalogos[0]["nombre"] == "paris"
+    assert [c["nombre"] for c in cliente.catalogos] == ["Polerones"]
     assert cliente.creados_producto == 1
-    assert len(cliente.productos) == 1
-    assert cliente.productos[0]["nombre"] == "Poleron"
-    assert cliente.productos[0]["precio"] == 79990
-    assert cliente.productos[0]["catalogoId"] == 1
+    p = cliente.productos[0]
+    assert p["nombre"] == "Poleron CK"
+    assert p["precio"] == 79990
+    assert p["catalogoId"] == cliente.catalogos[0]["id"]
 
 
-def test_no_duplica_catalogo_entre_productos_de_la_misma_tienda():
+def test_envia_url_imagen_y_marca():
+    cliente = ClienteProductServiceFalso()
+    sync = ProductServiceSync(cliente)
+    prod = producto(nombre="Poleron CK").model_copy(update={
+        "image_card_url": "https://s3.example/card.webp",
+        "image_detail_url": "https://s3.example/detail.webp",
+    })
+
+    sync.sincronizar(prod)
+
+    p = cliente.productos[0]
+    assert p["url"] == "https://paris.cl/x"
+    assert p["imagen"] == "https://s3.example/card.webp"
+    assert p["marca"] == "CK"
+
+
+def test_categoria_reutiliza_el_catalogo():
     cliente = ClienteProductServiceFalso()
     sync = ProductServiceSync(cliente)
 
-    sync.sincronizar(producto("Poleron A"))
-    sync.sincronizar(producto("Poleron B"))
+    sync.sincronizar(producto(nombre="Poleron A"))
+    sync.sincronizar(producto(nombre="Poleron B"))
 
     assert cliente.creados_catalogo == 1
-    assert cliente.creados_producto == 2
 
 
-def test_deduplica_por_nombre_dentro_del_catalogo():
+def test_dedup_por_url_dentro_del_catalogo():
     cliente = ClienteProductServiceFalso()
     sync = ProductServiceSync(cliente)
 
-    sync.sincronizar(producto("Poleron CK", 79990))
-    sync.sincronizar(producto("Poleron CK", 59990))  # bajo de precio
+    sync.sincronizar(producto(nombre="Poleron CK", precio=79990))
+    sync.sincronizar(producto("Poleron CK (2X1)", 59990))  # bajo de precio, misma URL
 
-    # Mismo producto: se actualiza, no se crea otro.
     assert cliente.creados_producto == 1
     assert cliente.actualizados == 1
-    assert len(cliente.productos) == 1
     assert cliente.productos[0]["precio"] == 59990
 
 
-def test_catalogo_por_tienda():
+def test_distintas_urls_son_productos_distintos():
     cliente = ClienteProductServiceFalso()
     sync = ProductServiceSync(cliente)
 
-    sync.sincronizar(producto(store="paris"))
-    sync.sincronizar(producto(store="converse"))
+    sync.sincronizar(producto(url="https://paris.cl/a"))
+    sync.sincronizar(producto(url="https://paris.cl/b"))
 
-    assert [c["nombre"] for c in cliente.catalogos] == ["paris", "converse"]
+    assert cliente.creados_producto == 2
+
+
+def test_catalogo_por_categoria_no_por_tienda():
+    cliente = ClienteProductServiceFalso()
+    sync = ProductServiceSync(cliente)
+
+    sync.sincronizar(producto(nombre="Poleron CK", store="paris"))
+    sync.sincronizar(producto(nombre="Zapatilla Run", store="converse"))
+
+    assert [c["nombre"] for c in cliente.catalogos] == ["Polerones", "Zapatillas"]
     assert cliente.creados_catalogo == 2

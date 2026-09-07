@@ -27,6 +27,11 @@ public class Producto {
 
     private boolean activo;
 
+    // Datos que el scraper envia para que el frontend los muestre.
+    private String url;
+    private String imagen;
+    private String marca;
+
     public Producto() {
     }
 
@@ -86,5 +91,29 @@ public class Producto {
 
     public void setActivo(boolean activo) {
         this.activo = activo;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public String getImagen() {
+        return imagen;
+    }
+
+    public void setImagen(String imagen) {
+        this.imagen = imagen;
+    }
+
+    public String getMarca() {
+        return marca;
+    }
+
+    public void setMarca(String marca) {
+        this.marca = marca;
     }
 }
