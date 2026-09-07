@@ -54,7 +54,7 @@ const subtitulo = computed(() =>
   <BaseTicket
     class="tarjeta"
     :class="{ 'tarjeta--compacta': compacta }"
-    :to="{ name: 'producto-detalle', params: { id: producto.id, slug: slugProducto(producto) } }"
+    :to="{ name: 'producto-detalle', params: { slug: slugProducto(producto) } }"
     :relleno="false"
     columna
   >

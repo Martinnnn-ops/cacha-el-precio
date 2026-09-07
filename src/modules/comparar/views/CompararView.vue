@@ -157,7 +157,7 @@ onMounted(() => catalogo.cargarProductos())
 
           <RouterLink
             class="columna__ficha"
-            :to="{ name: 'producto-detalle', params: { id: col.producto.id, slug: slugProducto(col.producto) } }"
+            :to="{ name: 'producto-detalle', params: { slug: slugProducto(col.producto) } }"
           >
             Ver ficha completa
           </RouterLink>

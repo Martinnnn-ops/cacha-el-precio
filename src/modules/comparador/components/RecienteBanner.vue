@@ -28,7 +28,7 @@ const antiguedad = computed(() => {
   <RouterLink
     class="banner"
     :class="`acento-${indice % 3}`"
-    :to="{ name: 'producto-detalle', params: { id: producto.id, slug: slugProducto(producto) } }"
+    :to="{ name: 'producto-detalle', params: { slug: slugProducto(producto) } }"
   >
     <div class="banner__texto">
       <!-- Sólo la antigüedad. Antes decía «Recién agregado · hace 1 día», que

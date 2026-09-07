@@ -7,7 +7,6 @@ import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import { formatearFecha, formatearPrecio } from '@/shared/utils/formato'
 import { descuento, minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
 import { slugProducto } from '@/shared/utils/slug'
-import { idProductoValido } from '@/shared/utils/rutas'
 import DetalleSkeleton from '@/modules/comparador/components/DetalleSkeleton.vue'
 import EligeTuTienda from '@/modules/comparador/components/EligeTuTienda.vue'
 import FichaCaracteristicas from '@/modules/comparador/components/FichaCaracteristicas.vue'
@@ -20,42 +19,35 @@ import EnlaceTienda from '@/shared/components/EnlaceTienda.vue'
 import BaseTicket from '@/shared/components/BaseTicket.vue'
 import PrendaArt from '@/shared/components/PrendaArt.vue'
 
-import { useRouter } from 'vue-router'
-
 const props = defineProps({
-  id: { type: String, required: true },
-  slug: { type: String, default: '' },
+  slug: { type: String, required: true },
 })
 
 const store = useComparadorStore()
-const router = useRouter()
 const { producto, cargando, error } = storeToRefs(store)
 const { nombreTienda, colorTienda } = useTiendas()
 
-// El slug es solo decoración de la URL; lo que identifica al producto es el
-// id. Cuando la ficha llega, si el slug no coincide con el nombre actual
-// (por "recentrar" o porque llegó la URL vieja) se redirige a la correcta.
-watch(
-  () => producto.value?.nombre,
-  (nombre) => {
-    if (!nombre) return
-    const correcto = slugProducto({ nombre })
-    if (correcto && correcto !== props.slug) {
-      router.replace({ name: 'producto-detalle', params: { id: props.id, slug: correcto } })
-    }
-  },
-)
+// La URL del detalle es el slug, pero la API identifica los productos por id.
+// La vista resuelve slug -> id mirando el catálogo ya cargado en el store (si
+// no está cargado, se trae antes). Con el slug se llega a la URL y con el id
+// se pide la ficha; si el slug no corresponde a ningún producto, se muestra
+// como si ya no estuviera.
+async function cargarPorSlug(slug) {
+  if (store.productos.length === 0) {
+    await store.cargarProductos()
+  }
 
-// La ruta ya restringe la forma del id, pero la vista no da eso por hecho: si
-// alguien la monta directamente con otra cosa, no se sale a la red con ella.
-watch(
-  () => props.id,
-  (id) => {
-    if (idProductoValido(id)) store.cargarProducto(id)
-    else store.producto = null
-  },
-  { immediate: true },
-)
+  const encontrado = store.productos.find((p) => slugProducto(p) === slug)
+
+  if (!encontrado) {
+    store.producto = null
+    return
+  }
+
+  await store.cargarProducto(encontrado.id)
+}
+
+watch(() => props.slug, cargarPorSlug, { immediate: true })
 
 const masBarato = computed(() => precioMasBajo(producto.value))
 
@@ -140,7 +132,7 @@ const subtitulo = computed(() =>
 
     <div v-else-if="error" class="aviso aviso--error" role="alert">
       <p>{{ error }}</p>
-      <BaseButton @click="store.cargarProducto(id)">Reintentar</BaseButton>
+      <BaseButton @click="cargarPorSlug(props.slug)">Reintentar</BaseButton>
     </div>
 
     <div v-else-if="!producto" class="aviso">

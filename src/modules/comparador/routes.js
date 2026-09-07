@@ -15,12 +15,12 @@ export default [
     meta: { titulo: 'Comparador' },
   },
   {
-    // La forma del id se declara en la propia ruta: /producto/abc o
-    // /producto/../algo ni siquiera llegan a la vista, caen en el 404. Vale
-    // más rechazarlo aquí que confiar en que cada vista se acuerde de validar.
-    // El slug es opcional y solo da contexto al enlace; la vista lo recalcula
-    // y redirige al correcto si no llega o está mal.
-    path: '/producto/:id(\\d{1,12})/:slug?',
+    // La URL del detalle es el slug: /producto/poleron-ck-institutional-blanco.
+    // El slug se genera del nombre, así que cualquier ruta por id o inventada
+    // no hace match con ningún producto y la vista lo muestra como "ya no
+    // está". La forma queda abierta (el slug puede ser casi cualquier cosa),
+    // pero se recorta en la generación para no alargar las URLs.
+    path: '/producto/:slug',
     name: 'producto-detalle',
     component: () => import('@/modules/comparador/views/ProductoDetailView.vue'),
     props: true,
