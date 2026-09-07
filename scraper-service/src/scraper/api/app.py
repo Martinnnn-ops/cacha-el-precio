@@ -83,10 +83,12 @@ def _barrer(tienda: str, urls: list[str]) -> None:
             "cambios_de_precio": r.cambios_de_precio,
             "productos_descartados": r.productos_descartados,
             "imagenes_procesadas": r.imagenes_procesadas,
+            "sincronizados": r.sincronizados,
             "sin_producto": len(r.sin_producto),
             "fallos_de_descarga": len(r.urls_fallidas),
             "fallos_de_guardado": len(r.errores_guardado),
             "fallos_de_imagen": len(r.errores_imagen),
+            "fallos_de_sync": len(r.errores_sync),
             "segundos": round(r.segundos, 1),
         }
     except Exception as e:

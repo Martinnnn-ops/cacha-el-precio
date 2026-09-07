@@ -173,6 +173,9 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      # El scraper publica los productos en el Product Service por su API,
+      # no tocando su base. Esta URL es el host interno del compose.
+      PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL:-http://product-service:8081}
 
     ports:
       - "127.0.0.1:${SCRAPER_API_PORT:-8000}:8000"

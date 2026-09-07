@@ -119,7 +119,18 @@ def construir_servicio(cfg: Settings, repo) -> ScraperService:
                 region=cfg.aws_region,
             ),
         )
-    return ScraperService(scrapers, repo, delay=demora, image_service=image_service)
+
+    sync_service = None
+    if cfg.product_service_url:
+        from scraper.infrastructure.http.product_service_client import ProductServiceClient
+        from scraper.services.product_service_sync import ProductServiceSync
+
+        sync_service = ProductServiceSync(
+            ProductServiceClient(cfg.product_service_url, timeout=cfg.http_timeout)
+        )
+
+    return ScraperService(scrapers, repo, delay=demora, image_service=image_service,
+                          sync_service=sync_service)
 
 
 # De donde saca cada tienda sus URLs de producto.

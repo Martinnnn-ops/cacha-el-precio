@@ -115,6 +115,43 @@ def test_reporta_fallos_de_guardado():
     assert "1 fallos de guardado" in r.resumen()
 
 
+def test_sincroniza_lo_guardado():
+    class SyncFalso:
+        def __init__(self):
+            self.vistos = []
+
+        def sincronizar(self, producto):
+            self.vistos.append(producto.external_id)
+            return True
+
+    sync = SyncFalso()
+    s = ScraperService({"converse": ScraperFalso({"u1": [prod("A1")]})},
+                       RepositorioEnMemoria(), sync_service=sync)
+    r = s.ejecutar("converse", ["u1"])
+
+    assert r.sincronizados == 1
+    assert r.errores_sync == []
+    assert sync.vistos == ["A1"]
+    assert "1 sincronizados" in r.resumen()
+
+
+def test_fallo_de_sync_no_pierde_el_producto():
+    class SyncRoto:
+        def sincronizar(self, producto):
+            raise RuntimeError("Product Service no disponible")
+
+    repo = RepositorioEnMemoria()
+    s = ScraperService({"converse": ScraperFalso({"u1": [prod("A1")]})},
+                       repo, sync_service=SyncRoto())
+    r = s.ejecutar("converse", ["u1"])
+
+    assert r.guardados == 1
+    assert r.sincronizados == 0
+    assert r.errores_sync == ["converse/A1"]
+    assert repo.obtener("converse", "A1") is not None
+    assert "1 fallos de sync" in r.resumen()
+
+
 def test_respeta_el_retardo_entre_urls(monkeypatch):
     pausas = []
     monkeypatch.setattr("scraper.services.scraper_service.time.sleep", pausas.append)

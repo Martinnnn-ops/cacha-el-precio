@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     image_max_pixels: int = Field(default=40_000_000, ge=1)
     image_webp_quality: int = Field(default=82, ge=1, le=100)
 
+    # --- Product Service ---
+    # URL base del microservicio que atiende al frontend. Si esta
+    # definida, cada barrido crea o actualiza los productos en su
+    # catalogo (sync por API HTTP). Si no, el scraper solo guarda en su
+    # propia base y el frontend no ve datos nuevos.
+    product_service_url: str | None = None
+
     # --- almacenamiento S3 ---
     aws_region: str = "us-east-1"
     aws_s3_bucket: str | None = None

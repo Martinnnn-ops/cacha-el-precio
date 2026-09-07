@@ -35,6 +35,10 @@ class ImageService(Protocol):
     def process(self, product: Product, previous: Product | None = None) -> Product: ...
 
 
+class SyncService(Protocol):
+    def sincronizar(self, producto: Product) -> bool: ...
+
+
 @dataclass
 class ResultadoBarrido:
     """Lo que hay que poder mirar despues de un barrido nocturno."""
@@ -46,9 +50,11 @@ class ResultadoBarrido:
     cambios_de_precio: int = 0
     productos_descartados: int = 0
     imagenes_procesadas: int = 0
+    sincronizados: int = 0
     urls_fallidas: list[str] = field(default_factory=list)   # no se pudo descargar
     errores_guardado: list[str] = field(default_factory=list)
     errores_imagen: list[str] = field(default_factory=list)
+    errores_sync: list[str] = field(default_factory=list)
     sin_producto: list[str] = field(default_factory=list)    # bajo, pero no hay producto
     segundos: float = 0.0
 
@@ -63,10 +69,13 @@ class ResultadoBarrido:
             f"{self.guardados} guardados, {self.cambios_de_precio} cambios de precio, "
             f"{self.productos_descartados} fuera de vestimenta, "
             f"{self.imagenes_procesadas} imagenes procesadas, "
+            f"{self.sincronizados} sincronizados, "
             f"{len(self.sin_producto)} sin producto, "
             f"{len(self.urls_fallidas)} fallos de descarga, "
             f"{len(self.errores_guardado)} fallos de guardado, "
-            f"{len(self.errores_imagen)} fallos de imagen, {self.segundos:.1f}s"
+            f"{len(self.errores_imagen)} fallos de imagen, "
+            f"{len(self.errores_sync)} fallos de sync, "
+            f"{self.segundos:.1f}s"
         )
 
 
@@ -81,11 +90,13 @@ class ScraperService:
         *,
         delay: float = 0.0,
         image_service: ImageService | None = None,
+        sync_service: SyncService | None = None,
     ) -> None:
         self._scrapers: Mapping[str, Scraper] = scrapers
         self._repo = repositorio
         self._delay = max(0.0, delay)
         self._image_service = image_service
+        self._sync_service = sync_service
 
     def tiendas(self) -> list[str]:
         return sorted(self._scrapers)
@@ -151,6 +162,17 @@ class ScraperService:
                     # Un fallo al guardar no debe perder el resto del barrido.
                     log.exception("no se pudo guardar %s/%s", producto.store, producto.external_id)
                     res.errores_guardado.append(f"{producto.store}/{producto.external_id}")
+                    continue
+                if self._sync_service:
+                    try:
+                        self._sync_service.sincronizar(producto)
+                        res.sincronizados += 1
+                    except Exception:
+                        # El sync a Product Service es un plus: si no se puede,
+                        # el producto ya quedo en la base propia del scraper.
+                        log.exception("no se pudo sincronizar %s/%s", producto.store,
+                                      producto.external_id)
+                        res.errores_sync.append(f"{producto.store}/{producto.external_id}")
 
         res.segundos = time.monotonic() - inicio
         log.info("%s", res.resumen())
