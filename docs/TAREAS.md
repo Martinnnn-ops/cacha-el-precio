@@ -238,12 +238,21 @@ expuesto directo a internet. **La URL de CloudFront abre y el login funciona.**
 
 Terminar lo que falta y **congelar el jueves 10**. Acá no se aprende nada nuevo.
 
+> 🔀 **07-09: los PR #10 y #11 ya están en `development`.** Se mergearon con deuda conocida, y
+> esa deuda —9 puntos con dueño y fecha, más las 3 decisiones de arquitectura que quedaron sin
+> ADR— está en [`INTEGRACION.md`](INTEGRACION.md). **Los dos primeros puntos son bloqueantes
+> para desplegar**, así que se hacen antes que cualquier cosa de esta lista.
+
+- [ ] 🔴 **Cerrar los puntos 1 a 4 de [`INTEGRACION.md`](INTEGRACION.md)** — escritura sin
+      autorización, Caddy saltándose el BFF, el choque del puerto 8080 y el dominio
 - [ ] Cerrar el [checklist final](#-checklist-final-lo-que-tiene-que-quedar-funcionando):
       cada ruta probada con token, sin token y sin permiso
 - [ ] **Gráfico del historial** de precios + botón "Descargar CSV"
 - [ ] Test de contrato por scraper ("esta captura trajo más de N productos válidos")
 - [ ] **Escribir los ADR que faltan** — los 14 están listados en
-      [ARQUITECTURA.md §13](ARQUITECTURA.md#13-registro-de-decisiones-adr)
+      [ARQUITECTURA.md §13](ARQUITECTURA.md#13-registro-de-decisiones-adr), más el **017**
+      (versionado por header), el **018** (el scraper en Python) y el **019** (quién es el API
+      Manager) que salieron de la integración del 07-09
   - ↳ *Es mayormente copiar lo que ya está escrito. **De acá sale el informe de 5 páginas**, y en
     la defensa un ADR es literalmente la respuesta a «¿por qué?»*
 - [ ] **Cerrar quién presenta cada indicador del EP2** (si no se hizo el 6)

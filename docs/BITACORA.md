@@ -342,6 +342,29 @@ DTO todavía; el costo de ese acoplamiento quedó anotado en ADR-016 para no olv
 
 **Martín —**
 
+(07-09) 🔀 **Integradas a `development` las dos ramas del equipo** (PR #10 de Orion, PR #11 de
+Panditax). Las dos traían el mismo conflicto en esta bitácora —eran anteriores a la entrada del
+03-09— y se resolvió conservando las dos partes.
+
+Se mergearon **con deuda conocida y anotada**, no porque estuvieran listas: a tres días del
+freeze, integrar y corregir arriba cuesta menos que dejar dos ramas divergiendo, y el BFF
+necesita un servicio real detrás que proteger.
+
+Revisando los dos PR aparecieron **ocho decisiones de arquitectura** que se tomaron en el
+camino, de las cuales **solo una está en un ADR** (la 016) y **cuatro contradicen algo que ya
+está escrito y que vamos a defender oralmente**: SQLite contra el ADR-010, el scraper en Python
+contra el ADR-013, Caddy contra el ADR-015, y la ingesta por HTTP directo contra el argumento de
+mensajería de `ARQUITECTURA.md` §6. Eso último es lo que más pesa: si en la defensa preguntan
+«¿por qué mensajería y no llamadas directas?», el documento tiene tres párrafos de respuesta y
+el código hace lo contrario.
+
+🔴 **Y apareció un agujero:** `ProductoController` expone `POST`, `PUT` y `DELETE` sin ninguna
+anotación de seguridad, y el `Caddyfile` publica ese servicio en internet. No hay riesgo hoy
+porque nada está desplegado, pero es el commit que no puede llegar a la EC2 sin arreglarse —y
+arreglarlo es exactamente el 40% del EP1 que me toca.
+
+Todo quedó con dueño y fecha en [`INTEGRACION.md`](INTEGRACION.md).
+
 **Orion —**
 
 **Panditax —**
