@@ -1,10 +1,10 @@
 // Slug legible para las URL del sitio.
 //
-// La URL del detalle lleva el id (que es lo que necesita la API) y un slug
-// humano al lado, para que el enlace diga qué producto es antes de entrar:
-//   /producto/12/poleron-ck-institutional-blanco
-// El slug solo le da sentido a la URL; nadie debe depender de él para lookup.
-// Se recalcula al entrar y, si no coincide, la vista redirige al correcto.
+// La URL del detalle ES el slug:
+//   /producto/poleron-ck-institutional-blanco
+// Como la API identifica los productos por id, la vista del detalle resuelve
+// el slug mirando el catálogo del store y con ese id pide la ficha. El slug se
+// genera siempre del nombre del producto; si el nombre cambia, cambia la URL.
 
 const MAX_SLUG = 60
 
