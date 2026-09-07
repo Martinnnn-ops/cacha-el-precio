@@ -230,11 +230,42 @@ SECRETO_SCRAPER="$(aws_ cognito-idp describe-user-pool-client --user-pool-id "$P
                    --client-id "$CLIENT_SCRAPER" --query 'UserPoolClient.ClientSecret' --output text 2>/dev/null)"
 
 # --------------------------------------------------------------------------
-# 6. Grupos
+# 6. App client de pruebas (solo para tests y evidencia)
+#    Existe por una razon concreta: el client "frontend" solo permite SRP, y el
+#    SRP no se puede hacer desde la CLI (habria que calcular el SRP_A a mano).
+#    Sin esto, sacar un token de usuario obliga a pasar por el navegador, y un
+#    test no puede hacer eso.
+#
+#    POR QUE UN CLIENT APARTE Y NO HABILITAR EL FLUJO EN "frontend":
+#      1. update-user-pool-client REEMPLAZA la configuracion: todo campo que no
+#         se le pase vuelve al valor por defecto. Se perderian las callbacks.
+#      2. El argumento que se defiende en el EP1 es que el frontend es PKCE puro
+#         y sin secreto. Agregarle autenticacion por contrasena lo debilita.
+#
+#    Este client NO tiene OAuth ni callbacks: no sirve para el flujo del
+#    navegador, solo para pedir un token con usuario y clave.
+# --------------------------------------------------------------------------
+titulo "6. App client de pruebas"
+CLIENT_PRUEBAS="$(aws_ cognito-idp list-user-pool-clients --user-pool-id "$POOL_ID" --max-results 60 \
+                  --query "UserPoolClients[?ClientName=='pruebas'].ClientId | [0]" --output text)"
+if [[ "$CLIENT_PRUEBAS" != "None" && -n "$CLIENT_PRUEBAS" ]]; then
+  verde "  ya existe: $CLIENT_PRUEBAS"
+else
+  CLIENT_PRUEBAS="$(aws_ cognito-idp create-user-pool-client --user-pool-id "$POOL_ID" \
+                    --client-name pruebas --no-generate-secret \
+                    --explicit-auth-flows ALLOW_ADMIN_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+                    --access-token-validity 1 --token-validity-units AccessToken=hours \
+                    --query 'UserPoolClient.ClientId' --output text)"
+  verde "  creado: $CLIENT_PRUEBAS"
+fi
+gris  "  sacar un token: aws cognito-idp admin-initiate-auth --auth-flow ADMIN_USER_PASSWORD_AUTH"
+
+# --------------------------------------------------------------------------
+# 7. Grupos
 #    El grupo viaja dentro del token como "cognito:groups". Es lo que el BFF
 #    mira para decidir 403. Sin grupos no se puede demostrar el caso 403.
 # --------------------------------------------------------------------------
-titulo "6. Grupos"
+titulo "7. Grupos"
 for g in admin usuario; do
   if aws_ cognito-idp get-group --group-name "$g" --user-pool-id "$POOL_ID" >/dev/null 2>&1; then
     verde "  ya existe: $g"
@@ -245,10 +276,10 @@ for g in admin usuario; do
 done
 
 # --------------------------------------------------------------------------
-# 7. Usuarios de prueba
+# 8. Usuarios de prueba
 #    Uno por grupo, para poder mostrar 200 y 403 en la demo.
 # --------------------------------------------------------------------------
-titulo "7. Usuarios de prueba"
+titulo "8. Usuarios de prueba"
 if [[ -z "${CLAVE_PRUEBA:-}" ]]; then
   CLAVE_PRUEBA="Cacha$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 10)1"
   NUEVA_CLAVE=1
@@ -261,22 +292,31 @@ crear_usuario() {
     aws_ cognito-idp admin-create-user --user-pool-id "$POOL_ID" --username "$correo" \
       --user-attributes Name=email,Value="$correo" Name=email_verified,Value=true \
       --message-action SUPPRESS >/dev/null || return 1
-    # Clave definitiva: sin esto el usuario queda en FORCE_CHANGE_PASSWORD y no
-    # puede entrar por el Hosted UI sin pasar por el cambio obligatorio.
-    aws_ cognito-idp admin-set-user-password --user-pool-id "$POOL_ID" --username "$correo" \
-      --password "$CLAVE_PRUEBA" --permanent >/dev/null
-    aws_ cognito-idp admin-add-user-to-group --user-pool-id "$POOL_ID" --username "$correo" \
-      --group-name "$grupo" >/dev/null
     verde "  creado: $correo ($grupo)"
   fi
+  # OJO: la clave y el grupo se aplican SIEMPRE, exista o no el usuario.
+  #
+  # Antes esto vivia dentro del "else" y el 03-09 se vio el resultado: en cada
+  # corrida sin CLAVE_PRUEBA el script genera una clave nueva y la escribe en
+  # cognito.env, pero a un usuario que ya existia no se la aplicaba nunca. El
+  # archivo quedaba declarando una clave que nadie tenia y el login fallaba con
+  # "Incorrect username or password", que manda a buscar al lugar equivocado.
+  #
+  # --permanent evita ademas que el usuario quede en FORCE_CHANGE_PASSWORD, que
+  # no deja entrar por el Hosted UI sin pasar por el cambio obligatorio.
+  aws_ cognito-idp admin-set-user-password --user-pool-id "$POOL_ID" --username "$correo" \
+    --password "$CLAVE_PRUEBA" --permanent >/dev/null
+  # Volver a agregarlo a un grupo que ya tiene no da error, asi que es idempotente.
+  aws_ cognito-idp admin-add-user-to-group --user-pool-id "$POOL_ID" --username "$correo" \
+    --group-name "$grupo" >/dev/null
 }
 crear_usuario "admin@cachaelprecio.cl"   admin
 crear_usuario "usuario@cachaelprecio.cl" usuario
 
 # --------------------------------------------------------------------------
-# 8. Dejar los datos donde el frontend y el BFF los puedan leer
+# 9. Dejar los datos donde el frontend y el BFF los puedan leer
 # --------------------------------------------------------------------------
-titulo "8. Archivo de configuracion"
+titulo "9. Archivo de configuracion"
 EMISOR="https://cognito-idp.$REGION.amazonaws.com/$POOL_ID"
 cat > "$SALIDA" <<JSON
 # Generado por tools/crear-cognito.sh el $(date '+%d-%m-%Y %H:%M')
@@ -296,11 +336,18 @@ VITE_COGNITO_REDIRECT_URI=http://localhost:5173/callback
 COGNITO_ISSUER=$EMISOR
 COGNITO_JWKS_URI=$EMISOR/.well-known/jwks.json
 COGNITO_AUDIENCE=$CLIENT_ID
+# El access_token de Cognito NO trae "aud", trae "client_id" (ver IDENTIDAD.md 5).
+# El BFF valida contra esta lista, no contra un solo valor: si validara solo
+# contra el frontend, los tokens del client de pruebas darian 401 en los tests.
+COGNITO_CLIENT_IDS_VALIDOS=$CLIENT_ID,$CLIENT_PRUEBAS
 
 # --- scraper (maquina) ---
 COGNITO_SCRAPER_CLIENT_ID=$CLIENT_SCRAPER
 COGNITO_SCRAPER_CLIENT_SECRET=$SECRETO_SCRAPER
 COGNITO_SCRAPER_SCOPE=$SCOPE_INGESTA
+
+# --- pruebas automatizadas (NO es el client del frontend) ---
+COGNITO_PRUEBAS_CLIENT_ID=$CLIENT_PRUEBAS
 
 # --- usuarios de prueba ---
 COGNITO_USUARIO_ADMIN=admin@cachaelprecio.cl
@@ -316,6 +363,7 @@ cat <<RESUMEN
   Hosted UI     $URL_LOGIN
   Client SPA    $CLIENT_ID
   Client maquina$( printf '%s' "  $CLIENT_SCRAPER" )
+  Client pruebas$( printf '%s' "  $CLIENT_PRUEBAS" )
   Emisor        $EMISOR
   JWKS          $EMISOR/.well-known/jwks.json
 

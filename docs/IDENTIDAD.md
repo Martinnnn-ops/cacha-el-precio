@@ -21,11 +21,22 @@ Creado el **30-08-2026** con `tools/crear-cognito.sh` y verificado end-to-end.
 | **Resource server** `https://api.cachaelprecio.cl` | Define permisos propios de *nuestra* API. Tiene el scope `ingesta` |
 | **App client `frontend`** | Sin secreto. Authorization Code + PKCE. Es el que usa el React |
 | **App client `scraper`** | Con secreto. `client_credentials`. Es el que usa el proceso que captura precios |
+| **App client `pruebas`** | Sin secreto, sin OAuth ni callbacks. Solo `ADMIN_USER_PASSWORD_AUTH`, para que los tests saquen un token real sin navegador |
 | **Grupos `admin` y `usuario`** | Viajan dentro del token. Es lo que el BFF mira para decidir 403 |
 | **Dos usuarios de prueba** | Uno por grupo, para poder demostrar el 200 y el 403 en la defensa |
 
 Los identificadores concretos —que cambian con cada cuenta de AWS— quedan en **`cognito.env`**,
 que no se versiona. Se regenera corriendo el script.
+
+> **Por qué existe un tercer app client.** El client `frontend` solo acepta SRP, y el SRP no se
+> puede hacer desde la línea de comandos: habría que calcular el `SRP_A` a mano. Sin un client
+> aparte, sacar un token de usuario obliga a pasar por el navegador, y **un test no puede hacer
+> eso**. Se creó uno nuevo en vez de habilitarle el flujo al `frontend` por dos razones:
+> `update-user-pool-client` **reemplaza** la configuración —todo campo que no se le pase vuelve
+> al valor por defecto, así que se perderían las callback URLs—, y porque lo que se defiende en
+> el EP1 es que el frontend es **PKCE puro y sin secreto**; agregarle autenticación por
+> contraseña debilita ese argumento. El client `pruebas` no tiene OAuth ni callbacks: no sirve
+> para el flujo del navegador, solo para pedir un token con usuario y clave.
 
 ---
 
@@ -142,6 +153,11 @@ aud        (no viene)
 error dice "audience inválida", que manda a buscar en el lugar equivocado. Hay que validar
 contra **`client_id`**, y de paso comprobar que **`token_use` sea `access`** para que nadie
 mande un `id_token` en su lugar.
+
+Y se valida contra una **lista** de `client_id`, no contra uno solo: los tokens de las personas
+vienen del client `frontend` y los de los tests vienen del client `pruebas`. Con un solo valor
+aceptado, los tests darían 401 contra nuestra propia validación. La lista la arma el script en
+`COGNITO_CLIENT_IDS_VALIDOS`.
 
 El razonamiento largo está en [`ARQUITECTURA.md` §9](ARQUITECTURA.md#9-el-detalle-del-audience-en-cognito).
 
