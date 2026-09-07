@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import { formatearPrecio } from '@/shared/utils/formato'
 import { ahorroMaximo, descuento, precioMasBajo } from '@/shared/utils/precios'
+import { slugProducto } from '@/shared/utils/slug'
 import BaseTicket from '@/shared/components/BaseTicket.vue'
 import BotonComparar from '@/modules/comparar/components/BotonComparar.vue'
 import EnlaceTienda from '@/shared/components/EnlaceTienda.vue'
@@ -53,7 +54,7 @@ const subtitulo = computed(() =>
   <BaseTicket
     class="tarjeta"
     :class="{ 'tarjeta--compacta': compacta }"
-    :to="{ name: 'producto-detalle', params: { id: producto.id } }"
+    :to="{ name: 'producto-detalle', params: { id: producto.id, slug: slugProducto(producto) } }"
     :relleno="false"
     columna
   >

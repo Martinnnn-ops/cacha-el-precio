@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 
 import { formatearPrecio } from '@/shared/utils/formato'
 import { precioMasBajo } from '@/shared/utils/precios'
+import { slugProducto } from '@/shared/utils/slug'
 import PrendaArt from '@/shared/components/PrendaArt.vue'
 
 const props = defineProps({
@@ -27,7 +28,7 @@ const antiguedad = computed(() => {
   <RouterLink
     class="banner"
     :class="`acento-${indice % 3}`"
-    :to="{ name: 'producto-detalle', params: { id: producto.id } }"
+    :to="{ name: 'producto-detalle', params: { id: producto.id, slug: slugProducto(producto) } }"
   >
     <div class="banner__texto">
       <!-- Sólo la antigüedad. Antes decía «Recién agregado · hace 1 día», que

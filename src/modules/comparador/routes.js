@@ -18,7 +18,9 @@ export default [
     // La forma del id se declara en la propia ruta: /producto/abc o
     // /producto/../algo ni siquiera llegan a la vista, caen en el 404. Vale
     // más rechazarlo aquí que confiar en que cada vista se acuerde de validar.
-    path: '/producto/:id(\\d{1,12})',
+    // El slug es opcional y solo da contexto al enlace; la vista lo recalcula
+    // y redirige al correcto si no llega o está mal.
+    path: '/producto/:id(\\d{1,12})/:slug?',
     name: 'producto-detalle',
     component: () => import('@/modules/comparador/views/ProductoDetailView.vue'),
     props: true,

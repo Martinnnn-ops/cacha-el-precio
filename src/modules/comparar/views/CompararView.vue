@@ -13,6 +13,7 @@ import EnlaceTienda from '@/shared/components/EnlaceTienda.vue'
 import PrendaArt from '@/shared/components/PrendaArt.vue'
 import { formatearPrecio } from '@/shared/utils/formato'
 import { ahorroMaximo, minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
+import { slugProducto } from '@/shared/utils/slug'
 
 const catalogo = useComparadorStore()
 const comparar = useCompararStore()
@@ -156,7 +157,7 @@ onMounted(() => catalogo.cargarProductos())
 
           <RouterLink
             class="columna__ficha"
-            :to="{ name: 'producto-detalle', params: { id: col.producto.id } }"
+            :to="{ name: 'producto-detalle', params: { id: col.producto.id, slug: slugProducto(col.producto) } }"
           >
             Ver ficha completa
           </RouterLink>

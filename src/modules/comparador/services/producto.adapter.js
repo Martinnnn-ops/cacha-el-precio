@@ -41,11 +41,11 @@ export function adaptarProductos(filas = [], catalogos = []) {
       id: String(fila.id),
       nombre: fila.nombre.trim(),
       descripcion: fila.descripcion ?? '',
-      // La API no guarda marca. Se deja vacía y la interfaz la oculta en vez
-      // de inventarse una o repetir el nombre del producto.
-      marca: '',
+      // La API puede traer marca e imagen; si no las trae se dejan vacías y
+      // la interfaz las oculta en vez de inventarse una o repetir el nombre.
+      marca: typeof fila.marca === 'string' ? fila.marca.trim() : '',
       categoria: nombrePorId.get(String(fila.catalogoId)) ?? '',
-      imagen: null,
+      imagen: typeof fila.imagen === 'string' && fila.imagen ? fila.imagen : null,
       // Campos de ficha que la API todavía no expone. Si algún día los trae,
       // los bloques de la vista aparecen solos.
       codigo: typeof fila.codigo === 'string' ? fila.codigo : '',
