@@ -86,13 +86,20 @@ public class ProductoService {
     }
 
     public Optional<Integer> registrarVisita(Long id) {
-        if (!productoRepository.existsById(id)) {
+        // Lee, suma y vuelve a guardar: el UPDATE del scraper no debe pisar el
+        // contador, así que el incremento atraviesa el mismo repository que todo.
+        // Para el caudal de la app un read-modify-write no compite con nadie.
+        Optional<Producto> actual = productoRepository.findById(id);
+
+        if (actual.isEmpty()) {
             return Optional.empty();
         }
 
-        productoRepository.registrarVisita(id, Instant.now().toString());
+        Producto producto = actual.get();
+        producto.setVisitas(producto.getVisitas() + 1);
+        producto.setVistoEn(Instant.now().toString());
 
-        return productoRepository.findById(id).map(Producto::getVisitas);
+        return Optional.of(productoRepository.update(producto).getVisitas());
     }
 
     public boolean eliminar(Long id) {
