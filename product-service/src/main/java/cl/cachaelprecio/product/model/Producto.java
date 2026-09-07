@@ -32,6 +32,15 @@ public class Producto {
     private String imagen;
     private String marca;
 
+    // Rastro de actividad. El scraper no los escribe: suben desde el API.
+    private int visitas;
+
+    @MappedProperty("visto_en")
+    private String vistoEn;
+
+    @MappedProperty("creado_en")
+    private String creadoEn;
+
     public Producto() {
     }
 
@@ -115,5 +124,29 @@ public class Producto {
 
     public void setMarca(String marca) {
         this.marca = marca;
+    }
+
+    public int getVisitas() {
+        return visitas;
+    }
+
+    public void setVisitas(int visitas) {
+        this.visitas = visitas;
+    }
+
+    public String getVistoEn() {
+        return vistoEn;
+    }
+
+    public void setVistoEn(String vistoEn) {
+        this.vistoEn = vistoEn;
+    }
+
+    public String getCreadoEn() {
+        return creadoEn;
+    }
+
+    public void setCreadoEn(String creadoEn) {
+        this.creadoEn = creadoEn;
     }
 }

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -83,6 +84,48 @@ class ProductoControllerTest {
         assertEquals("https://paris.cl/polera-ck", leido.getUrl());
         assertEquals("https://img.example/polera.webp", leido.getImagen());
         assertEquals("CK", leido.getMarca());
+    }
+
+    @Test
+    void registraVisitasSinTocarlasAlActualizar() {
+        Catalogo catalogo = catalogoRepository.save(new Catalogo(null, "Poleras", "Prendas"));
+        Producto nuevo = new Producto();
+        nuevo.setNombre("Polera CK");
+        nuevo.setPrecio(new BigDecimal("19990"));
+        nuevo.setCatalogoId(catalogo.getId());
+        nuevo.setActivo(true);
+
+        HttpRequest<?> alta = HttpRequest.POST("/productos", nuevo).header("X-API-VERSION", "0.1.0");
+        Producto creado = cliente.toBlocking().retrieve(alta, Producto.class);
+
+        assertNotNull(creado.getCreadoEn(), "el servicio debería poner la fecha de creación");
+        assertEquals(0, creado.getVisitas());
+
+        for (int i = 1; i <= 3; i++) {
+            HttpRequest<?> visita = HttpRequest.POST("/productos/" + creado.getId() + "/visitas")
+                    .header("X-API-VERSION", "0.1.0");
+            Map<?, ?> respuesta = cliente.toBlocking().retrieve(visita, Map.class);
+            assertEquals(i, ((Number) respuesta.get("visitas")).intValue());
+        }
+
+        Producto conVisitas = productoRepository.findById(creado.getId()).orElseThrow();
+        assertEquals(3, conVisitas.getVisitas());
+        assertNotNull(conVisitas.getVistoEn(), "la última vista debería quedar registrada");
+
+        // El PUT del scraper envía el producto sin visitas y no debe perder el contador.
+        Producto parchado = new Producto();
+        parchado.setNombre("Polera CK");
+        parchado.setPrecio(new BigDecimal("17990"));
+        parchado.setCatalogoId(catalogo.getId());
+        parchado.setActivo(true);
+
+        HttpRequest<?> actualizacion = HttpRequest.PUT("/productos/" + creado.getId(), parchado)
+                .header("X-API-VERSION", "0.1.0");
+        cliente.toBlocking().exchange(actualizacion, Producto.class);
+
+        Producto trasActualizar = productoRepository.findById(creado.getId()).orElseThrow();
+        assertEquals(3, trasActualizar.getVisitas(), "el update no debería pisar el contador");
+        assertEquals(new BigDecimal("17990"), trasActualizar.getPrecio());
     }
 
     private List<Producto> listarConVersion(String version, String ruta) {

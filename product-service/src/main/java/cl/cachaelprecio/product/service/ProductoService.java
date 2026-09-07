@@ -4,6 +4,7 @@ import cl.cachaelprecio.product.model.Producto;
 import cl.cachaelprecio.product.repository.ProductoRepository;
 import jakarta.inject.Singleton;
 
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -47,15 +48,51 @@ public class ProductoService {
 
     public Producto crear(Producto producto) {
         producto.setId(null);
+
+        // La fecha de nacimiento la pone el servicio, no quien hace el POST:
+        // el scraper no tiene por qué saber que existe el campo.
+        if (producto.getCreadoEn() == null) {
+            producto.setCreadoEn(Instant.now().toString());
+        }
+
         return productoRepository.save(producto);
     }
 
     public Optional<Producto> actualizar(Long id, Producto producto) {
+        Optional<Producto> actual = productoRepository.findById(id);
+
+        if (actual.isEmpty()) {
+            return Optional.empty();
+        }
+
+        producto.setId(id);
+
+        // El scraper envía el producto entero (nombre, precio, url, imagen,
+        // marca) para que quede al día, pero no conoce las columnas de
+        // actividad. Si no se preservara el estado anterior, cada actualización
+        // pondría visitas a 0 y se perdería la fecha de nacimiento.
+        producto.setVisitas(actual.get().getVisitas());
+        producto.setVistoEn(actual.get().getVistoEn());
+
+        if (actual.get().getCreadoEn() != null) {
+            producto.setCreadoEn(actual.get().getCreadoEn());
+        } else if (producto.getCreadoEn() == null) {
+            // Producto viejo de antes de la V3: cobra fecha la primera vez que
+            // se actualiza, para que "agregado hace X" no quede vacío eterno.
+            producto.setCreadoEn(Instant.now().toString());
+        }
+
+        return Optional.of(productoRepository.update(producto));
+    }
+
+    public Optional<Integer> registrarVisita(Long id) {
         if (!productoRepository.existsById(id)) {
             return Optional.empty();
         }
-        producto.setId(id);
-        return Optional.of(productoRepository.update(producto));
+
+        productoRepository.registrarVisita(id, Instant.now().toString());
+
+        return productoRepository.findById(id).map(Producto::getVisitas);
     }
 
     public boolean eliminar(Long id) {

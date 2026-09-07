@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @ExecuteOn(TaskExecutors.BLOCKING)
@@ -82,5 +83,15 @@ public class ProductoController {
     @Operation(summary = "Elimina un producto")
     public HttpResponse<?> eliminar(Long id) {
         return productoService.eliminar(id) ? HttpResponse.noContent() : HttpResponse.notFound();
+    }
+
+    @Post("/{id}/visitas")
+    @Version("0.1.0")
+    @Operation(summary = "Registra la vista de un producto",
+            description = "Suma una visita a la ficha y devuelve el total acumulado. Lo llama el frontend al abrir el detalle.")
+    public HttpResponse<Map<String, Object>> registrarVisita(Long id) {
+        return productoService.registrarVisita(id)
+                .map(total -> HttpResponse.ok(Map.of("visitas", total)))
+                .orElseGet(HttpResponse::notFound);
     }
 }
