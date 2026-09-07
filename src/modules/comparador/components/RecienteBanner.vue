@@ -17,6 +17,10 @@ const desde = computed(() => precioMasBajo(props.producto))
 const antiguedad = computed(() => {
   const d = props.producto.agregadoHace
 
+  // Sin fecha la antigüedad no se inventa: el eyebrow desaparece y el resto de
+  // la tarjeta queda igual. Antes, `null` pintaba "hace null días".
+  if (d == null || !Number.isFinite(d)) return ''
+
   if (d === 0) return 'hoy'
   if (d === 1) return 'hace 1 día'
 
@@ -35,7 +39,7 @@ const antiguedad = computed(() => {
            repite el título de la sección («Lo más reciente») y no cabía en una
            línea: rompía en dos y empujaba todo lo de abajo, así que cada
            tarjeta tenía el título a una altura distinta. -->
-      <p class="mono banner__eyebrow truncar">{{ antiguedad }}</p>
+      <p v-if="antiguedad" class="mono banner__eyebrow truncar">{{ antiguedad }}</p>
 
       <p class="display banner__titulo recorte-2" :title="producto.nombre">
         {{ producto.nombre }}

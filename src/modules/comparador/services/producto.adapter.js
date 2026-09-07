@@ -24,6 +24,20 @@ export const FUENTE_UNICA = {
   color: '#0b5cad',
 }
 
+// Cuántos días pasaron desde la fecha (ISO-8601) que da la API. Si no viene o
+// no se puede leer, null: el frontend oculta la antigüedad en vez de mentir.
+function diasDesde(fecha) {
+  if (!fecha) return null
+
+  const instante = Date.parse(fecha)
+
+  if (!Number.isFinite(instante)) return null
+
+  const dias = Math.floor((Date.now() - instante) / 86_400_000)
+
+  return dias >= 0 ? dias : null
+}
+
 export function adaptarCategorias(catalogos = []) {
   return catalogos
     .filter((c) => c?.nombre)
@@ -46,6 +60,10 @@ export function adaptarProductos(filas = [], catalogos = []) {
       marca: typeof fila.marca === 'string' ? fila.marca.trim() : '',
       categoria: nombrePorId.get(String(fila.catalogoId)) ?? '',
       imagen: typeof fila.imagen === 'string' && fila.imagen ? fila.imagen : null,
+      // Rastro de actividad real: cuántas veces se abrió la ficha y cuándo se
+      // sumó al catálogo. Sin API eran números de catálogo.
+      visitas: Number(fila.visitas ?? 0) || 0,
+      agregadoHace: diasDesde(fila.creadoEn),
       // Campos de ficha que la API todavía no expone. Si algún día los trae,
       // los bloques de la vista aparecen solos.
       codigo: typeof fila.codigo === 'string' ? fila.codigo : '',

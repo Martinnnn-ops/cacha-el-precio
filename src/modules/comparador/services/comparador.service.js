@@ -98,3 +98,20 @@ export async function obtenerProducto(id) {
 
   return adaptarProducto(fila, cats)
 }
+
+/**
+ * POST /productos/:id/visitas — suma una visita a la ficha.
+ *
+ * Devuelve el total acumulado. Lo llama el detalle al abrirse; el propio
+ * frontend se encarga de no repetir la llamada por cada recarga (ver la vista).
+ */
+export async function registrarVisita(id) {
+  if (USAR_MOCK) {
+    const vistos = PRODUCTOS_MOCK.find((p) => p.id === id)?.vistas ?? 0
+    return simularRed({ visitas: vistos + 1 })
+  }
+
+  return http.post(`/productos/${encodeURIComponent(id)}/visitas`, null, {
+    version: V_DETALLE,
+  })
+}

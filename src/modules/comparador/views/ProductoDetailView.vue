@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
+import { registrarVisita } from '@/modules/comparador/services/comparador.service'
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import { formatearFecha, formatearPrecio } from '@/shared/utils/formato'
 import { descuento, minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
@@ -45,6 +46,37 @@ async function cargarPorSlug(slug) {
   }
 
   await store.cargarProducto(encontrado.id)
+
+  // El contador de vistas vale para todos, con o sin sesión: no le pide nada
+  // al usuario, sólo que abra la ficha. Para que la misma persona recargando
+  // no lo infle, la visita se registra UNA vez por día y por navegador.
+  avisarVisita(encontrado.id)
+}
+
+// Fecha en YYYY-MM-DD, suficiente para comparar el día, no la hora.
+const hoy = () => new Date().toISOString().slice(0, 10)
+
+async function avisarVisita(id) {
+  const clave = `cep:visto:${id}`
+  let diaAnterior
+
+  try {
+    diaAnterior = localStorage.getItem(clave)
+  } catch {
+    // Almacenamiento bloqueado (privado): se registra igual, sin recordar.
+    registrarVisita(id)
+    return
+  }
+
+  if (diaAnterior === hoy()) return
+
+  try {
+    await registrarVisita(id)
+    localStorage.setItem(clave, hoy())
+  } catch {
+    // El contador no debe romper la visita: si el servicio falla, la ficha
+    // sigue. No es un dato por el que valga una pantalla de error.
+  }
 }
 
 watch(() => props.slug, cargarPorSlug, { immediate: true })
