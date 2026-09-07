@@ -89,7 +89,7 @@ public class ProductoController {
     @Version("0.1.0")
     @Operation(summary = "Registra la vista de un producto",
             description = "Suma una visita a la ficha y devuelve el total acumulado. Lo llama el frontend al abrir el detalle.")
-    public HttpResponse<Map<String, Object>> registrarVisita(Long id) {
+    public HttpResponse<Map<String, Integer>> registrarVisita(Long id) {
         return productoService.registrarVisita(id)
                 .map(total -> HttpResponse.ok(Map.of("visitas", total)))
                 .orElseGet(HttpResponse::notFound);
