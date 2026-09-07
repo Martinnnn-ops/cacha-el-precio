@@ -4,9 +4,9 @@ api.cacha-el-precio.com {
     }
 
     header {
-        Access-Control-Allow-Origin "https://cacha-el-precio.com"
+        Access-Control-Allow-Origin "https://www.cacha-el-precio.com"
         Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        Access-Control-Allow-Headers "Content-Type, Authorization"
+        Access-Control-Allow-Headers "Content-Type, Authorization, X-Api-Version, X-Version, Version"
         Access-Control-Allow-Credentials "true"
         Access-Control-Max-Age "86400"
         Vary "Origin"
@@ -14,5 +14,9 @@ api.cacha-el-precio.com {
 
     respond @cors_preflight 204
 
+    reverse_proxy product-service:8081
+}
+
+:8080 {
     reverse_proxy product-service:8081
 }
