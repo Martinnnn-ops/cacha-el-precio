@@ -1,0 +1,61 @@
+[project]
+name = "cacha-el-precio-scrapper"
+version = "0.1.0"
+description = "Microservicio de scraping para Cacha el Precio"
+requires-python = ">=3.14"
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "httpx>=0.28",
+    "beautifulsoup4>=4.12",
+]
+
+[project.optional-dependencies]
+# Se instalan aparte para que el job por lotes no arrastre el servidor
+# web ni el cliente de S3 si no los necesita:  pip install -e ".[api]"
+api = ["fastapi>=0.115", "uvicorn[standard]>=0.32"]
+db = ["psycopg[binary,pool]>=3.2"]
+s3 = ["boto3>=1.35"]
+imagen = ["pillow>=11.0"]
+dev = ["pytest>=8.0", "ruff>=0.12", "mypy>=1.15"]
+
+[project.scripts]
+scrapper = "scraper.main:main"
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+# Sin esto, setuptools tomaba src/__init__.py y src/main.py como modulos
+# de nivel superior: el paquete instalado exponia "main" y "__init__"
+# globales ademas de "scraper". Ahora solo se publica "scraper".
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Marca las pruebas que salen a internet para poder excluirlas:
+#   pytest -m "not red"
+markers = ["red: necesita conexion a internet"]
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+mypy_path = "src"
+packages = ["scraper"]
+python_version = "3.14"
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# psycopg, boto3 y pillow son extras opcionales: no siempre estan
+# instalados y mypy no debe fallar por eso.
+[[tool.mypy.overrides]]
+module = ["psycopg.*", "boto3.*", "botocore.*", "PIL.*"]
+ignore_missing_imports = true
+
+[tool.setuptools.package-data]
+scraper = ["py.typed"]

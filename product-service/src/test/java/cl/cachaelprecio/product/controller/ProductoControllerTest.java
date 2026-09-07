@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @MicronautTest(transactional = false)
 class ProductoControllerTest {
@@ -55,6 +56,33 @@ class ProductoControllerTest {
         assertEquals(1, listarCatalogosConVersion("0.1.0", "/catalogos").size());
         assertEquals(1, listarCatalogosConVersion("0.2.0", "/catalogos").size());
         assertEquals(1, listarCatalogosConVersion("0.3.0", "/catalogos?nombre=note").size());
+    }
+
+    @Test
+    void persisteYDevuelveUrlImagenYMarca() {
+        Catalogo catalogo = catalogoRepository.save(new Catalogo(null, "Poleras", "Prendas"));
+        Producto nuevo = new Producto();
+        nuevo.setNombre("Polera CK");
+        nuevo.setDescripcion("Algodón");
+        nuevo.setPrecio(new BigDecimal("19990"));
+        nuevo.setCatalogoId(catalogo.getId());
+        nuevo.setActivo(true);
+        nuevo.setUrl("https://paris.cl/polera-ck");
+        nuevo.setImagen("https://img.example/polera.webp");
+        nuevo.setMarca("CK");
+
+        HttpRequest<?> solicitud = HttpRequest.POST("/productos", nuevo).header("X-API-VERSION", "0.1.0");
+        Producto guardado = cliente.toBlocking().retrieve(solicitud, Producto.class);
+
+        assertNotNull(guardado.getId());
+        assertEquals("https://paris.cl/polera-ck", guardado.getUrl());
+        assertEquals("https://img.example/polera.webp", guardado.getImagen());
+        assertEquals("CK", guardado.getMarca());
+
+        Producto leido = productoRepository.findById(guardado.getId()).orElseThrow();
+        assertEquals("https://paris.cl/polera-ck", leido.getUrl());
+        assertEquals("https://img.example/polera.webp", leido.getImagen());
+        assertEquals("CK", leido.getMarca());
     }
 
     private List<Producto> listarConVersion(String version, String ruta) {

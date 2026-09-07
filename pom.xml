@@ -29,6 +29,5 @@
     <module>gateway</module>
     <module>product-service</module>
     <module>price-service</module>
-    <module>scraper-service</module>
   </modules>
 </project>

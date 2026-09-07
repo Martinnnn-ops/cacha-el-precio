@@ -1,0 +1,41 @@
+# Levanta PostgreSQL y el servicio juntos.
+#   docker compose up -d db          # solo la base, para desarrollar en local
+#   docker compose up --build        # todo
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cacha
+      POSTGRES_PASSWORD: cacha
+      POSTGRES_DB: cacha_el_precio
+    ports:
+      - "5432:5432"
+    volumes:
+      - datos_pg:/var/lib/postgresql/data
+    healthcheck:
+      # Sin esto, el scraper arranca antes de que la base acepte
+      # conexiones y falla en el primer barrido.
+      test: ["CMD-SHELL", "pg_isready -U cacha -d cacha_el_precio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://cacha:cacha@db:5432/cacha_el_precio
+      APP_ENV: development
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_S3_PUBLIC_BASE_URL: ${AWS_S3_PUBLIC_BASE_URL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+    ports:
+      - "8000:8000"
+
+volumes:
+  datos_pg:

@@ -2,8 +2,8 @@
 #  Cacha el Precio · entorno local
 # ─────────────────────────────────────────────────────────────────────────────
 #
-#  Levanta la infraestructura local y los microservicios incorporados al
-#  entorno de contenedores.
+#  Levanta las dos piezas de infraestructura que los microservicios necesitan
+#  para correr en tu computador: la base de datos y la cola de mensajes.
 #
 #      docker compose up -d        levantar
 #      docker compose ps           ver si están sanos
@@ -22,7 +22,25 @@
 name: cachaelprecio
 
 services:
-
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Caddy - 
+  # ───────────────────────────────────────────────────────────────────────────
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      # Puerto interno, sin dominio ni TLS: es por donde API Gateway le habla
+      # directo a product-service (ver caddy/Caddyfile, bloque ":8080").
+      - "8080:8080"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - cep
   # ───────────────────────────────────────────────────────────────────────────
   #  PostgreSQL — la base de datos
   # ───────────────────────────────────────────────────────────────────────────
@@ -97,27 +115,70 @@ services:
     networks: [cep]
 
   # ───────────────────────────────────────────────────────────────────────────
-  #  Product service — catálogos y productos
+  #  Product Service — catálogo de productos (Micronaut/Java)
   # ───────────────────────────────────────────────────────────────────────────
+  #  Es el servicio al que Caddy le enruta el tráfico (api.cacha-el-precio.com).
+  #  Usa SQLite (no PostgreSQL) y expone HTTP en 8081 y gRPC en 50051:
+  #      GET /productos        listar productos
+  #      GET /catalogos        listar catálogos
+  #      GET /health           verificar estado
+  #      /swagger-ui           documentación
   product-service:
     build:
       context: .
       dockerfile: product-service/Dockerfile
-    image: cachaelprecio/product-service:${PRODUCT_VERSION:-0.1.0}
     container_name: cep-product-service
     restart: unless-stopped
 
     environment:
-      PRODUCT_PORT: 8081
-      PRODUCT_GRPC_PORT: 50051
-      PRODUCT_DB_URL: "${PRODUCT_DOCKER_DB_URL:-jdbc:sqlite:/app/data/product.db?foreign_keys=on&busy_timeout=5000&journal_mode=WAL}"
+      PRODUCT_PORT: ${PRODUCT_PORT:-8081}
+      PRODUCT_GRPC_PORT: ${PRODUCT_GRPC_PORT:-50051}
+      PRODUCT_DB_URL: ${PRODUCT_DOCKER_DB_URL:-jdbc:sqlite:/app/data/product.db?foreign_keys=on&busy_timeout=5000&journal_mode=WAL}
+
+    volumes:
+      # La base SQLite vive acá; sobrevive a `down`, muere con `down -v`.
+      - product-datos:/app/data
 
     ports:
       - "127.0.0.1:${PRODUCT_PORT:-8081}:8081"
       - "127.0.0.1:${PRODUCT_GRPC_PORT:-50051}:50051"
 
-    volumes:
-      - product-service-datos:/app/data
+    networks: [cep]
+
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Scraper API — el servicio de scraping (Python/FastAPI)
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Corre sobre Python 3.14 + FastAPI. Scrappea tiendas chilenas,
+  #  procesa imágenes a WebP y las sube a S3.
+  #      POST /scrape/{tienda}   disparar un barrido
+  #      GET  /productos         listar productos
+  #      GET  /health            verificar estado
+  scraper-api:
+    build:
+      context: ./scraper-service
+      dockerfile: Dockerfile
+    container_name: cep-scraper-api
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-cachaelprecio}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-cachaelprecio}?options=-csearch_path%3Dscraper
+      APP_ENV: ${APP_ENV:-production}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_S3_PUBLIC_BASE_URL: ${AWS_S3_PUBLIC_BASE_URL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      # El scraper publica los productos en el Product Service por su API,
+      # no tocando su base. Esta URL es el host interno del compose.
+      PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL:-http://product-service:8081}
+
+    ports:
+      - "127.0.0.1:${SCRAPER_API_PORT:-8000}:8000"
 
     networks: [cep]
 
@@ -127,7 +188,9 @@ services:
 volumes:
   postgres-datos:
   rabbitmq-datos:
-  product-service-datos:
+  product-datos:
+  caddy_data:
+  caddy_config:
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Red interna: los contenedores se ven entre ellos por su nombre de servicio.
