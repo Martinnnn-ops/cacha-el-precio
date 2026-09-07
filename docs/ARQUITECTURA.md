@@ -47,7 +47,7 @@
                                     └───┬─────────┬───┘
                                         ▼         ▼
                           ┌──────────────────┐  ┌───────────────────┐
-                          │ catalog-service  │  │  price-service    │
+                          │ product-service  │  │  price-service    │
                           │ modelos, matching│  │ ofertas, historial│
                           └────────▲─────────┘  └────────▲──────────┘
                                    │                     │
@@ -102,7 +102,7 @@ flowchart TB
     SCR[scraper-service Lambda] -->|client credentials| AG
     AG --> BFF[api-gateway BFF Micronaut]
     BFF -->|publica ofertas crudas| MQ[(RabbitMQ)]
-    BFF --> CAT[catalog-service]
+    BFF --> CAT[product-service]
     BFF --> PRI[price-service]
     MQ --> CAT
     CAT -->|precio.cambiado| MQ
@@ -122,7 +122,7 @@ Resumen. La justificación completa, con alternativas descartadas, está en
 |---|---|
 | `scraper-service` | Corre por horario, no por request; falla distinto (una tienda caída no debe botar el resto); es el único que necesita salir a internet |
 | **RabbitMQ** | Desacopla ingesta de procesamiento: si el normalizador está caído, las ofertas esperan en la cola en vez de perderse. Con **DLQ** y reintentos con backoff |
-| `catalog-service` | Dueño de los modelos canónicos y del matching (la lógica pesada del dominio) |
+| `product-service` | Dueño de los productos, catálogos canónicos y del matching (la lógica pesada del dominio) |
 | `price-service` | Carga distinta: escritura masiva 3 veces al día, lectura intensa. Se escala y cachea aparte |
 | `api-gateway` (BFF) | Única puerta al frontend; junta catálogo + precios en una respuesta y valida el token |
 | **API Gateway de AWS** | El API Manager: valida el token en el borde, aplica CORS y cuotas, versiona la API |
@@ -138,7 +138,7 @@ falla de una manera distinta**. Ese es el criterio, y se aplica igual a los cuat
 | Componente | Cambia cuando… | Falla cuando… | Se escala por… |
 |---|---|---|---|
 | `scraper-service` | una tienda cambia su HTML o su API | la tienda está caída o nos bloquea | cantidad de tiendas |
-| `catalog-service` | cambia la lógica de matching | llega un producto raro que no matchea | cantidad de productos |
+| `product-service` | cambia la lógica de matching | llega un producto raro que no matchea | cantidad de productos |
 | `price-service` | cambia el cálculo del descuento | la BD se satura de escrituras | volumen de historial |
 | `api-gateway` (BFF) | cambia lo que el frontend necesita | hay muchos usuarios simultáneos | tráfico de usuarios |
 
@@ -171,7 +171,7 @@ Es la que puede quedar bloqueada, la que puede colgarse esperando un timeout, la
 cuando Hites cambia su HTML. **Aislarla significa que una tienda caída no bota la web.**
 
 **c) Las cargas son genuinamente distintas.** `price-service` recibe escrituras masivas en
-ráfaga y lecturas constantes; `catalog-service` hace trabajo de CPU (normalización y comparación
+ráfaga y lecturas constantes; `product-service` hace trabajo de CPU (normalización y comparación
 de texto). Separados se escalan y cachean por separado.
 
 **d) Es requisito del ramo.** También hay que decirlo. Pero las tres razones de arriba se
@@ -194,7 +194,7 @@ ahí**, en vez de seguir dividiendo.
 | Servicio | Responsabilidad única | Por qué no está fusionado con otro |
 |---|---|---|
 | `scraper-service` | Obtener datos crudos de las tiendas | Perfil de ejecución y modo de falla completamente distintos |
-| `catalog-service` | Dueño de los modelos canónicos y del matching | Es la lógica pesada del dominio; el resto no debe depender de ella para responder |
+| `product-service` | Dueño de productos, catálogos canónicos y matching | Es la lógica pesada del dominio; el resto no debe depender de ella para responder |
 | `price-service` | Ofertas, historial y cálculo del descuento real | Carga de escritura masiva vs. lectura intensa |
 | `api-gateway` (BFF) | Componer respuestas para el frontend y validar el token | Es la capa de presentación; cambia con el frontend, no con el dominio |
 
@@ -288,9 +288,9 @@ Es un salto de red extra a cambio de tres cosas:
 
 ## 6. ¿Por qué mensajería y no llamadas directas?
 
-El scraper podría llamar a `catalog-service` por HTTP y listo. No lo hacemos por tres razones:
+El scraper podría llamar a `product-service` por HTTP y listo. No lo hacemos por tres razones:
 
-**a) Los datos no se pierden.** Si `catalog-service` está caído, reiniciándose o desplegándose,
+**a) Los datos no se pierden.** Si `product-service` está caído, reiniciándose o desplegándose,
 una llamada HTTP falla y **la captura se perdió**. Con la cola, los mensajes esperan. Como el
 scraper corre 3 veces al día, una captura perdida es un hueco de 8 horas en el historial que no
 se puede recuperar.
@@ -317,7 +317,7 @@ servicio nuevo — y ahí se acabó el desacople.
 
 
 - **Exchange `ingesta`** (*direct*) → cola `ofertas.crudas`: el BFF publica cada oferta recibida,
-  `catalog-service` la consume, normaliza y matchea.
+  `product-service` la consume, normaliza y matchea.
 - **Exchange `dominio`** (*topic*) → evento `precio.cambiado`: cuando un precio se mueve,
   `price-service` lo registra en el historial. Más adelante, `alert-service` se suscribe al mismo
   evento **sin tocar el código existente** — ese es el argumento de extensibilidad para la defensa.
@@ -536,7 +536,7 @@ decoración: es lo que permite decir que ningún servicio está expuesto directo
    ║  │ Subred PRIVADA (AZ-a / AZ-b)│ ║
    ║  │   · EC2 con Docker Compose: │ ║
    ║  │       api-gateway (BFF)     │ ║
-   ║  │       catalog-service       │ ║
+   ║  │       product-service       │ ║
    ║  │       price-service         │ ║
    ║  │       RabbitMQ              │ ║
    ║  │   · RDS Postgres            │ ║

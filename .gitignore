@@ -50,6 +50,9 @@ datos/
 capturas/
 *.csv
 *.parquet
+*.db
+*.db-shm
+*.db-wal
 !docs/**/*.csv
 
 # ─── Herramientas y sistema ────────────────────────────────────────

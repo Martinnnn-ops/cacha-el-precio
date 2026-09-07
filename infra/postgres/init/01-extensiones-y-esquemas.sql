@@ -23,5 +23,5 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE SCHEMA IF NOT EXISTS catalog;
 CREATE SCHEMA IF NOT EXISTS price;
 
-COMMENT ON SCHEMA catalog IS 'Modelos, variantes, tiendas y matching — catalog-service';
+COMMENT ON SCHEMA catalog IS 'Modelos, variantes, tiendas y matching — product-service';
 COMMENT ON SCHEMA price   IS 'Ofertas e historial de precios — price-service';

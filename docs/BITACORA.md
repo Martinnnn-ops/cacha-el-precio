@@ -327,7 +327,10 @@ dieran **401 contra nuestra propia validación**. El script ahora emite
 Reconfirmado de paso, con un token medido hoy: `aud` no viene, `token_use` es `access` y
 `cognito:groups` trae `["admin"]` — o sea que el 403 de la demo se puede construir de verdad.
 
-**Orion —**
+**Orion —** Reemplazó `catalog-service` por `product-service` porque ahora el módulo será dueño
+de catálogos y productos. Dejó una estructura simple (`model`, `repository`, `service` y
+`controller`), SQLite con Flyway y tres versiones reales de los listados HTTP. No se agregaron
+DTO todavía; el costo de ese acoplamiento quedó anotado en ADR-016 para no olvidarnos después.
 
 **Panditax —**
 
