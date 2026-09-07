@@ -102,8 +102,9 @@ class ProductoControllerTest {
         assertEquals(0, creado.getVisitas());
 
         for (int i = 1; i <= 3; i++) {
-            HttpRequest<?> visita = HttpRequest.POST("/productos/" + creado.getId() + "/visitas")
-                    .header("X-API-VERSION", "0.1.0");
+            HttpRequest<?> visita = HttpRequest.POST(
+                    "/productos/" + creado.getId() + "/visitas",
+                    null).header("X-API-VERSION", "0.1.0");
             Map<?, ?> respuesta = cliente.toBlocking().retrieve(visita, Map.class);
             assertEquals(i, ((Number) respuesta.get("visitas")).intValue());
         }
