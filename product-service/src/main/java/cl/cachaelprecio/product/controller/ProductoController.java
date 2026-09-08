@@ -4,7 +4,9 @@ import cl.cachaelprecio.product.model.Producto;
 import cl.cachaelprecio.product.service.ProductoService;
 import io.micronaut.core.version.annotation.Version;
 import io.micronaut.http.HttpResponse;
+import io.micronaut.http.MediaType;
 import io.micronaut.http.annotation.Body;
+import io.micronaut.http.annotation.Consumes;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Delete;
 import io.micronaut.http.annotation.Get;
@@ -87,6 +89,7 @@ public class ProductoController {
 
     @Post("/{id}/visitas")
     @Version("0.1.0")
+    @Consumes(MediaType.ALL)
     @Operation(summary = "Registra la vista de un producto",
             description = "Suma una visita a la ficha y devuelve el total acumulado. Lo llama el frontend al abrir el detalle.")
     public HttpResponse<Map<String, Integer>> registrarVisita(Long id) {

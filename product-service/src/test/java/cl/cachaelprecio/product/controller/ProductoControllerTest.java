@@ -129,6 +129,28 @@ class ProductoControllerTest {
         assertEquals(new BigDecimal("17990"), trasActualizar.getPrecio());
     }
 
+    @Test
+    void aceptaVisitasConCualquierContentType() {
+        Catalogo catalogo = catalogoRepository.save(new Catalogo(null, "Poleras", "Prendas"));
+        Producto nuevo = new Producto();
+        nuevo.setNombre("Polera CK");
+        nuevo.setPrecio(new BigDecimal("19990"));
+        nuevo.setCatalogoId(catalogo.getId());
+        nuevo.setActivo(true);
+
+        HttpRequest<?> alta = HttpRequest.POST("/productos", nuevo).header("X-API-VERSION", "0.1.0");
+        Producto creado = cliente.toBlocking().retrieve(alta, Producto.class);
+
+        HttpRequest<?> visita = HttpRequest.POST(
+                "/productos/" + creado.getId() + "/visitas",
+                null)
+                .contentType("text/plain")
+                .header("X-API-VERSION", "0.1.0");
+
+        Map<?, ?> respuesta = cliente.toBlocking().retrieve(visita, Map.class);
+        assertEquals(1, ((Number) respuesta.get("visitas")).intValue());
+    }
+
     private List<Producto> listarConVersion(String version, String ruta) {
         HttpRequest<?> solicitud = HttpRequest.GET(ruta).header("X-API-VERSION", version);
         return cliente.toBlocking().retrieve(solicitud, Argument.listOf(Producto.class));
