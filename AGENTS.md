@@ -4,27 +4,57 @@ Guía para agentes de IA que trabajen en este repo. **Lee solo lo que la tarea n
 
 ## Qué es esto
 
-"Cacha el Precio": comparador de precios de zapatillas en Chile. Proyecto del ramo
+"Cacha el Precio": comparador de precios de **ropa y calzado** en Chile. Proyecto del ramo
 **DSY1107 · Desarrollo Cloud Native I**, equipo de 3, primera entrega **13-sep-2026**.
-Stack: **Micronaut (Java) + AWS + Cognito + RabbitMQ + React**. 4 microservicios:
-`scraper`, `catalog`, `price`, `gateway` (BFF).
+**Ya está en producción**: `www.cacha-el-precio.com` y `api.cacha-el-precio.com`.
+
+Stack: **Micronaut 5 / Java 25** para `gateway` (BFF), `product-service` y `price-service` ·
+**Python 3 / FastAPI** para `scraper-service`, que está fuera del monorepo Maven ·
+**Vue 3** en el frontend, que hoy vive en [otro repositorio](https://github.com/Panditax727/Cacha-el-Precio-Frontend) ·
+**AWS Cognito** como IDaaS · **EC2 con Docker Compose**.
+
+> 🔴 **Antes de tocar nada, lee `docs/INTEGRACION.md`.** El sistema desplegado y lo que dicen los
+> documentos **no coinciden en todo**, y ese archivo es el que lleva la cuenta: qué decisiones se
+> tomaron construyendo, cuáles contradicen un ADR, y qué está roto ahora mismo. Si escribes algo
+> dando por buena una parte de `ARQUITECTURA.md` sin cruzarla con ese documento, es probable que
+> estés programando contra un sistema que ya no existe.
 
 ## Índice de documentos — abre solo el que corresponda
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | ~300 líneas |
-| Por qué hay microservicios / BFF / cola, por qué Micronaut, cómo escala, ADRs | `docs/ARQUITECTURA.md` | ~570 líneas |
-| Quién hace qué, roadmap semanal, git flow, checklist | `docs/TAREAS.md` | ~410 líneas |
-| **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 215 líneas |
-| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | ~130 líneas |
-| Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | ~210 líneas |
-| Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | ~145 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | corto |
+| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 312 líneas |
+| La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 407 líneas |
+| Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
+| Por qué hay microservicios / BFF / cola, por qué Micronaut, cómo escala, ADRs | `docs/ARQUITECTURA.md` | 677 líneas |
+| Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 399 líneas |
+| **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 241 líneas |
+| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 194 líneas |
+| Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 225 líneas |
+| Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 409 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
-| Presentar el proyecto a alguien de afuera | `README.md` | ~95 líneas |
+| Presentar el proyecto a alguien de afuera | `README.md` | 162 líneas |
+
+Y el README de cada módulo, que es el más corto y el que más rinde cuando la tarea es sobre ese
+módulo en concreto:
+
+| Si la tarea es sobre… | Lee | Aprox. |
+|---|---|---|
+| Qué valida el BFF en el código, y cómo se prueba | `gateway/README.md` | 83 líneas |
+| Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 108 líneas |
+| El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 168 líneas |
+| El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 120 líneas |
+| Las migraciones y por qué el modelo cambió contra datos reales | `infra/db/README.md` | 80 líneas |
+| El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |
+| El dueño del historial y del descuento real (hoy todavía un esqueleto) | `price-service/README.md` | 22 líneas |
 
 **No cargues todos los documentos.** Casi ninguna tarea necesita más de dos.
+
+> 🧹 **Fuera del índice a propósito:** `scraper-service/CONVERS.md` es un diagrama ASCII del
+> flujo del scraper de **Converse** —la marca—, no de una conversación. El nombre confunde y el
+> contenido cabe dentro de `README.arquitectura.md`. Pendiente de absorber o renombrar; es de
+> Panditax, así que se avisa antes de moverlo.
 Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pidan explícitamente.
 
 ---
@@ -36,10 +66,17 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
 - **Español de Chile, tratando de "tú".** Sin voseo. Aplica a código, comentarios, commits y docs.
 - **Commits en español**, sin firma ni `Co-Authored-By`.
 - **Confirmar antes de commitear.** Nunca commitear sin que lo pidan.
+- La regla de arriba se aplica **hacia afuera con más fuerza**: commitear en local es
+  reversible y solo lo ve quien trabaja. Abrir un PR, comentar o cerrar algo lo ven los tres.
 
 ### Git
 
 - `feature/*` → PR a `development` → PR a `main`. Nunca escribir directo a `main`.
+- **No abras un pull request sin que te lo pidan.** Deja el trabajo commiteado en su rama y
+  avisa que está listo; abrir el PR es decisión de quien trabaja, no del agente. Un PR abierto
+  le llega al equipo entero como una notificación y le pide revisión a alguien: no es un paso
+  técnico más, es empezarle una conversación a otras personas.
+- Lo mismo vale para **cerrar, mergear o rebasar** un PR, y para **tocar la rama de otro**.
 - Nadie mergea su propio PR.
 
 ### Secretos y configuración
@@ -55,11 +92,18 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
 ### Código
 
 - Todo cambio de esquema va por una **migración de Flyway**. Nunca un `ALTER` a mano.
-- **Agregar una tienda = implementar `AdaptadorTienda`.** No se tocan `catalog`, `price`,
-  el BFF ni el frontend.
+- **Agregar una tienda = un paquete nuevo en `scraper-service/src/scraper/scrapers/`**, con su
+  `scraper.py` y su `parser.py`, más un fixture HTML real en `tests/fixtures/`. No se tocan
+  `product-service`, `price-service`, el BFF ni el frontend.
+  (La regla decía "implementar `AdaptadorTienda`", de cuando el scraper era Java. Cambió el
+  lenguaje, no la idea: **una tienda nueva no debe obligar a tocar el resto**.)
 - El scraper respeta **1 request cada 1–2 segundos**, User-Agent identificable y `robots.txt`.
 - Los tests que necesitan Postgres o RabbitMQ usan **Testcontainers o `docker-compose`**,
-  nunca RDS ni una instancia compartida.
+  nunca una instancia compartida.
+- **Los tests no deben depender de AWS.** El del BFF no verifica firmas de verdad justamente por
+  eso: un token que no se presenta se rechaza antes de ir a buscar el JWKS, así que corren con el
+  laboratorio apagado. El que sí usa un token real de Cognito va aparte y se salta si no hay
+  credenciales.
 - Dependencias nuevas: preguntar antes de agregarlas.
 
 ### Alcance
@@ -79,7 +123,17 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
   el *qué* en `PLAN.md`, el *por qué* en `ARQUITECTURA.md`, el *quién y cuándo* en `TAREAS.md`,
   el *qué se evalúa* en `EVALUACIONES.md`. Si algo calza en dos, va en uno y el otro lo enlaza.
 - **Una decisión técnica nueva es un ADR**, no un párrafo suelto. Formato en
-  `docs/ARQUITECTURA.md` §12: contexto → alternativas → decisión → **consecuencias, incluidas las malas**.
+  `docs/ARQUITECTURA.md` §13: contexto → alternativas → decisión → **consecuencias, incluidas las malas**.
 - Al modificar un documento, **actualiza su índice** y la fecha de "última revisión" del encabezado.
 - Si un documento pasa de ~600 líneas, pártelo y actualiza la tabla de arriba.
-- `README.md` es la cara pública: se mantiene corto y sin detalle interno del ramo.
+  ⚠️ **`docs/ARQUITECTURA.md` ya va en 677** y toca partirlo: las secciones 1 a 10 son el
+  porqué del diseño y la 11 a 13 son la nube y los ADR. Pendiente, no urgente.
+- **Los conteos de la tabla se sacan del archivo, no de memoria.** Estaban todos desfasados
+  hasta el 07-09 y faltaba `docs/REQUISITOS.md` entero. Un índice que miente hace perder más
+  tiempo que no tener índice.
+- `README.md` es la cara pública: se mantiene corto y sin detalle interno del ramo. Su tabla de
+  **Estado** dice lo que corre de verdad, no lo planificado — si cambia el sistema, cambia esa
+  tabla en el mismo PR.
+- **Cuando el código contradiga un documento, no lo arregles en silencio ni lo dejes pasar:**
+  anótalo en `docs/INTEGRACION.md` con dueño, o escribe el ADR que falta. Un documento que miente
+  es peor que uno que falta, porque en la defensa oral la contradicción la encuentra cualquiera.

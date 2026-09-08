@@ -206,8 +206,13 @@ presentación piden mostrarlo andando en la nube, no en `localhost`.
 ### La bolsa de la semana
 
 **Frontend — es el 60% del EP1**
-- [ ] React + Vite con `react-oidc-context`: **registro**, login y logout
-  - ↳ *Ojo con el **registro**: no basta el login, hay que poder crear una cuenta nueva*
+- [x] **Vue 3 + Vite con PKCE a mano**: login y logout ✅ — desplegado en `www.cacha-el-precio.com`
+  - ↳ *Se hizo en Vue, no en React. No cambia la nota: la pauta pide una librería certificada
+    OIDC, no una en concreto*
+  - ↳ 🔴 *Vive en [otro repositorio](https://github.com/Panditax727/Cacha-el-Precio-Frontend) y
+    **el código desplegado no está subido ahí**: el repo entra con Google directo y el sitio
+    entra por Cognito. Ver [`INTEGRACION.md`](INTEGRACION.md)*
+- [ ] **El registro**, que sigue faltando: no basta el login, hay que poder crear una cuenta nueva
 - [ ] **Guard de ruta**: sin sesión, te manda al login
 - [ ] **Interceptor**: cada llamada a la API lleva el token automáticamente
 - [ ] Mostrar en pantalla los **roles y scopes leídos del token** — *es un punto explícito de la rúbrica*

@@ -4,7 +4,7 @@
 > [rubricas/](rubricas/).
 > El checklist operativo de tareas está en [TAREAS.md](TAREAS.md).
 >
-> Documento vivo · Última revisión: 27-08-2026
+> Documento vivo · Última revisión: 07-09-2026
 
 ---
 
@@ -115,8 +115,13 @@ Para pasar de una columna a la otra se multiplica por 0,6.
 
 La pauta está redactada sobre un caso de ejemplo (Pedidos360, Angular, Azure AD, Spring Boot),
 pero la docente aclaró que **la idea, el lenguaje y la nube son libres mientras se justifiquen**.
-Nosotros vamos con **Micronaut + AWS + Cognito**, y esa justificación está escrita en
-[ARQUITECTURA.md](ARQUITECTURA.md).
+Nosotros vamos con **Micronaut + AWS + Cognito** en el backend y **Vue 3** en el frontend, y esa
+justificación está escrita en [ARQUITECTURA.md](ARQUITECTURA.md).
+
+> 📌 **Vue, no React.** Varios documentos decían React porque así estaba planificado; el frontend
+> se construyó en Vue 3. No cambia nada de la nota —la pauta pide una librería certificada OIDC,
+> no una en concreto— pero conviene decirlo antes de que alguien note la diferencia entre el
+> informe y el código.
 
 Lo único que conviene tener presente es que la pauta usa vocabulario de Azure ("tenant",
 "user flow", "MSAL"). No es un problema — son conceptos estándar de OIDC con otro nombre
@@ -145,8 +150,8 @@ y no se vuelve a tocar:
 |---|---|---|
 | "crea un **tenant**" | **User Pool** — la unidad de aislamiento de identidad de Cognito | El User Pool con usuarios de prueba, grupos y política de contraseñas |
 | "crea el **flujo de usuario**" | **Hosted UI** con sign-up habilitado + verificación por email | Registro de un usuario nuevo en vivo, y después login |
-| "la librería **MSAL**" | **`oidc-client-ts`** vía `react-oidc-context` | Es la librería certificada OIDC equivalente; hace PKCE, `state` y `nonce` |
-| "**guards** y **MsalInterceptor**" | Route guard de React Router + interceptor de `fetch`/Axios | Ruta protegida que redirige si no hay sesión; el header `Authorization` en DevTools |
+| "la librería **MSAL**" | **PKCE implementado a mano** sobre `fetch` (Vue 3) | El `code_verifier` con `crypto.getRandomValues`, el `code_challenge` con SHA-256, y `state` contra CSRF. Se puede mostrar el código, que es más convincente que una librería |
+| "**guards** y **MsalInterceptor**" | Guard de Vue Router (`beforeEach` + `meta.requiereSesion`) + interceptor de Axios | Ruta protegida que redirige si no hay sesión; el header `Authorization` en DevTools |
 | "**roles** y políticas" | **Grupos de Cognito** → claim `cognito:groups` | Usuario en grupo `admin` vs `usuario`, y el 403 que resulta |
 | "**scopes**" | **Resource Server** con custom scopes | `precios:leer`, `seguimiento:escribir`, `ingesta:escribir` |
 | "valida **audience**" | Ver la nota de abajo | La configuración del authorizer + el código de validación en el BFF |

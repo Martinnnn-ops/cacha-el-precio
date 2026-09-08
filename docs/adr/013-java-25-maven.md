@@ -2,13 +2,18 @@
 
 **Fecha:** 19-08-2026
 
-**Estado:** aceptada
+**Estado:** aceptada · **acotada por el [ADR-018](018-scraper-en-python.md) el 07-09-2026**
 
 ## Contexto
 
 El backend necesita una versión de Java y una herramienta de construcción únicas para que los
-cuatro microservicios compilen igual en los computadores del equipo y en CI. Micronaut 5 tiene
-Java 25 como versión base.
+microservicios compilen igual en los computadores del equipo y en CI. Micronaut 5 tiene Java 25
+como versión base.
+
+> ⚠️ **Acotación del 07-09-2026.** Cuando se escribió esto, los cuatro servicios eran Java. Hoy
+> `scraper-service` es Python ([ADR-018](018-scraper-en-python.md)), así que este ADR manda sobre
+> los **servicios Micronaut** —`gateway`, `product-service` y `price-service`— y no sobre todo el
+> backend. La decisión no se anula: sigue siendo la base de los tres.
 
 ## Alternativas consideradas
 
@@ -30,4 +35,5 @@ Los microservicios usan Java 25, Micronaut 5 y Maven. El repositorio incluye Mav
 - `./mvnw` fija la versión de Maven y reduce diferencias entre entornos.
 - Usar una versión reciente de Java puede revelar incompatibilidades en herramientas que todavía
   no la soporten; deben verificarse antes de incorporarlas.
-- Los futuros microservicios deben agregarse como módulos del `pom.xml` raíz.
+- Los futuros microservicios **en Java** deben agregarse como módulos del `pom.xml` raíz. Uno
+  en otro lenguaje se levanta desde el `docker-compose.yml`, como el scraper.
