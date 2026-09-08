@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 import BaseButton from '@/shared/components/BaseButton.vue'
 
-// Las tiendas llegan por props: con backend salen de /catalogos y ya no son
+// Las tiendas llegan por props: con backend salen del campo `store` y ya no son
 // una constante del código.
 const props = defineProps({
   tiendas: { type: Array, required: true },

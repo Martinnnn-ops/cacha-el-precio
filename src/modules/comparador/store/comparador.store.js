@@ -36,8 +36,8 @@ function guardarPreferencia(ids) {
 export const useComparadorStore = defineStore('comparador', () => {
   // ——— estado ———
   const productos = ref([])
-  // La lista de tiendas ya no es una constante: con backend viene de
-  // /catalogos, y con datos de ejemplo son las cinco de siempre.
+  // La lista de tiendas ya no es una constante: con backend se deriva del
+  // campo `store`, y con datos de ejemplo son las cinco de siempre.
   const tiendas = ref(TIENDAS)
   const producto = ref(null)
   const busqueda = ref('')
@@ -509,7 +509,7 @@ export const useComparadorStore = defineStore('comparador', () => {
       tiendasActivas.value =
         validas.length > 0 ? validas : lista.map((t) => t.id)
     } catch {
-      // Si /catalogos falla se sigue con la lista por defecto: peor sería
+      // Si la consulta de productos falla se sigue con la lista por defecto:
       // dejar la cabecera sin ninguna tienda que ofrecer.
     }
   }

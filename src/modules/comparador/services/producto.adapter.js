@@ -1,14 +1,13 @@
 // Traducción entre el Product Service y el modelo del comparador.
 //
-//   API   Producto { id, nombre, descripcion, precio, catalogoId, activo }
-//         Catalogo { id, nombre, descripcion }          → una CATEGORÍA
+//   API   Product { id, externalId, store, name, brand, category, price,
+//                   sizes, description, url, image, active }
 //   App   Producto { id, nombre, categoria, precios[], historial[] }
 //
 // ┌─ LÍMITE DEL BACKEND ACTUAL ───────────────────────────────────────────┐
-// │ La API guarda UN precio por producto y no tiene noción de tienda: no  │
-// │ hay dos precios del mismo producto que comparar entre sí. Mientras    │
-// │ sea así, la aplicación puede LISTAR y BUSCAR productos por categoría, │
-// │ pero no puede comparar precios, que es su razón de ser.               │
+// │ Cada fila representa una oferta publicada por una tienda. El backend  │
+// │ todavía no entrega precio de lista ni historial, por lo que esos      │
+// │ campos quedan vacíos y la interfaz oculta lo que no puede calcular.   │
 // │                                                                        │
 // │ Lo que falta en el backend es una tabla de ofertas:                   │
 // │   Oferta { productoId, tiendaId, precio, precioLista, stock, fecha }  │
@@ -16,8 +15,7 @@
 // │ escrito: el cálculo del más barato, el ahorro y el historial.         │
 // └───────────────────────────────────────────────────────────────────────┘
 
-// Fuente única mientras no haya tiendas. Se nombra explícitamente para que en
-// pantalla nunca aparezca un "más barato en …" que no significa nada.
+// Fuente de respaldo para productos antiguos que no identifican la tienda.
 export const FUENTE_UNICA = {
   id: 'catalogo',
   nombre: 'Precio publicado',
@@ -38,59 +36,109 @@ function diasDesde(fecha) {
   return dias >= 0 ? dias : null
 }
 
-export function adaptarCategorias(catalogos = []) {
-  return catalogos
-    .filter((c) => c?.nombre)
-    .map((c) => ({ id: String(c.id), nombre: c.nombre.trim() }))
+const COLORES_CONOCIDOS = {
+  ripley: '#6b2d8c',
+  paris: '#0b5cad',
+  zara: '#2b2b2b',
+  hym: '#c0392b',
+  mango: '#8a6a2f',
+}
+const COLORES_TIENDA = ['#0b5cad', '#a8325e', '#1f7a4d', '#8a5a14', '#5d4bb7']
+
+function texto(valor) {
+  return typeof valor === 'string' ? valor.trim() : ''
 }
 
-export function adaptarProductos(filas = [], catalogos = []) {
-  const nombrePorId = new Map(
-    adaptarCategorias(catalogos).map((c) => [c.id, c.nombre]),
-  )
+export function idTienda(nombre) {
+  const limpio = texto(nombre).toLowerCase()
 
+  if (limpio === 'h&m' || limpio === 'h & m') return 'hym'
+
+  return limpio
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function tallasDisponibles(sizes) {
+  if (!sizes || typeof sizes !== 'object') return []
+
+  return ['XS', 'S', 'M', 'L', 'XL', 'XXL'].filter(
+    (talla) => sizes[talla] === true || sizes[talla.toLowerCase()] === true,
+  )
+}
+
+export function adaptarCategorias(productos = []) {
+  return [...new Set(productos.map((p) => texto(p?.category)).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'es'))
+    .map((nombre) => ({ id: nombre, nombre }))
+}
+
+export function adaptarTiendas(productos = []) {
+  const nombres = new Map()
+  let hayProductoSinTienda = false
+
+  productos.forEach((producto) => {
+    const nombre = texto(producto?.store)
+    const id = idTienda(nombre)
+
+    if (!id) {
+      hayProductoSinTienda = true
+    } else if (!nombres.has(id)) {
+      nombres.set(id, nombre)
+    }
+  })
+
+  if (nombres.size === 0) return [FUENTE_UNICA]
+
+  const tiendas = [...nombres.entries()]
+    .sort(([, a], [, b]) => a.localeCompare(b, 'es'))
+    .map(([id, nombre], indice) => ({
+      id,
+      nombre,
+      color: COLORES_CONOCIDOS[id] ?? COLORES_TIENDA[indice % COLORES_TIENDA.length],
+    }))
+
+  return hayProductoSinTienda ? [FUENTE_UNICA, ...tiendas] : tiendas
+}
+
+export function adaptarProductos(filas = []) {
   return filas
-    .filter((f) => f?.nombre && Number.isFinite(Number(f.precio)))
+    .filter((f) => texto(f?.name) && Number.isFinite(Number(f.price)))
     .map((fila) => ({
       id: String(fila.id),
-      nombre: fila.nombre.trim(),
-      descripcion: fila.descripcion ?? '',
-      // La API puede traer marca e imagen; si no las trae se dejan vacías y
-      // la interfaz las oculta en vez de inventarse una o repetir el nombre.
-      marca: typeof fila.marca === 'string' ? fila.marca.trim() : '',
-      categoria: nombrePorId.get(String(fila.catalogoId)) ?? '',
-      imagen: typeof fila.imagen === 'string' && fila.imagen ? fila.imagen : null,
-      // Rastro de actividad real: cuántas veces se abrió la ficha y cuándo se
-      // sumó al catálogo. Sin API eran números de catálogo.
-      visitas: Number(fila.visitas ?? 0) || 0,
-      agregadoHace: diasDesde(fila.creadoEn),
+      nombre: fila.name.trim(),
+      descripcion: texto(fila.description),
+      marca: texto(fila.brand),
+      categoria: texto(fila.category),
+      imagen: texto(fila.image) || null,
+      visitas: 0,
+      agregadoHace: diasDesde(fila.createdAt),
       // Campos de ficha que la API todavía no expone. Si algún día los trae,
       // los bloques de la vista aparecen solos.
-      codigo: typeof fila.codigo === 'string' ? fila.codigo : '',
-      specs: fila.specs ?? {},
-      pros: Array.isArray(fila.pros) ? fila.pros : [],
-      contras: Array.isArray(fila.contras) ? fila.contras : [],
+      codigo: texto(fila.externalId),
+      specs: {},
+      pros: [],
+      contras: [],
       precios: [
         {
-          tienda: FUENTE_UNICA.id,
-          precio: Number(fila.precio),
+          tienda: idTienda(fila.store) || FUENTE_UNICA.id,
+          precio: Number(fila.price),
           // Sin precio de lista no se puede calcular descuento: la tarjeta
           // simplemente no lo pinta.
           precioLista: null,
-          // `activo` es lo más cercano a "se puede comprar" que hay hoy.
-          stock: fila.activo !== false,
-          // Enlace a la ficha en la tienda. La API todavía no lo expone: sin
-          // él no se pinta el botón de ir a comprar, en vez de mandar a nadie
-          // a una dirección inventada.
-          url: typeof fila.url === 'string' ? fila.url : null,
+          stock: fila.active !== false,
+          url: texto(fila.url) || null,
+          tallas: tallasDisponibles(fila.sizes),
         },
       ],
       historial: [],
     }))
 }
 
-export function adaptarProducto(fila, catalogos = []) {
+export function adaptarProducto(fila) {
   if (!fila) return null
 
-  return adaptarProductos([fila], catalogos)[0] ?? null
+  return adaptarProductos([fila])[0] ?? null
 }

@@ -6,15 +6,13 @@ import { defineConfig, loadEnv } from 'vite'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
-  // Product Service (Micronaut). En desarrollo se habla con él a través del
-  // proxy de Vite y NO directamente: el servicio no manda cabeceras CORS, así
-  // que una petición del navegador a localhost:8081 la bloquea el navegador
-  // antes de salir. Con el proxy todo sale del mismo origen (5173) y Vite
-  // reenvía por detrás, que es servidor a servidor y no pasa por CORS.
+  // Gateway de cacha-el-precio (ASP.NET Core). En desarrollo el navegador
+  // pide /api y Vite reenvía esa misma ruta al gateway local. Mantener el
+  // prefijo es importante: el contrato actual publica /api/products.
   //
   // En producción esto no aplica: o el front y la API van tras el mismo
-  // dominio (mismo origen), o hay que configurar CORS de verdad en Micronaut.
-  const destino = env.PRODUCT_SERVICE_URL ?? 'http://localhost:8081'
+  // dominio (mismo origen), o hay que configurar CORS en el gateway.
+  const destino = env.BACKEND_URL ?? 'http://localhost:8080'
 
   return {
     plugins: [vue()],
@@ -33,7 +31,6 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: destino,
           changeOrigin: true,
-          rewrite: (ruta) => ruta.replace(/^\/api/, ''),
         },
       },
     },

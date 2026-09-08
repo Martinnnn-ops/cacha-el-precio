@@ -1,7 +1,7 @@
 // Las cuatro partes de un outfit y qué categorías del catálogo van en cada una.
 //
 // El mapa es por nombre de categoría porque es lo que devuelve la API
-// (/catalogos). Una categoría que llegue y no esté aquí simplemente no aparece
+// (campo `category`). Una categoría que llegue y no esté aquí simplemente no aparece
 // en ninguna ranura: se sigue pudiendo buscar desde el comparador, pero no
 // entra en el armador hasta que se le asigne un sitio.
 
