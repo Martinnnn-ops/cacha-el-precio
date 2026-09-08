@@ -65,10 +65,17 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
 - **Español de Chile, tratando de "tú".** Sin voseo. Aplica a código, comentarios, commits y docs.
 - **Commits en español**, sin firma ni `Co-Authored-By`.
 - **Confirmar antes de commitear.** Nunca commitear sin que lo pidan.
+- La regla de arriba se aplica **hacia afuera con más fuerza**: commitear en local es
+  reversible y solo lo ve quien trabaja. Abrir un PR, comentar o cerrar algo lo ven los tres.
 
 ### Git
 
 - `feature/*` → PR a `development` → PR a `main`. Nunca escribir directo a `main`.
+- **No abras un pull request sin que te lo pidan.** Deja el trabajo commiteado en su rama y
+  avisa que está listo; abrir el PR es decisión de quien trabaja, no del agente. Un PR abierto
+  le llega al equipo entero como una notificación y le pide revisión a alguien: no es un paso
+  técnico más, es empezarle una conversación a otras personas.
+- Lo mismo vale para **cerrar, mergear o rebasar** un PR, y para **tocar la rama de otro**.
 - Nadie mergea su propio PR.
 
 ### Secretos y configuración

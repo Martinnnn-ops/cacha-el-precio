@@ -231,6 +231,37 @@ Lo que no sirve es la situación de ahora: el documento dice una cosa y el códi
 la defensa esa contradicción la encuentra cualquiera que mire los dos.
 
 **Dueño:** Panditax · **Antes de:** el code freeze (10-09).
+🗓️ **Se conversa en la reunión del 08-09.** Ataca directo el argumento de arquitectura, así que
+no es una decisión que pueda tomar una persona sola.
+
+---
+
+### 🟠 5b · `price-service` está vacío, y eso sí debilita la defensa
+
+Es el otro lado de la misma moneda que el punto 5, y salió al revisar cómo defendemos la
+arquitectura.
+
+`ARQUITECTURA.md` §3 responde a «¿por qué `price` separado de `product`?» con un buen argumento:
+*las cargas son genuinamente distintas — escritura masiva en ráfaga tres veces al día contra
+lectura constante*. El problema es que **ahí no corre nada**: `price-service` arranca, responde
+`/health` y se acaba. El historial de precios lo está guardando el scraper en su propio esquema
+de Postgres.
+
+**Un servicio vacío es más difícil de defender que un servicio en otro lenguaje.** Si en la
+presentación preguntan por qué hay cuatro servicios y uno no hace nada, la separación se lee
+como anticipación de algo que no llegó, no como diseño.
+
+Las salidas, y las dos sirven:
+
+- **Moverle una responsabilidad chica**, aunque sea una: que `price-service` sea el que lee
+  `scraper.price_history` y expone el historial de un producto. Es un endpoint, y de paso es el
+  que alimenta el gráfico de la demo.
+- **Decirlo antes de que lo pregunten**: "`price-service` está definido y desplegado pero su
+  lógica es EP3; hoy el historial lo escribe el scraper". Honesto y se sostiene.
+
+Lo que no sirve es presentar cuatro cajas en el diagrama y que una esté vacía sin mencionarlo.
+
+**Dueño:** ⬜ · 🗓️ **Se conversa en la reunión del 08-09.**
 
 ---
 

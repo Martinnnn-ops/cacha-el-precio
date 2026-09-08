@@ -655,7 +655,7 @@ Lo bueno y lo malo que aceptamos. **Especialmente lo malo.**
 | 015 | Red privada con VPC Link, y el NAT y el ALB apagados cuando no se usan | [`ADR-015`](adr/015-red-privada-con-vpc-link.md) ⚠️ |
 | 016 | `product-service` reemplaza a `catalog-service`, y se parte sin DTO | [`ADR-016`](adr/016-product-service-y-modelos-sin-dto.md) |
 | 017 | Versionado de rutas HTTP por header `X-API-VERSION` | ⬜ **por escribir** |
-| 018 | El scraper sale de Java y pasa a Python | ⬜ **por escribir** |
+| 018 | El scraper sale de Java y pasa a Python | [`ADR-018`](adr/018-scraper-en-python.md) |
 | 019 | Quién es el API Manager, y qué hace Caddy | ⬜ **por escribir** |
 
 ⚠️ **Tres de los ADR ya escritos quedaron tocados por lo que se construyó después**, y hay que
@@ -664,7 +664,7 @@ marcarlos antes de citarlos en el informe:
 | ADR | Qué dice | Qué pasó |
 |---|---|---|
 | **010** · una RDS con esquema por servicio | Postgres para todos | `product-service` usa **SQLite**; la RDS no existe |
-| **013** · Java 25 y Maven como base del backend | todo el backend en Java | El scraper es **Python**; el ADR queda acotado a los servicios Micronaut |
+| **013** · Java 25 y Maven como base del backend | todo el backend en Java | El scraper es **Python**. ✅ Ya acotado, ver [`ADR-018`](adr/018-scraper-en-python.md) |
 | **015** · backend en subred privada con VPC Link | nada expuesto a internet | La EC2 tiene **IP pública directa** y no hay VPC Link |
 
 El detalle de cada una está en [`INTEGRACION.md` §1](INTEGRACION.md).
