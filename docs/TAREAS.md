@@ -77,7 +77,7 @@ por bueno que esté el resto.
 | | Innegociable | Estado |
 |---|---|---|
 | 1 | **IDaaS** (Cognito) | 🟡 **Existe, pero hay DOS user pools** que no se hablan — ver [`INTEGRACION.md` §0.2](INTEGRACION.md) |
-| 2 | **API Manager** (API Gateway) | 🔴 **No existe.** Caddy quedó de API Manager de facto, y la decisión "API Gateway, no Caddy" sigue sin cerrarse |
+| 2 | **API Manager** (API Gateway) | 🟢 **Creado y probado el 07-09** con `tools/crear-api-gateway.sh`: JWT Authorizer, 200/401/403 medidos, CORS explícito y stages. [ADR-019](adr/019-api-gateway-como-api-manager.md) |
 | 3 | **Sistema desplegado en internet** | 🟢 **Sí** — `www.cacha-el-precio.com` y `api.cacha-el-precio.com` responden |
 | 4 | **Informe ejecutivo de 5 páginas** justificando el IDaaS y el API Manager | 🔴 Sin empezar. Sale de los ADR, y hay 6 de 19 escritos |
 

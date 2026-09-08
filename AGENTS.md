@@ -28,6 +28,7 @@ Stack: **Micronaut 5 / Java 25** para `gateway` (BFF), `product-service` y `pric
 | Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
 | Por qué hay microservicios / BFF / cola, por qué Micronaut, cómo escala, ADRs | `docs/ARQUITECTURA.md` | 677 líneas |
 | Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 399 líneas |
+| **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 241 líneas |
 | En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 194 líneas |
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 225 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |

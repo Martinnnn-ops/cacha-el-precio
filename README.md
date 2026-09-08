@@ -114,6 +114,7 @@ respetando `robots.txt`. Ver [`docs/PLAN.md`](docs/PLAN.md#8-consideraciones-leg
 | [`docs/REQUISITOS.md`](docs/REQUISITOS.md) | Historias de usuario, requisitos funcionales y no funcionales |
 | [`docs/IDENTIDAD.md`](docs/IDENTIDAD.md) | Cómo funciona el login, cómo se valida el token y cómo se replica |
 | [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | En qué orden se despliega en AWS y las restricciones del Learner Lab |
+| [`docs/MIGRACION.md`](docs/MIGRACION.md) | Cómo levantar todo en una cuenta de AWS nueva, y qué datos se pierden si no se respaldan |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura, una por archivo |
 | [`gateway/README.md`](gateway/README.md) | Qué valida el BFF y cómo se prueba |
 | [`product-service/README.md`](product-service/README.md) | Las rutas de productos y catálogos, y el versionado por header |

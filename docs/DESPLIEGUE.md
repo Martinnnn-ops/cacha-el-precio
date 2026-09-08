@@ -10,6 +10,12 @@ que no dice por qué.
 
 ---
 
+> 🔁 **Si lo que necesitas es levantar todo en una cuenta nueva** —porque se acabaron los
+> tokens, porque resetearon la cuenta, o porque el proyecto se muda a una cuenta de AWS
+> normal— el documento es [`MIGRACION.md`](MIGRACION.md), no este. Ahí está el orden de los
+> scripts, qué está automatizado y qué todavía es a mano, y **qué datos se pierden si no se
+> respaldan antes**.
+
 ## ⚠️ Lo que YA está desplegado, al 07-09-2026
 
 Este runbook se escribió el 30-08, cuando no había nada en la nube. **Hoy sí lo hay**, y no se
@@ -23,10 +29,11 @@ levantó siguiendo estos pasos: se hizo por otro camino, más corto.
 | **Cognito** | 🟡 Levantado, pero hay **dos user pools** — ver [`INTEGRACION.md` §0.2](INTEGRACION.md) |
 | **VPC propia, subredes privadas, NAT, ALB** | 🔴 No existen. La EC2 está en la VPC por defecto |
 | **RDS** | 🔴 No existe. `product-service` usa SQLite dentro de la EC2 |
-| **API Gateway** | 🔴 No existe. Caddy cumple ese rol hoy |
+| **API Gateway** | 🟢 Creado el 07-09 con `tools/crear-api-gateway.sh`, con JWT Authorizer y 200/401/403 probados ([ADR-019](adr/019-api-gateway-como-api-manager.md)). Caddy queda detrás, con el TLS |
 
-**O sea que los pasos 2 (la red) y 3 (RDS) de este documento no se ejecutaron**, y el paso del
-API Gateway tampoco. Lo que se hizo fue la opción B del [ADR-015](adr/015-red-privada-con-vpc-link.md)
+**O sea que los pasos 2 (la red) y 3 (RDS) de este documento no se ejecutaron.** El del API
+Gateway sí, pero por el camino corto: integración HTTP directa contra la URL pública, sin VPC
+Link ni balanceador. Lo que se hizo fue la opción B del [ADR-015](adr/015-red-privada-con-vpc-link.md)
 —EC2 pública, sin balanceador— que ese ADR había descartado explícitamente.
 
 No es un desastre y hay que verlo con calma: funciona, costó ~0 y llegó a tiempo. Pero **el

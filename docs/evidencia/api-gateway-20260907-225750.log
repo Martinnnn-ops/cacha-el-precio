@@ -1,0 +1,29 @@
+Evidencia · API Gateway como API Manager
+Generada el 07-09-2026 22:57 desde tools/crear-api-gateway.sh
+Cuenta 116813910999 · region us-east-1
+API qxaa9rl4dj · stage prod · backend https://api.cacha-el-precio.com
+Token real del app client 'pruebas' (usuario admin@cachaelprecio.cl)
+
+== Codigos por ruta ==
+GET /health              (sin token)                   200
+GET /productos           (sin token)                   401
+GET /productos           (token inventado)             401
+GET /productos           (token valido)                200
+POST /productos          (token sin scope ingesta)     403
+DELETE /productos/999999 (token sin scope ingesta)     403
+DELETE /productos/999999 (sin token)                   401
+
+== CORS: preflight desde el origen del sitio ==
+HTTP/2 204 
+access-control-allow-origin: https://www.cacha-el-precio.com
+access-control-allow-methods: DELETE,GET,OPTIONS,POST,PUT
+access-control-allow-headers: authorization,content-type,x-api-version
+access-control-allow-credentials: true
+access-control-max-age: 86400
+
+== Claims del token usado (sin el token) ==
+  iss: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_cH76LiA02
+  client_id: 7dsdgq8154barv9cjbdf83h9hu
+  token_use: access
+  scope: aws.cognito.signin.user.admin
+  cognito:groups: ['admin']
