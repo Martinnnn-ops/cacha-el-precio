@@ -1,9 +1,16 @@
-// Inicio de sesión con Google — OAuth 2.0 Authorization Code + PKCE.
+// Inicio de sesión con Google — OAuth 2.0 Authorization Code + PKCE,
+// mediado por Cognito (Google como Identity Provider federado).
 //
 // Se usa el flujo de código con PKCE y NO el implícito: el implícito devuelve
 // el token en el fragmento de la URL, donde queda en el historial del
 // navegador y a la vista de cualquier extensión instalada. Está desaconsejado
 // para aplicaciones de navegador desde el BCP de OAuth 2.0.
+//
+// ¿Por qué Cognito y no Google directo? Google exige un client secret en el
+// canje de código incluso usando PKCE, para clientes tipo "Web application" —
+// y un secret no puede vivir en código de navegador. Cognito sí permite PKCE
+// puro para app clients públicos (sin secret) y es quien guarda el secret de
+// Google de forma segura en su lado, hablando con Google por nosotros.
 //
 // ┌─ NOTA DE SEGURIDAD ───────────────────────────────────────────────────┐
 // │ PKCE permite canjear el código sin secreto de cliente, que es lo que   │
@@ -13,18 +20,22 @@
 // │ y un XSS no puede leerlo. Para migrar a eso sólo cambia canjearCodigo. │
 // └───────────────────────────────────────────────────────────────────────┘
 
-const AUTORIZACION = 'https://accounts.google.com/o/oauth2/v2/auth'
-const TOKEN = 'https://oauth2.googleapis.com/token'
-const PERFIL = 'https://openidconnect.googleapis.com/v1/userinfo'
+const DOMINIO_COGNITO = import.meta.env.VITE_COGNITO_DOMAIN ?? ''
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
+const AUTORIZACION = `${DOMINIO_COGNITO}/oauth2/authorize`
+const TOKEN = `${DOMINIO_COGNITO}/oauth2/token`
+const PERFIL = `${DOMINIO_COGNITO}/oauth2/userInfo`
 
-// Sin cliente configurado no se puede hablar con Google. La aplicación lo
+// El client_id ahora es el del App Client de Cognito, no el de Google.
+// Cognito es quien tiene registrado el client_id/secret de Google por dentro.
+const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID ?? ''
+
+// Sin cliente configurado no se puede hablar con Cognito. La aplicación lo
 // consulta para avisar en vez de mandar al usuario a una pantalla de error.
-export const GOOGLE_CONFIGURADO = CLIENT_ID !== ''
+export const GOOGLE_CONFIGURADO = CLIENT_ID !== '' && DOMINIO_COGNITO !== ''
 
 // Claves de un solo uso, en sessionStorage y no en localStorage: valen para el
-// viaje de ida y vuelta a Google y no tienen por qué sobrevivir a la pestaña.
+// viaje de ida y vuelta y no tienen por qué sobrevivir a la pestaña.
 const CLAVE_VERIFIER = 'cep:pkce'
 const CLAVE_ESTADO = 'cep:estado'
 const CLAVE_VOLVER = 'cep:volver'
@@ -83,7 +94,8 @@ function consumir(clave) {
 }
 
 /**
- * Manda al usuario a Google. No devuelve: la página se sustituye.
+ * Manda al usuario a Cognito, que a su vez lo redirige a Google. No
+ * devuelve: la página se sustituye.
  * @param {string|null} volver ruta interna a la que regresar tras entrar
  */
 export async function irAGoogle(volver = null) {
@@ -105,8 +117,9 @@ export async function irAGoogle(volver = null) {
     // `estado` es la defensa contra CSRF: si al volver no coincide con el que
     // guardamos, la respuesta no corresponde a la petición que hicimos.
     state: estado,
-    // Evita quedarse con la cuenta que otra pestaña dejó elegida.
-    prompt: 'select_account',
+    // Salta directo a Google sin pasar por la pantalla de selección de
+    // proveedor de Cognito, ya que solo ofrecemos login con Google.
+    identity_provider: 'Google',
   })
 
   window.location.assign(`${AUTORIZACION}?${params.toString()}`)
@@ -126,7 +139,7 @@ export function destinoGuardado() {
   return consumir(CLAVE_VOLVER)
 }
 
-/** Canjea el código de autorización por el token de acceso. */
+/** Canjea el código de autorización por el token de acceso, con Cognito. */
 export async function canjearCodigo(codigo, verificador) {
   const respuesta = await fetch(TOKEN, {
     method: 'POST',
@@ -150,9 +163,10 @@ export async function canjearCodigo(codigo, verificador) {
 /**
  * Datos de la persona que entró.
  *
- * Se piden al endpoint de perfil con el token, en vez de leer las claims del
- * id_token: verificar la firma de un JWT en el navegador es fácil de hacer mal,
- * y creerse un id_token sin verificar es peor que no mirarlo.
+ * Se piden al endpoint de perfil de Cognito con el access_token, en vez de
+ * leer las claims del id_token: verificar la firma de un JWT en el navegador
+ * es fácil de hacer mal, y creerse un id_token sin verificar es peor que no
+ * mirarlo.
  */
 export async function obtenerPerfil(accessToken) {
   const respuesta = await fetch(PERFIL, {
