@@ -10,6 +10,37 @@ que no dice por qué.
 
 ---
 
+## ⚠️ Lo que YA está desplegado, al 07-09-2026
+
+Este runbook se escribió el 30-08, cuando no había nada en la nube. **Hoy sí lo hay**, y no se
+levantó siguiendo estos pasos: se hizo por otro camino, más corto.
+
+| Pieza | Estado real |
+|---|---|
+| **Frontend** | 🟢 `www.cacha-el-precio.com` — S3 detrás de **Cloudflare** (no CloudFront) |
+| **API** | 🟢 `api.cacha-el-precio.com` — **EC2 con IP pública** y Caddy delante |
+| **Dominio** | 🟢 Comprado por el equipo, con TLS |
+| **Cognito** | 🟡 Levantado, pero hay **dos user pools** — ver [`INTEGRACION.md` §0.2](INTEGRACION.md) |
+| **VPC propia, subredes privadas, NAT, ALB** | 🔴 No existen. La EC2 está en la VPC por defecto |
+| **RDS** | 🔴 No existe. `product-service` usa SQLite dentro de la EC2 |
+| **API Gateway** | 🔴 No existe. Caddy cumple ese rol hoy |
+
+**O sea que los pasos 2 (la red) y 3 (RDS) de este documento no se ejecutaron**, y el paso del
+API Gateway tampoco. Lo que se hizo fue la opción B del [ADR-015](adr/015-red-privada-con-vpc-link.md)
+—EC2 pública, sin balanceador— que ese ADR había descartado explícitamente.
+
+No es un desastre y hay que verlo con calma: funciona, costó ~0 y llegó a tiempo. Pero **el
+informe no puede decir que el backend está en una subred privada**, porque no lo está. O se
+completa la red, o se cambia el ADR-015 y se explica el cambio. Las dos salidas sirven; la que
+no sirve es dejar el documento diciendo una cosa y el sistema haciendo otra.
+
+⏱️ **Y hay un riesgo operativo para el día de la demo:** esa EC2 es del Learner Lab, así que se
+apaga sola al cerrar el laboratorio y **la IP pública cambia al reiniciar**. Si el DNS apunta a
+una IP fija, el sitio se cae solo entre sesiones. Se resuelve con una **Elastic IP**, y hay que
+hacerlo antes del ensayo.
+
+---
+
 ## 0. Antes de tocar nada: cómo es el Learner Lab
 
 Esto no es una cuenta de AWS normal y las diferencias muerden justo en el despliegue.
@@ -112,7 +143,7 @@ el borde ni tiene stages: por eso se cayeron Caddy y CloudFlare.
 
 ## 6. Frontend a S3 + CloudFront
 
-React compilado son archivos estáticos. Se usa la URL que da CloudFront; **no se compra
+Un Vue compilado son archivos estáticos. Se usa la URL que da el CDN; **no se compra
 dominio** (no aporta nada al MVP y cuesta plata).
 
 ## 7. Actualizar las redirect URIs de Cognito

@@ -4,7 +4,7 @@
 > Para el **cómo está construido** ver [`ARQUITECTURA.md`](ARQUITECTURA.md).
 > Para el **quién hace qué y cuándo** ver [`TAREAS.md`](TAREAS.md).
 >
-> Documento vivo · Última revisión: 19-08-2026
+> Documento vivo · Última revisión: 07-09-2026
 
 ---
 
@@ -58,6 +58,21 @@ está más barato, si el descuento es real, y si su talla está disponible.
 ---
 
 ## 2. Alcance
+
+> 🔴 **Aviso del 07-09: el alcance ya se amplió en los hechos, y este documento no lo decía.**
+> El sitio en producción tiene catálogos de **Polerones, Camisas, Pijamas, Poleras y Vestidos**
+> además de Zapatillas, y el scraper de Python trae parsers de **Falabella, Paris, Ripley, Hites
+> y Converse** además de Sparta. O sea que lo que abajo figura como "no entra" y como "límite
+> duro" **ya está construido**.
+>
+> No se borra lo de abajo porque el razonamiento sigue siendo válido y es lo que hay que poder
+> defender: se partió por calzado porque ahí el problema se resuelve bien. Pero hay que decidir
+> en equipo si el alcance del EP1 se amplía formalmente o si la ropa se presenta como lo que
+> viene después. Anotado en [`INTEGRACION.md`](INTEGRACION.md).
+>
+> ⚠️ Ojo con la consecuencia real, que no es de redacción: **en vestuario los nombres son
+> genéricos y no hay style code**, que es justamente el motivo por el que se dejó fuera. El
+> matcher sigue sin implementarse, así que hoy la ropa se muestra pero no se compara.
 
 ### Entra
 - Calzado deportivo y urbano de **adulto**

@@ -114,6 +114,7 @@ justamente por *justificar las elecciones*, y en la defensa un ADR **es** la res
 | 6 | **Caddy** como reverse proxy con TLS y CORS | ❌ No | 🔴 **Sí** — ADR-015 y la rúbrica: el API Manager es API Gateway de AWS |
 | 7 | La ingesta va **HTTP directo** scraper → `product-service` | ❌ No | 🔴 **Sí** — ARQUITECTURA §6: la ingesta pasa por RabbitMQ |
 | 8 | El mismo producto vive **duplicado** en Postgres y en SQLite | ❌ No | 🔴 **Sí** — deja a `price-service` sin dueño del historial |
+| 9 | El alcance pasa de **solo calzado** a **ropa y calzado** | ❌ No | 🔴 **Sí** — `PLAN.md` §2 dice que la ropa entra *después* del EP1 |
 
 ### Lo que hay que entender de esta tabla
 
