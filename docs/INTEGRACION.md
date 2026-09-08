@@ -9,7 +9,23 @@
 > Se lee en dos partes: **§1 qué decisiones cambiaron** (y cuáles no quedaron escritas) y
 > **§2 qué hay que arreglar**, en orden de gravedad.
 >
-> Última revisión: **07-09-2026**
+> Última revisión: **08-09-2026**
+
+## Actualización arquitectónica · 08-09
+
+El [ADR-020](adr/020-csharp-y-simplificacion-de-servicios.md) cierra varias contradicciones de
+este documento con una decisión explícita:
+
+- `gateway` y `product-service` pasan de Java/Micronaut a C# y ASP.NET Core;
+- `price-service` se elimina porque estaba vacío y no poseía una capacidad real;
+- RabbitMQ se retira mientras no existan productores ni consumidores;
+- el scraper conserva PostgreSQL e historial y sincroniza por HTTP v1;
+- Product Service conserva SQLite y deduplica por `(store, externalId)`;
+- las migraciones huérfanas de `catalog` y `price` se eliminan.
+
+Por eso los puntos 5, 5b, 6 y 8 de abajo se conservan como evidencia histórica, pero ya tienen
+una resolución documentada. Siguen abiertos el despliegue de esta rama, la validación con tokens
+reales, la reconciliación de User Pools y la restricción de acceso directo a la EC2.
 
 ---
 

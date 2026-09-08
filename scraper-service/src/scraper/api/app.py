@@ -7,7 +7,7 @@ programado (el CLI). Esta API existe para tres cosas concretas que el
 job no cubre:
 
   - /health   para que el orquestador sepa si el servicio esta vivo.
-  - /tiendas  para que Micronaut descubra que se puede scrapear.
+  - /tiendas  para descubrir qué tiendas se pueden scrapear.
   - /scrape   para forzar un barrido puntual sin esperar al cron,
               util cuando alguien anade una tienda o corrige un parser.
   - consultas de producto e historial, para depurar sin abrir la base.

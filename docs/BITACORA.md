@@ -404,6 +404,34 @@ verdad a `product-service`.
 
 **Orion —**
 
+(08-09) ♻️ **Migración del núcleo de aplicación a C# y simplificación de la arquitectura.** Se
+actualizó desde `development` y se reemplazó el Product Service Java por el proyecto ASP.NET Core
+10. El gateway también se reescribió en ASP.NET Core, conservando validación de Cognito,
+autorización por scope/grupo, aliases del frontend y respuestas 401/403 en JSON.
+
+El contrato scraper-producto quedó alineado: `Version: 1.0`, rutas `/api/products`, identidad
+`(store, externalId)` y campos de tienda, imagen, URL, descripción y estado. EF Core agregó la
+migración `IntegrateScraperContract` y un índice único. Se corrigió además el cliente Python para
+aceptar el `204 No Content` de las actualizaciones. Las cinco pruebas unitarias del adaptador
+quedaron verdes y la solución C# compila sin advertencias.
+
+Se eliminaron `price-service`, RabbitMQ, el agregador Maven y migraciones `catalog`/`price` sin
+consumidor. PostgreSQL **no** se eliminó: el scraper todavía lo necesita para sus productos e
+historial. La decisión y sus costos —HTTP sin cola durable, SQLite sin escalado horizontal y
+seguimiento en memoria— están en el [ADR-020](adr/020-csharp-y-simplificacion-de-servicios.md).
+
+Comandos principales usados para verificar:
+
+```bash
+dotnet restore CachaElPrecio.slnx
+dotnet format CachaElPrecio.slnx --no-restore
+dotnet build CachaElPrecio.slnx --no-restore
+dotnet ef migrations has-pending-model-changes --project product-service/Product-Service.csproj
+PYTHONPATH=scraper-service/src uv run --no-project --with pytest --with pydantic \
+  --with pydantic-settings --with httpx --with beautifulsoup4 \
+  pytest -q scraper-service/tests/unit/services/test_product_service_sync.py
+```
+
 **Panditax —**
 
 **Del equipo:**

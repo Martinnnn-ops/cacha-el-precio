@@ -3,6 +3,10 @@
 **Fecha:** 27-08-2026
 **Estado:** aceptada
 
+> Acotación del 08-09: el destino EC2 + Compose sigue vigente, pero el conjunto actual es Caddy,
+> gateway, Product Service, scraper y PostgreSQL. `price-service` y RabbitMQ fueron retirados por
+> el [ADR-020](020-csharp-y-simplificacion-de-servicios.md).
+
 ## Contexto
 
 Los cuatro servicios del backend (`api-gateway`/BFF, `product-service`, `price-service` y

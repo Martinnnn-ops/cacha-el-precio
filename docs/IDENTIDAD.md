@@ -159,7 +159,8 @@ vienen del client `frontend` y los de los tests vienen del client `pruebas`. Con
 aceptado, los tests darían 401 contra nuestra propia validación. La lista la arma el script en
 `COGNITO_CLIENT_IDS_VALIDOS`.
 
-El razonamiento largo está en [`ARQUITECTURA.md` §9](ARQUITECTURA.md#9-el-detalle-del-audience-en-cognito).
+El razonamiento técnico y el contrato de seguridad están en
+[`ARQUITECTURA.md`](ARQUITECTURA.md#seguridad).
 
 ---
 

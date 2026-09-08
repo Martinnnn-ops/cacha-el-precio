@@ -8,8 +8,8 @@ Guía para agentes de IA que trabajen en este repo. **Lee solo lo que la tarea n
 **DSY1107 · Desarrollo Cloud Native I**, equipo de 3, primera entrega **13-sep-2026**.
 **Ya está en producción**: `www.cacha-el-precio.com` y `api.cacha-el-precio.com`.
 
-Stack: **Micronaut 5 / Java 25** para `gateway` (BFF), `product-service` y `price-service` ·
-**Python 3 / FastAPI** para `scraper-service`, que está fuera del monorepo Maven ·
+Stack: **.NET 10 / ASP.NET Core / C#** para `gateway` (BFF) y `product-service` ·
+**Python 3 / FastAPI** para `scraper-service` ·
 **Vue 3** en el frontend, que hoy vive en [otro repositorio](https://github.com/Panditax727/Cacha-el-Precio-Frontend) ·
 **AWS Cognito** como IDaaS · **EC2 con Docker Compose**.
 
@@ -26,7 +26,7 @@ Stack: **Micronaut 5 / Java 25** para `gateway` (BFF), `product-service` y `pric
 | **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 370 líneas |
 | La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 407 líneas |
 | Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
-| Por qué hay microservicios / BFF / cola, por qué Micronaut, cómo escala, ADRs | `docs/ARQUITECTURA.md` | 677 líneas |
+| Límites de servicios, BFF, persistencia, escalado y ADR | `docs/ARQUITECTURA.md` y `docs/adr/020-*.md` | — |
 | Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 399 líneas |
 | **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 241 líneas |
 | En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 201 líneas |
@@ -45,9 +45,7 @@ módulo en concreto:
 | Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 108 líneas |
 | El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 168 líneas |
 | El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 120 líneas |
-| Las migraciones y por qué el modelo cambió contra datos reales | `infra/db/README.md` | 103 líneas |
 | El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |
-| El dueño del historial y del descuento real (hoy todavía un esqueleto) | `price-service/README.md` | 22 líneas |
 
 **No cargues todos los documentos.** Casi ninguna tarea necesita más de dos.
 
@@ -91,14 +89,16 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
 
 ### Código
 
-- Todo cambio de esquema va por una **migración de Flyway**. Nunca un `ALTER` a mano.
+- Todo cambio del esquema de Product Service va por una **migración de EF Core**. Nunca un
+  `ALTER` a mano. El esquema PostgreSQL del scraper se mantiene en
+  `infra/postgres/init/01-scraper-schema.sql` hasta introducir una herramienta de migraciones.
 - **Agregar una tienda = un paquete nuevo en `scraper-service/src/scraper/scrapers/`**, con su
   `scraper.py` y su `parser.py`, más un fixture HTML real en `tests/fixtures/`. No se tocan
-  `product-service`, `price-service`, el BFF ni el frontend.
+  `product-service`, el BFF ni el frontend, salvo que cambie el contrato compartido.
   (La regla decía "implementar `AdaptadorTienda`", de cuando el scraper era Java. Cambió el
   lenguaje, no la idea: **una tienda nueva no debe obligar a tocar el resto**.)
 - El scraper respeta **1 request cada 1–2 segundos**, User-Agent identificable y `robots.txt`.
-- Los tests que necesitan Postgres o RabbitMQ usan **Testcontainers o `docker-compose`**,
+- Los tests que necesitan PostgreSQL usan **Testcontainers o `docker-compose`**,
   nunca una instancia compartida.
 - **Los tests no deben depender de AWS.** El del BFF no verifica firmas de verdad justamente por
   eso: un token que no se presenta se rechaza antes de ir a buscar el JWKS, así que corren con el

@@ -108,8 +108,8 @@ src/scraper/services
                            │
                            ▼
                   ┌─────────────────┐
-                  │ Backend API     │
-                  │    Micronaut    │
+                  │ Product Service │
+                  │ ASP.NET Core    │
                   └────────┬────────┘
                            │
                            ▼
@@ -117,4 +117,3 @@ src/scraper/services
                            │
                            ▼
                      Vue Frontend
-

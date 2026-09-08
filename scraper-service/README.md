@@ -2,7 +2,7 @@
 
 Microservicio de scraping en Python. Recoge productos y precios de
 tiendas chilenas, los guarda en PostgreSQL con historial de precios, y
-expone una API minima para el backend Micronaut.
+sincroniza el catálogo vigente con Product Service por HTTP y expone una API mínima.
 
 El catalogo acepta unicamente productos identificables como ropa o
 calzado. Los productos ambiguos y categorias como electronica, hogar,
@@ -21,7 +21,7 @@ Dos formas de ejecutarlo, por diseno:
 
 - **Job programado** (el grueso): un timer de systemd o cron lanza el
   CLI, que barre las tiendas y escribe en la base.
-- **API minima**: para que Micronaut consulte el estado y pueda forzar
+- **API mínima**: para consultar el estado y forzar
   un barrido puntual sin esperar al cron.
 
 El scrapeo no ocurre dentro de la peticion HTTP: tarda demasiado. La
@@ -34,7 +34,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e ".[api,db,s3,imagen,dev]"
 cp .env.example .env          # y rellena DATABASE_URL
 
-docker compose up -d db       # PostgreSQL local
+docker compose up -d postgres # PostgreSQL local, desde la raíz
 scrapper esquema              # crea las tablas
 ```
 
@@ -164,5 +164,4 @@ pruebas escribian sus datos de mentira en la base de verdad.
 ## Que falta
 
 - Descarga, conversion a WebP y subida a S3 de las imagenes
-- `product_service.py`
 - Empaquetar el job en un timer de systemd

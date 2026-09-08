@@ -125,7 +125,8 @@ y **el historial de precios no se reconstruye hacia atrás**.
 ## 4. El BFF desplegado
 
 La EC2 en la subred privada, con Docker y el mismo `docker-compose.yml` del desarrollo local.
-El BFF revalida el token contra el **JWKS de Cognito**: firma, `iss`, `aud`, vigencia y grupo.
+El BFF C# revalida el token contra Cognito: firma, `iss`, vigencia, `token_use`, `client_id`,
+scope y grupo. Cognito publica las llaves mediante la metadata del emisor.
 Eso es el 40% de la rúbrica del EP1 — no se delega en el API Gateway "porque ya validó".
 
 ## 5. API Gateway

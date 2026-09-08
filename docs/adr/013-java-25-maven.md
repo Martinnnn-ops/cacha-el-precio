@@ -2,7 +2,7 @@
 
 **Fecha:** 19-08-2026
 
-**Estado:** aceptada · **acotada por el [ADR-018](018-scraper-en-python.md) el 07-09-2026**
+**Estado:** reemplazada por el [ADR-020](020-csharp-y-simplificacion-de-servicios.md) el 08-09-2026
 
 ## Contexto
 
@@ -10,10 +10,8 @@ El backend necesita una versión de Java y una herramienta de construcción úni
 microservicios compilen igual en los computadores del equipo y en CI. Micronaut 5 tiene Java 25
 como versión base.
 
-> ⚠️ **Acotación del 07-09-2026.** Cuando se escribió esto, los cuatro servicios eran Java. Hoy
-> `scraper-service` es Python ([ADR-018](018-scraper-en-python.md)), así que este ADR manda sobre
-> los **servicios Micronaut** —`gateway`, `product-service` y `price-service`— y no sobre todo el
-> backend. La decisión no se anula: sigue siendo la base de los tres.
+> Este documento conserva la justificación histórica. Los servicios activos de aplicación fueron
+> migrados a C# y ASP.NET Core; el scraper continúa en Python.
 
 ## Alternativas consideradas
 

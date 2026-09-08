@@ -1,10 +1,14 @@
 # ADR-016 — Reemplazar catalog-service por product-service y partir sin DTO
 
-**Estado:** aceptada
+**Estado:** reemplazada en parte por el [ADR-020](020-csharp-y-simplificacion-de-servicios.md)
 
 **Fecha:** 02-09-2026
 
 ## Contexto
+
+> Nota del 08-09: se conserva el límite `product-service` y SQLite, pero la implementación actual
+> usa C#, DTO, `Version: 1.0`, EF Core y Scalar. Las decisiones de Java, Flyway, modelos directos,
+> gRPC y versiones `0.x` ya no están vigentes.
 
 El nombre `catalog-service` se estaba quedando chico porque el servicio será dueño tanto de los
 catálogos como de los productos y, más adelante, de otros datos relacionados. Para esta primera

@@ -65,7 +65,7 @@ Una hora, los sábados. Tres cosas y se acaba:
 
 ---
 
-## 📍 Dónde estamos hoy · 07-09-2026
+## 📍 Dónde estamos hoy · 08-09-2026
 
 Estado real, verificado contra el repo **y contra el sistema desplegado** — no de memoria.
 
@@ -89,7 +89,7 @@ por bueno que esté el resto.
 
 | | Pieza | Peso | Estado |
 |---|---|---|---|
-| 🟢 | **Validación del JWT en el BFF** | **40% EP1** | **Hecha el 07-09**: firma contra JWKS, `iss`, vigencia, `client_id`, `token_use` y roles desde `cognito:groups`. 7 tests verdes |
+| 🟡 | **Validación del JWT en el BFF** | **40% EP1** | Migrada a ASP.NET Core: firma, `iss`, vigencia, `client_id`, `token_use`, scopes y grupos. Compila; falta repetir la evidencia con tokens reales |
 | 🟡 | **Frontend con OIDC** | **60% EP1** | Desplegado y con PKCE real, **pero contra el otro user pool**. Está en un repo aparte, todavía no en este |
 | 🟢 | **200 / 401 / 403 demostrables** | 20% EP2 | Medidos en el API Gateway con token real (`docs/evidencia/`). El 401 sale de `/seguimiento` y el 403 del scope `ingesta`, sin cerrar el catálogo ([ADR-007](adr/007-catalogo-publico-sin-token.md)) |
 
@@ -98,12 +98,12 @@ por bueno que esté el resto.
 | | Pieza | Estado |
 |---|---|---|
 | 🟢 | Scraper de Sparta | Capturando 3 veces al día desde el 27-08 |
-| 🟢 | `product-service` + scraper Python | Mergeados el 07-09 (PR #10 y #11), corriendo en la EC2 |
-| 🔴 | **Escrituras de `/productos` sin autorización** | **Incidente abierto y expuesto a internet** — [`INTEGRACION.md` §0.1](INTEGRACION.md) |
+| 🟡 | `product-service` + scraper Python | Contrato alineado por `(store, externalId)`; pendiente desplegar la rama C# |
+| 🟡 | **Escrituras de productos** | El gateway C# exige el scope `ingesta`; falta desplegar y cerrar la ruta directa a la EC2 |
 | 🔴 | Base de datos | SQLite en la EC2, no la RDS que prometen los documentos |
 | 🔴 | Red (VPC, subredes privadas, NAT) | No existe: la EC2 tiene IP pública directa |
 | ⬜ | CI en GitHub Actions | **0 workflows**, arrastrado desde la Semana 1 |
-| 🟡 | ADR | 6 de 19 escritos (006, 008, 013, 014, 015, 016) |
+| 🟡 | ADR | ADR-020 documenta la migración C# y simplificación; todavía faltan decisiones históricas |
 
 > 📌 **Lo que cambió respecto de la revisión anterior (27-08):** se integró el trabajo de los tres,
 > el sistema llegó a internet y el BFF ya valida. Lo que apareció en el camino son **ocho
@@ -224,14 +224,14 @@ presentación piden mostrarlo andando en la nube, no en `localhost`.
 **BFF y validación — es el 40% del EP1**
 - [ ] `micronaut-security-jwt` en `gateway`, `catalog` y `price`
 - [ ] Validar explícitamente **issuer, audience, firma contra el JWKS y vigencia**
-  - ↳ *Por qué Cognito no trae `aud`: [ARQUITECTURA.md §9](ARQUITECTURA.md#9-el-detalle-del-audience-en-cognito)*
+  - ↳ *Por qué Cognito no trae `aud`: [ARQUITECTURA.md](ARQUITECTURA.md#seguridad)*
 - [ ] **Autorización por rol** leyendo `cognito:groups` → una ruta que le dé **403** al no-admin
 - [ ] Endpoints que devuelvan **200 / 401 / 403** de forma predecible — *son los de la demo*
 - [ ] Migraciones con Flyway sobre el modelo ya validado con datos reales
 
 **Nube**
 - [ ] **VPC** con subredes públicas y privadas en **dos zonas**, y **NAT Gateway**
-      (ver [ARQUITECTURA.md §11](ARQUITECTURA.md#11-dónde-vive-esto-en-aws))
+      (ver [ARQUITECTURA.md](ARQUITECTURA.md#despliegue))
 - [ ] **RDS Postgres** en subred privada — *fuera del compose: si se cae, el historial no se recupera*
 - [ ] **EC2** con `docker compose up`: BFF, catalog, price y RabbitMQ
 - [ ] **API Gateway HTTP API** con **JWT Authorizer** apuntando a Cognito
@@ -272,12 +272,14 @@ Terminar lo que falta y **congelar el jueves 10**. Acá no se aprende nada nuevo
 
 - [ ] 🔴 **Cerrar los puntos 1 a 4 de [`INTEGRACION.md`](INTEGRACION.md)** — escritura sin
       autorización, Caddy saltándose el BFF, el choque del puerto 8080 y el dominio
+- [x] Migrar `gateway` y `product-service` a C#, adaptar el scraper y retirar `price-service` y
+      RabbitMQ sin uso — ADR-020 · 08-09
 - [ ] Cerrar el [checklist final](#-checklist-final-lo-que-tiene-que-quedar-funcionando):
       cada ruta probada con token, sin token y sin permiso
 - [ ] **Gráfico del historial** de precios + botón "Descargar CSV"
 - [ ] Test de contrato por scraper ("esta captura trajo más de N productos válidos")
 - [ ] **Escribir los ADR que faltan** — los 14 están listados en
-      [ARQUITECTURA.md §13](ARQUITECTURA.md#13-registro-de-decisiones-adr), más el **017**
+      [ARQUITECTURA.md](ARQUITECTURA.md#registro-de-decisiones), más el **017**
       (versionado por header), el **018** (el scraper en Python) y el **019** (quién es el API
       Manager) que salieron de la integración del 07-09
   - ↳ *Es mayormente copiar lo que ya está escrito. **De acá sale el informe de 5 páginas**, y en
@@ -382,7 +384,7 @@ cualquier fila**, la haya hecho quien la haya hecho.
 - [ ] **200 con token, 401 sin token** — probado en Postman
 - [ ] **403 con usuario sin permiso** — token válido pero sin el rol necesario
 - [ ] **Validación en el servicio** — el código que revisa `iss`, `client_id`, `token_use` y `exp`
-- [ ] **Mensajería** — el panel de RabbitMQ con las colas y la DLQ
+- [ ] **Integración durable** — demostrar reintentos o documentar la tolerancia al catálogo atrasado
 - [ ] **Historial de precios** — el gráfico con datos reales
   - ↳ ⚠️ *El scraper arrancó el **27-08**, no en la semana 0. Al freeze del 10-09 el historial
     tendrá **14 días**, no las 3 semanas que decía este checklist. No es recuperable: conviene
@@ -393,7 +395,7 @@ cualquier fila**, la haya hecho quien la haya hecho.
 - [ ] **Client credentials** — el scraper saca su token y llama a `POST /ingesta`
 - [ ] **API Gateway** — consola con las rutas, los stages `dev`/`prod` y las integraciones
 - [ ] **CORS** — orígenes explícitos en consola + el preflight OPTIONS en DevTools
-- [ ] **Servicios desplegados** — la EC2 con los cuatro contenedores corriendo
+- [ ] **Servicios desplegados** — Caddy, gateway, Product Service, scraper y PostgreSQL en la EC2
 - [ ] **Red** — los servicios en subred privada, sin IP pública
 - [ ] **Frontend desplegado** — la URL de CloudFront funcionando
 - [ ] **CI/CD** — historial de workflows verdes
