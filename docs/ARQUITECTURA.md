@@ -644,7 +644,7 @@ Lo bueno y lo malo que aceptamos. **Especialmente lo malo.**
 | 004 | RabbitMQ en vez de llamadas HTTP directas | §6 |
 | 005 | El scraper ingesta por el API Manager, no directo a la cola | §5 |
 | 006 | Cognito como IDaaS | [`ADR-006`](adr/006-cognito-como-idaas.md) |
-| 007 | La búsqueda de precios es pública, sin token | [ARQUITECTURA.md §8](ARQUITECTURA.md#8-por-qué-cognito) |
+| 007 | La búsqueda de precios es pública, sin token | [`ADR-007`](adr/007-catalogo-publico-sin-token.md) |
 | 008 | EC2 con Docker Compose en vez de ECS Fargate y de EKS | §11, §12 |
 | 009 | RabbitMQ autoadministrado en vez de Amazon MQ | §12 |
 | 010 | Una instancia RDS con esquema por servicio | §11, §12 |

@@ -1,0 +1,7 @@
+**
+
+!pom.xml
+!gateway/
+!gateway/pom.xml
+!gateway/src/
+!gateway/src/**

@@ -1,4 +1,21 @@
+# El portero de la EC2: escucha en 80 y 443, saca y renueva el certificado
+# solo, y reenvia al contenedor que corresponde. Nada mas.
+#
+# ⚠️ Apunta al GATEWAY, no a product-service, y esa flecha es la que importa:
+# el gateway es donde se valida el token (issuer, firma, vigencia, client_id y
+# rol). Si Caddy le hablara directo a product-service —como hacia hasta el
+# 07-09— esa validacion existiria pero no la atravesaria nadie, que es como
+# tener un guardia en una puerta por la que no se entra.
+#
+# El gateway expone las mismas rutas que el frontend ya llamaba (/productos,
+# /catalogos), asi que este cambio no obliga a tocar el frontend.
+
 api.cacha-el-precio.com {
+    # CORS sigue aca, y es transitorio: el frontend todavia llama a este dominio
+    # directo. Cuando pase a llamar al API Gateway, el CORS se maneja alla —con
+    # origenes explicitos, que es un indicador de la rubrica— y este bloque se
+    # borra. Tenerlo en los dos lados a la vez manda dos cabeceras y el
+    # navegador rechaza la respuesta.
     @cors_preflight {
         method OPTIONS
     }
@@ -14,9 +31,12 @@ api.cacha-el-precio.com {
 
     respond @cors_preflight 204
 
-    reverse_proxy product-service:8081
+    reverse_proxy gateway:8080
 }
 
+# Puerto interno, sin dominio ni TLS. Tambien pasa por el gateway: si dejara una
+# puerta que lo esquiva, la validacion del token seria opcional, y una
+# validacion opcional no es una validacion.
 :8080 {
-    reverse_proxy product-service:8081
+    reverse_proxy gateway:8080
 }

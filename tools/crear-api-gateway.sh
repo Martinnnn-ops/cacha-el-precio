@@ -38,6 +38,10 @@ COGNITO_ENV="$RAIZ/cognito.env"
 SALIDA="$RAIZ/api-gateway.env"
 
 NOMBRE_API="cacha-el-precio"
+# A donde apunta el API Gateway. Hoy esa direccion la atiende Caddy, que le
+# habla directo a product-service; cuando Caddy pase a apuntar al gateway (BFF),
+# esta misma URL empieza a servir tambien /seguimiento y /api/*. Hasta entonces
+# esas rutas existen aca pero responden 404 desde el backend.
 BACKEND_URL="${BACKEND_URL:-https://api.cacha-el-precio.com}"
 ORIGEN_WEB="${ORIGEN_WEB:-https://www.cacha-el-precio.com}"
 ORIGEN_LOCAL="http://localhost:5173"
@@ -181,21 +185,37 @@ I_PRODUCTOS="$(integracion /productos)";               gris "  /productos       
 I_PRODUCTO="$(integracion '/productos/{id}')";         gris "  /productos/{id}  -> $I_PRODUCTO"
 I_VISITAS="$(integracion '/productos/{id}/visitas')";  gris "  .../visitas      -> $I_VISITAS"
 I_CATALOGOS="$(integracion /catalogos)";               gris "  /catalogos       -> $I_CATALOGOS"
+I_SEGUIMIENTO="$(integracion /seguimiento)";           gris "  /seguimiento     -> $I_SEGUIMIENTO"
+I_SEGUIR="$(integracion '/seguimiento/{id}')";         gris "  /seguimiento/{id}-> $I_SEGUIR"
+I_YO="$(integracion /api/yo)";                         gris "  /api/yo          -> $I_YO"
+I_ADMIN="$(integracion /api/admin/diagnostico)";       gris "  /api/admin/...   -> $I_ADMIN"
 
 # --------------------------------------------------------------------------
 # 4. Las rutas, cada una con su nivel de acceso
 #
 #    Esta tabla ES la respuesta a "200 / 401 / 403" de la demo:
 #
-#    | ruta                          | sin token | con token | con token sin scope |
-#    |-------------------------------|-----------|-----------|---------------------|
-#    | GET /health                   | 200       | 200       | 200                 |
-#    | GET /productos                | 401       | 200       | 200                 |
-#    | POST /productos               | 401       | 403       | 403                 |
+#    | ruta                   | sin token | con token | con token sin scope |
+#    |------------------------|-----------|-----------|---------------------|
+#    | GET /productos         | 200       | 200       | 200                 |
+#    | GET /seguimiento       | 401       | 200       | 200                 |
+#    | POST /productos        | 401       | 403       | 403                 |
 #
-#    Las visitas quedan anonimas a proposito: el frontend cuenta vistas de
-#    gente que no inicio sesion. Cerrarlas romperia el sitio.
-# --------------------------------------------------------------------------
+#    ⚠️ EL CATALOGO ES PUBLICO, Y ES UNA DECISION.
+#    ARQUITECTURA.md §8 define `precios:leer` como publico sin token: esto es un
+#    comparador de precios y obligar a iniciar sesion para ver un precio seria
+#    romper el producto. La primera version de este script puso GET /productos
+#    detras del JWT para poder demostrar el 401, y eso contradecia esa decision:
+#    con el trafico pasando por aca, el sitio habria dejado de mostrar productos
+#    a cualquiera que llegue de Google.
+#
+#    El 401 sale de /seguimiento, que es privado por su naturaleza —son los
+#    productos que una persona eligio seguir— y el 403 de las escrituras, que
+#    exigen el scope `ingesta` que solo tiene el client del scraper.
+#
+#    Las visitas quedan anonimas a proposito: el frontend cuenta vistas de gente
+#    que no inicio sesion. Cerrarlas romperia el contador.
+
 titulo "4. Rutas"
 
 # ⚠️ Las rutas se crean con --cli-input-json y no con banderas sueltas, y hay
@@ -253,13 +273,28 @@ PYJSON
   rm -f "$archivo"
 }
 
-ruta "GET /health"                     "$I_HEALTH"    publica
-ruta "GET /productos"                  "$I_PRODUCTOS" jwt
-ruta "GET /catalogos"                  "$I_CATALOGOS" jwt
-ruta "POST /productos/{id}/visitas"    "$I_VISITAS"   publica
-ruta "POST /productos"                 "$I_PRODUCTOS" scope
-ruta "PUT /productos/{id}"             "$I_PRODUCTO"  scope
-ruta "DELETE /productos/{id}"          "$I_PRODUCTO"  scope
+# Publicas: es lo que se ve al entrar al sitio (ADR-007)
+ruta "GET /health"                     "$I_HEALTH"      publica
+ruta "GET /productos"                  "$I_PRODUCTOS"   publica
+ruta "GET /productos/{id}"             "$I_PRODUCTO"    publica
+ruta "GET /catalogos"                  "$I_CATALOGOS"   publica
+ruta "POST /productos/{id}/visitas"    "$I_VISITAS"     publica
+
+# Requieren sesion: son de cada persona. De aca sale el 401 de la demo.
+ruta "GET /seguimiento"                "$I_SEGUIMIENTO" jwt
+ruta "POST /seguimiento/{id}"          "$I_SEGUIR"      jwt
+ruta "DELETE /seguimiento/{id}"        "$I_SEGUIR"      jwt
+ruta "GET /api/yo"                     "$I_YO"          jwt
+
+# El 403 por rol lo resuelve el BFF leyendo cognito:groups; el API Gateway solo
+# comprueba que haya un token valido. Son dos capas distintas a proposito.
+ruta "GET /api/admin/diagnostico"      "$I_ADMIN"       jwt
+
+# Escrituras: exigen el scope `ingesta`, que solo tiene el client del scraper.
+# De aca sale el 403 de la demo, con un token perfectamente valido.
+ruta "POST /productos"                 "$I_PRODUCTOS"   scope
+ruta "PUT /productos/{id}"             "$I_PRODUCTO"    scope
+ruta "DELETE /productos/{id}"          "$I_PRODUCTO"    scope
 
 # --------------------------------------------------------------------------
 # 5. Los stages

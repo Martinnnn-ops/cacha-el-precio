@@ -179,9 +179,12 @@ de **client credentials** que ya existe (`COGNITO_SCRAPER_CLIENT_ID` en `cognito
 > borde. Ver [`ADR-019`](adr/019-api-gateway-como-api-manager.md) y la evidencia en
 > [`evidencia/`](evidencia/).
 >
-> ⚠️ **Lo que eso NO resuelve:** el `gateway` sigue fuera de la cadena. Hoy es
-> `API Gateway → Caddy → product-service`, y falta meter el BFF en medio. Y la EC2 sigue siendo
-> alcanzable directo, así que el punto 1 **sigue abierto**.
+> ✅ **08-09: resuelto en código.** Caddy ahora apunta al `gateway`, que entró al compose con su
+> propio `Dockerfile` y expone las mismas rutas que el frontend ya llamaba, consultando a
+> `product-service`. La cadena queda `API Gateway → Caddy → gateway → product-service`.
+>
+> ⚠️ **Falta desplegarlo**, y toca `docker-compose.yml`, que es de Panditax.
+> Y la EC2 sigue siendo alcanzable directo, así que **el punto 1 sigue abierto**.
 
 El `Caddyfile` enruta `api.cacha-el-precio.com` → `product-service:8081`. El `gateway` no
 aparece en la cadena. Si el tráfico no pasa por el BFF, **el 40% del EP1 no se puede demostrar**:
@@ -195,6 +198,18 @@ solo con TLS y el enrutamiento; el CORS y la validación del token suben al API 
 
 ---
 
+### ✅ 3 · El puerto 8080 estaba pedido dos veces — resuelto
+
+Caddy publicaba el 8080 al host y el `gateway` también usa el 8080. Resuelto al meter el gateway
+al compose: **no publica ningún puerto al host**. Solo Caddy le habla, por la red interna, donde
+`gateway:8080` no choca con nada.
+
+Y es más que un arreglo de puertos: si el gateway publicara un puerto, existiría una puerta que
+esquiva a Caddy y al API Gateway. Una validación que se puede esquivar no es una validación.
+
+<details>
+<summary>El texto original</summary>
+
 ### 🟠 3 · El puerto 8080 está pedido dos veces
 
 Caddy publica `8080:8080` y `GATEWAY_PORT` también es 8080. Hoy no chocan porque el `gateway`
@@ -202,6 +217,8 @@ todavía no está en el compose; van a chocar el día que se agregue, con un err
 qué. Se resuelve solo si se arregla el punto 2 (Caddy deja de necesitar ese puerto interno).
 
 **Dueño:** Martín · **Antes de:** subir el `gateway` al compose.
+
+</details>
 
 ---
 

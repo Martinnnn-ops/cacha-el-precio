@@ -44,7 +44,7 @@ Lo que está corriendo de verdad, no lo que está planificado.
 | 🟢 | **Frontend** | En línea en `www.cacha-el-precio.com` (S3 + Cloudflare) |
 | 🟢 | **API** | En línea en `api.cacha-el-precio.com` (EC2 + Caddy → `product-service`) |
 | 🟢 | **Scraper de Sparta** | 3 capturas diarias desde el 27-08 |
-| 🟢 | **Validación de JWT en el BFF** | Firma, emisor, vigencia, `client_id`, `token_use` y roles |
+| 🟢 | **Validación de JWT en el BFF** | Firma, emisor, vigencia, `client_id`, `token_use` y roles — y **el tráfico ya pasa por ahí** |
 | 🟡 | **Identidad** | Cognito levantado por script, pero **hay dos user pools** que no se hablan |
 | 🔴 | **API Manager** | No hay API Gateway todavía: hoy el rol lo cumple Caddy |
 | 🔴 | **Base de datos** | SQLite en `product-service` y Postgres en el scraper. **La RDS no existe** |
@@ -57,24 +57,36 @@ Lo que está corriendo de verdad, no lo que está planificado.
 ## Cómo está construido
 
 ```
-   Frontend Vue                    ┌── Cognito (OIDC + PKCE)
-   (S3 + Cloudflare)               │
-        │                          │
-        ▼                          ▼
-   Caddy (TLS, enrutado)  ····▶  gateway/BFF  ── valida el JWT
-        │                            │      │
-        ▼                            ▼      ▼
-   product-service              price-service
-   (Micronaut, SQLite)          (Micronaut)
+   Frontend Vue                          Cognito  (OIDC · PKCE · grupos)
+   (S3 + Cloudflare)                        ▲
+        │                                   │ valida el token contra el JWKS
+        ▼                                   │
+   API Gateway ── JWT Authorizer ───────────┤   ← el API Manager: CORS, stages
+        │                                   │
+        ▼                                   │
+   Caddy  (TLS, enrutado, en la EC2)        │
+        │                                   │
+        ▼                                   │
+   gateway / BFF ───────────────────────────┘   ← vuelve a validar, y autoriza
+        │            │                              por rol (cognito:groups)
+        ▼            ▼
+  product-service   price-service
+  (Micronaut,       (Micronaut,
+   SQLite)           todavía vacío)
         ▲
         │ HTTP
-   scraper-service ──▶ Postgres (esquema scraper) ──▶ S3 (imágenes)
-   (Python, FastAPI)
+  scraper-service ──▶ Postgres (esquema scraper) ──▶ S3 (imágenes)
+  (Python, FastAPI)
 ```
 
-⚠️ Las flechas punteadas son lo que **falta**: hoy Caddy le habla directo a `product-service` y
-se salta el BFF, y la ingesta del scraper va por HTTP en vez de por RabbitMQ. Las dos cosas están
-en [`docs/INTEGRACION.md`](docs/INTEGRACION.md).
+**Por qué el token se valida dos veces.** En el API Gateway se rechaza lo que claramente no
+sirve —sin token, vencido, de otro emisor— antes de gastar la instancia. En el BFF se vuelve a
+validar y ahí se decide **quién puede hacer qué** leyendo los grupos. Si el API Gateway fuera la
+única defensa, cualquiera que alcanzara la EC2 por otra vía entraría sin token.
+
+⚠️ Lo que todavía **falta**: la ingesta del scraper va por HTTP directo en vez de por RabbitMQ, y
+`price-service` está desplegado pero vacío. Las dos cosas, con dueño y fecha, en
+[`docs/INTEGRACION.md`](docs/INTEGRACION.md).
 
 | Capa | Tecnología |
 |---|---|
