@@ -62,13 +62,12 @@
       <artifactId>logback-classic</artifactId>
       <scope>runtime</scope>
     </dependency>
-    <!-- Cliente HTTP: lo usan los tests para golpear las rutas y comprobar
-         que responden 401 en vez de 200. Cuando el gateway consulte de verdad
-         a product-service pasa a scope compile. -->
+    <!-- Cliente HTTP. Lo usa el BFF para consultar a product-service, y de paso
+         los tests para golpear sus propias rutas. -->
     <dependency>
       <groupId>io.micronaut</groupId>
       <artifactId>micronaut-http-client</artifactId>
-      <scope>test</scope>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>io.micronaut.test</groupId>

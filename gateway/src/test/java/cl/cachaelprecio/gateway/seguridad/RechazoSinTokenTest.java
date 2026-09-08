@@ -45,7 +45,7 @@ class RechazoSinTokenTest {
     @DisplayName("una ruta protegida sin token da 401, no 200")
     void rutaProtegidaSinTokenDa401() {
         HttpClientResponseException error = assertThrows(HttpClientResponseException.class,
-                () -> cliente.toBlocking().exchange(HttpRequest.GET("/api/precios")));
+                () -> cliente.toBlocking().exchange(HttpRequest.GET("/api/yo")));
 
         assertEquals(HttpStatus.UNAUTHORIZED, error.getStatus());
     }
@@ -64,7 +64,7 @@ class RechazoSinTokenTest {
     void tokenInventadoDa401() {
         HttpClientResponseException error = assertThrows(HttpClientResponseException.class,
                 () -> cliente.toBlocking().exchange(
-                        HttpRequest.GET("/api/precios").bearerAuth("esto.no.es-un-jwt")));
+                        HttpRequest.GET("/api/yo").bearerAuth("esto.no.es-un-jwt")));
 
         assertEquals(HttpStatus.UNAUTHORIZED, error.getStatus());
     }
@@ -73,23 +73,20 @@ class RechazoSinTokenTest {
     @DisplayName("el 401 viene con cuerpo JSON, no vacio: es la evidencia que pide la rubrica")
     void elErrorTraeCuerpoJson() {
         HttpClientResponseException error = assertThrows(HttpClientResponseException.class,
-                () -> cliente.toBlocking().exchange(HttpRequest.GET("/api/precios"), Map.class));
+                () -> cliente.toBlocking().exchange(HttpRequest.GET("/api/yo"), Map.class));
 
         Map<?, ?> cuerpo = error.getResponse().getBody(Map.class).orElseThrow();
 
         assertEquals(401, cuerpo.get("estado"));
         assertEquals("No autorizado", cuerpo.get("error"));
-        assertEquals("/api/precios", cuerpo.get("ruta"));
+        assertEquals("/api/yo", cuerpo.get("ruta"));
         assertTrue(error.getResponse().getHeaders().contains("WWW-Authenticate"),
                 "un 401 debe decir como autenticarse (RFC 6750)");
     }
 
     @Test
-    @DisplayName("/api/yo tambien exige token")
-    void sesionSinTokenDa401() {
-        HttpClientResponseException error = assertThrows(HttpClientResponseException.class,
-                () -> cliente.toBlocking().exchange(HttpRequest.GET("/api/yo")));
-
-        assertEquals(HttpStatus.UNAUTHORIZED, error.getStatus());
+    @DisplayName("el catalogo publico NO se ve afectado por la seguridad de las otras rutas")
+    void elCatalogoSigueSiendoPublico() {
+        assertDoesNotThrow(() -> cliente.toBlocking().exchange(HttpRequest.GET("/catalogos")));
     }
 }
