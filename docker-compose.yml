@@ -2,8 +2,8 @@
 #  Cacha el Precio · entorno local
 # ─────────────────────────────────────────────────────────────────────────────
 #
-#  Levanta las dos piezas de infraestructura que los microservicios necesitan
-#  para correr en tu computador: la base de datos y la cola de mensajes.
+#  Levanta los servicios y la única infraestructura compartida que permanece:
+#  PostgreSQL para el scraper. Product Service usa su propio volumen SQLite.
 #
 #      docker compose up -d        levantar
 #      docker compose ps           ver si están sanos
@@ -83,40 +83,6 @@ services:
     networks: [cep]
 
   # ───────────────────────────────────────────────────────────────────────────
-  #  RabbitMQ — la cola de mensajes
-  # ───────────────────────────────────────────────────────────────────────────
-  #  Desacopla la ingesta del procesamiento: si el normalizador está caído, las
-  #  ofertas esperan en la cola en vez de perderse (ARQUITECTURA.md §6).
-  rabbitmq:
-    image: rabbitmq:3.13-management-alpine
-    container_name: cep-rabbitmq
-    restart: unless-stopped
-
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-cachaelprecio}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?falta RABBITMQ_PASSWORD en el .env}
-
-    ports:
-      # 5672  → por acá hablan los microservicios (protocolo AMQP)
-      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
-      # 15672 → el panel web. Se abre en http://localhost:15672
-      #         Es la pantalla que hay que mostrar en la demo del EP2 para
-      #         evidenciar las colas y la DLQ.
-      - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
-
-    volumes:
-      - rabbitmq-datos:/var/lib/rabbitmq
-
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-
-    networks: [cep]
-
-  # ───────────────────────────────────────────────────────────────────────────
   #  Gateway (BFF) — la puerta de entrada, y donde se valida el token
   # ───────────────────────────────────────────────────────────────────────────
   #  Es a quien Caddy le reenvía todo. Valida el JWT contra el JWKS de Cognito
@@ -132,17 +98,17 @@ services:
     restart: unless-stopped
 
     environment:
-      GATEWAY_PORT: 8080
+      ASPNETCORE_HTTP_PORTS: 8080
       # Dentro del compose el host es el NOMBRE DEL SERVICIO. Cada contenedor
       # tiene su propio localhost, y ahí no hay nadie escuchando.
       PRODUCT_URL: http://product-service:8081
-      # Los tres valores de Cognito salen de cognito.env, que no se versiona.
+      # Los valores de Cognito salen de cognito.env, que no se versiona.
       # Sin ellos el servicio arranca pero rechaza todos los tokens.
       # Van entre comillas: el mensaje de ${VAR:?...} lleva dos puntos y sin
       # comillas YAML lo lee como el inicio de otra clave.
       COGNITO_ISSUER: "${COGNITO_ISSUER:?falta COGNITO_ISSUER, pega cognito.env en el .env}"
-      COGNITO_JWKS_URI: "${COGNITO_JWKS_URI:?falta COGNITO_JWKS_URI}"
       COGNITO_CLIENT_IDS_VALIDOS: "${COGNITO_CLIENT_IDS_VALIDOS:?falta COGNITO_CLIENT_IDS_VALIDOS}"
+      COGNITO_WRITE_SCOPE: "${COGNITO_SCRAPER_SCOPE:-https://api.cachaelprecio.cl/ingesta}"
 
     depends_on:
       - product-service
@@ -150,14 +116,12 @@ services:
     networks: [cep]
 
   # ───────────────────────────────────────────────────────────────────────────
-  #  Product Service — catálogo de productos (Micronaut/Java)
+  #  Product Service — catálogo de productos (ASP.NET Core/C#)
   # ───────────────────────────────────────────────────────────────────────────
-  #  Es el servicio al que Caddy le enruta el tráfico (api.cacha-el-precio.com).
-  #  Usa SQLite (no PostgreSQL) y expone HTTP en 8081 y gRPC en 50051:
-  #      GET /productos        listar productos
-  #      GET /catalogos        listar catálogos
+  #  Solo el gateway y el scraper le hablan por la red interna.
+  #  Usa SQLite (no PostgreSQL) y expone HTTP en 8081:
+  #      GET /api/products     listar productos
   #      GET /health           verificar estado
-  #      /swagger-ui           documentación
   product-service:
     build:
       context: .
@@ -166,9 +130,8 @@ services:
     restart: unless-stopped
 
     environment:
-      PRODUCT_PORT: ${PRODUCT_PORT:-8081}
-      PRODUCT_GRPC_PORT: ${PRODUCT_GRPC_PORT:-50051}
-      PRODUCT_DB_URL: ${PRODUCT_DOCKER_DB_URL:-jdbc:sqlite:/app/data/product.db?foreign_keys=on&busy_timeout=5000&journal_mode=WAL}
+      ASPNETCORE_HTTP_PORTS: 8081
+      ConnectionStrings__Sqlite: "Data Source=/app/data/product.db"
 
     volumes:
       # La base SQLite vive acá; sobrevive a `down`, muere con `down -v`.
@@ -176,7 +139,6 @@ services:
 
     ports:
       - "127.0.0.1:${PRODUCT_PORT:-8081}:8081"
-      - "127.0.0.1:${PRODUCT_GRPC_PORT:-50051}:50051"
 
     networks: [cep]
 
@@ -222,7 +184,6 @@ services:
 # ─────────────────────────────────────────────────────────────────────────────
 volumes:
   postgres-datos:
-  rabbitmq-datos:
   product-datos:
   caddy_data:
   caddy_config:
