@@ -69,3 +69,6 @@ Thumbs.db
 
 # Configuracion de Cognito generada por tools/crear-cognito.sh (cambia por cuenta)
 cognito.env
+
+# Generado por tools/crear-api-gateway.sh: cambia con cada cuenta de AWS
+api-gateway.env

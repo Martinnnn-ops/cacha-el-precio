@@ -172,6 +172,16 @@ de **client credentials** que ya existe (`COGNITO_SCRAPER_CLIENT_ID` en `cognito
 
 ### 🔴 2 · Caddy le pega directo a `product-service` y se salta el BFF
 
+> ✅ **Avance del 07-09 por la noche: el API Gateway ya existe y funciona.**
+> `tools/crear-api-gateway.sh` levanta la HTTP API con JWT Authorizer, CORS de orígenes
+> explícitos y los stages `dev`/`prod`. Probado con un token real: **200 / 401 / 403** en el
+> borde. Ver [`ADR-019`](adr/019-api-gateway-como-api-manager.md) y la evidencia en
+> [`evidencia/`](evidencia/).
+>
+> ⚠️ **Lo que eso NO resuelve:** el `gateway` sigue fuera de la cadena. Hoy es
+> `API Gateway → Caddy → product-service`, y falta meter el BFF en medio. Y la EC2 sigue siendo
+> alcanzable directo, así que el punto 1 **sigue abierto**.
+
 El `Caddyfile` enruta `api.cacha-el-precio.com` → `product-service:8081`. El `gateway` no
 aparece en la cadena. Si el tráfico no pasa por el BFF, **el 40% del EP1 no se puede demostrar**:
 no hay dónde mostrar la validación de `iss`, `client_id`, firma y vigencia.
