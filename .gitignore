@@ -15,7 +15,14 @@ application-secrets.yml
 .aws/
 secrets/
 
-# ─── Java / Gradle (Micronaut) ─────────────────────────────────────
+# ─── .NET ──────────────────────────────────────────────────────────
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# ─── Java / Gradle (histórico y herramientas externas) ─────────────
 build/
 !gradle/wrapper/gradle-wrapper.jar
 .gradle/

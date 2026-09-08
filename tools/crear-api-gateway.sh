@@ -38,10 +38,8 @@ COGNITO_ENV="$RAIZ/cognito.env"
 SALIDA="$RAIZ/api-gateway.env"
 
 NOMBRE_API="cacha-el-precio"
-# A donde apunta el API Gateway. Hoy esa direccion la atiende Caddy, que le
-# habla directo a product-service; cuando Caddy pase a apuntar al gateway (BFF),
-# esta misma URL empieza a servir tambien /seguimiento y /api/*. Hasta entonces
-# esas rutas existen aca pero responden 404 desde el backend.
+# A donde apunta el API Gateway. Esa direccion la atiende Caddy, que reenvia
+# siempre al gateway C# (BFF).
 BACKEND_URL="${BACKEND_URL:-https://api.cacha-el-precio.com}"
 ORIGEN_WEB="${ORIGEN_WEB:-https://www.cacha-el-precio.com}"
 ORIGEN_LOCAL="http://localhost:5173"
@@ -125,7 +123,7 @@ fi
 
 aws_ apigatewayv2 update-api --api-id "$API_ID" \
   --cors-configuration \
-    "AllowOrigins=$ORIGEN_WEB,$ORIGEN_LOCAL,AllowMethods=GET,POST,PUT,DELETE,OPTIONS,AllowHeaders=Content-Type,Authorization,X-API-VERSION,MaxAge=86400,AllowCredentials=true" \
+    "AllowOrigins=$ORIGEN_WEB,$ORIGEN_LOCAL,AllowMethods=GET,POST,PUT,DELETE,OPTIONS,AllowHeaders=Content-Type,Authorization,Version,MaxAge=86400,AllowCredentials=true" \
   >/dev/null && verde "  CORS: $ORIGEN_WEB y $ORIGEN_LOCAL (sin comodin)"
 
 # --------------------------------------------------------------------------
@@ -183,7 +181,6 @@ integracion() {  # $1 = ruta del backend
 I_HEALTH="$(integracion /health)";                     gris "  /health          -> $I_HEALTH"
 I_PRODUCTOS="$(integracion /productos)";               gris "  /productos       -> $I_PRODUCTOS"
 I_PRODUCTO="$(integracion '/productos/{id}')";         gris "  /productos/{id}  -> $I_PRODUCTO"
-I_VISITAS="$(integracion '/productos/{id}/visitas')";  gris "  .../visitas      -> $I_VISITAS"
 I_CATALOGOS="$(integracion /catalogos)";               gris "  /catalogos       -> $I_CATALOGOS"
 I_SEGUIMIENTO="$(integracion /seguimiento)";           gris "  /seguimiento     -> $I_SEGUIMIENTO"
 I_SEGUIR="$(integracion '/seguimiento/{id}')";         gris "  /seguimiento/{id}-> $I_SEGUIR"
@@ -213,9 +210,6 @@ I_ADMIN="$(integracion /api/admin/diagnostico)";       gris "  /api/admin/...   
 #    productos que una persona eligio seguir— y el 403 de las escrituras, que
 #    exigen el scope `ingesta` que solo tiene el client del scraper.
 #
-#    Las visitas quedan anonimas a proposito: el frontend cuenta vistas de gente
-#    que no inicio sesion. Cerrarlas romperia el contador.
-
 titulo "4. Rutas"
 
 # ⚠️ Las rutas se crean con --cli-input-json y no con banderas sueltas, y hay
@@ -278,7 +272,6 @@ ruta "GET /health"                     "$I_HEALTH"      publica
 ruta "GET /productos"                  "$I_PRODUCTOS"   publica
 ruta "GET /productos/{id}"             "$I_PRODUCTO"    publica
 ruta "GET /catalogos"                  "$I_CATALOGOS"   publica
-ruta "POST /productos/{id}/visitas"    "$I_VISITAS"     publica
 
 # Requieren sesion: son de cada persona. De aca sale el 401 de la demo.
 ruta "GET /seguimiento"                "$I_SEGUIMIENTO" jwt
@@ -333,6 +326,6 @@ gris  "  guardado en api-gateway.env"
 echo
 gris  "Probar (necesita un token; ver docs/IDENTIDAD.md):"
 gris  "  curl -i $BASE/prod/health                                  # 200"
-gris  "  curl -i $BASE/prod/productos                               # 401"
+gris  "  curl -i $BASE/prod/productos                               # 200 publico"
 gris  "  curl -i -H \"Authorization: Bearer \$TOKEN\" \\"
-gris  "          -H 'X-API-VERSION: 0.1.0' $BASE/prod/productos     # 200"
+gris  "          -H 'Version: 1.0' $BASE/prod/productos             # 200"

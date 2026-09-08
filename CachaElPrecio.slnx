@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="gateway/Gateway.csproj" />
+  <Project Path="product-service/Product-Service.csproj" />
+</Solution>

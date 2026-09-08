@@ -1,7 +1,5 @@
 **
 
-!pom.xml
 !gateway/
-!gateway/pom.xml
-!gateway/src/
-!gateway/src/**
+!gateway/Gateway.csproj
+!gateway/**/*.cs
