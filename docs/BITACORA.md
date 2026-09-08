@@ -365,6 +365,43 @@ arreglarlo es exactamente el 40% del EP1 que me toca.
 
 Todo quedó con dueño y fecha en [`INTEGRACION.md`](INTEGRACION.md).
 
+(07-09 · noche) 🌐 **Descubierto revisando el dominio: el sistema YA está en internet.** No
+estaba anotado en ninguna parte. `www.cacha-el-precio.com` sirve el frontend desde S3 detrás de
+Cloudflare, y `api.cacha-el-precio.com` apunta a una EC2 en `us-east-1` con Caddy delante de
+`product-service`. Hay 12 productos y 12 catálogos vivos, y el bundle del frontend trae PKCE de
+verdad (`code_challenge`, `S256`, `state`, `identity_provider=Google`). **La fecha del 6-sep no se
+incumplió del todo**, y eso conviene decirlo en el informe.
+
+🔴 **Pero la escritura está abierta.** `DELETE /productos/999999999` responde **404, no 401** —lo
+probé con un id inexistente para no borrar nada—, o sea que la petición llega a la lógica de
+negocio sin pasar por ninguna autorización. Cualquiera puede borrar el catálogo con un `curl`.
+
+🔴 **Y hay dos user pools de Cognito.** El frontend desplegado entra a uno distinto del que crea
+`tools/crear-cognito.sh`. La causa la encontré en mi propio script: **nunca crea el IdP de
+Google**, no hay un solo `create-identity-provider`. `TAREAS.md` lo tiene sin marcar desde la
+Semana 1, pero `README.md` y `ARQUITECTURA.md` ya lo daban por hecho, así que quien hizo el
+frontend necesitó Google, no lo encontró, y levantó un pool que sí lo tenía. Es un error mío de
+documentación, no de nadie más. Se decide en la reunión de mañana.
+
+(07-09 · noche) 🔐 **El BFF ya valida el token — el 40% del EP1 dejó de ser un `Application.java`
+vacío.** Verifica la firma contra el JWKS del pool, el emisor, la vigencia, el `client_id` y que
+el `token_use` sea `access`; los roles salen de `cognito:groups`.
+
+Dos cosas necesitaron validador propio porque Cognito no se comporta como Micronaut espera. La
+primera ya la sabía del 03-09: **no manda `aud` en el `access_token`**, manda `client_id`, así que
+la validación estándar de audience quedó apagada a propósito y el equivalente acepta los **dos**
+clients nuestros. La segunda apareció escribiendo: los tres tokens del login están firmados por el
+mismo pool, así que **un `id_token` pasa firma y emisor sin problema**; se rechaza por
+`token_use`, porque el `id_token` dice quién eres y no qué puedes hacer.
+
+Los 401 y 403 salen en JSON con formato parejo — la rúbrica del EP2 pide mostrar el JSON esperado
+ruta por ruta, y una respuesta vacía no es evidencia de nada. **7 tests verdes**, y los de
+seguridad están escritos para fallar si la protección se apaga: es fácil creer que un servicio
+está protegido porque la dependencia está en el `pom`, y que responda 200 a todo.
+
+Falta el test con un token real (necesita credenciales del lab) y que el gateway consulte de
+verdad a `product-service`.
+
 **Orion —**
 
 **Panditax —**

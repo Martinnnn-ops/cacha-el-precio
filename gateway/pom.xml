@@ -42,10 +42,33 @@
       <artifactId>micronaut-serde-jackson</artifactId>
       <scope>compile</scope>
     </dependency>
+    <!-- El 40% del EP1 vive en esta dependencia: valida la firma del token
+         contra el JWKS de Cognito, el emisor y la vigencia. Lo que Cognito
+         hace distinto (no manda `aud`) se cubre con validadores propios en
+         el paquete `seguridad`. -->
+    <dependency>
+      <groupId>io.micronaut.security</groupId>
+      <artifactId>micronaut-security-jwt</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <!-- Habilita @Secured sobre los controladores. -->
+    <dependency>
+      <groupId>io.micronaut.security</groupId>
+      <artifactId>micronaut-security-annotations</artifactId>
+      <scope>compile</scope>
+    </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
       <scope>runtime</scope>
+    </dependency>
+    <!-- Cliente HTTP: lo usan los tests para golpear las rutas y comprobar
+         que responden 401 en vez de 200. Cuando el gateway consulte de verdad
+         a product-service pasa a scope compile. -->
+    <dependency>
+      <groupId>io.micronaut</groupId>
+      <artifactId>micronaut-http-client</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.micronaut.test</groupId>
@@ -79,6 +102,11 @@
               <groupId>io.micronaut.serde</groupId>
               <artifactId>micronaut-serde-processor</artifactId>
               <version>${micronaut.serialization.version}</version>
+            </path>
+            <path>
+              <groupId>io.micronaut.security</groupId>
+              <artifactId>micronaut-security-annotations</artifactId>
+              <version>${micronaut.security.version}</version>
             </path>
           </annotationProcessorPaths>
           <compilerArgs>

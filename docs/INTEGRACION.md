@@ -13,6 +13,90 @@
 
 ---
 
+## 0. Lo que apareció al mirar el despliegue · 07-09, 21:00
+
+> Esta sección se escribió **después** del resto: se descubrió al revisar el dominio, no al leer
+> el código. **El sistema ya está en internet** y no estaba anotado en ninguna parte.
+
+| Qué | Dónde | Estado verificado |
+|---|---|---|
+| **API** | `api.cacha-el-precio.com` → EC2 `44.196.131.41` (us-east-1), vía Caddy | 🟢 `/health` → `{"status":"UP"}` |
+| **Frontend** | `www.cacha-el-precio.com` → S3 detrás de Cloudflare | 🟢 200 |
+| **Datos** | 12 productos, 12 catálogos | 🟢 vivos |
+| **Login** | PKCE real: `code_challenge`, `S256`, `state`, `identity_provider=Google` | 🟢 implementado |
+
+**Eso es una buena noticia y hay que decirlo:** la fecha del 6-sep no se incumplió del todo. Hay
+sistema desplegado, con dominio propio y TLS. Pero trae dos problemas que mandan sobre todo lo
+demás de este documento.
+
+### 🔴 0.1 · La escritura está abierta a internet, ahora
+
+```
+DELETE https://api.cacha-el-precio.com/productos/999999999  →  404
+```
+
+Se probó con un id inexistente justamente para no borrar nada. **404 y no 401** significa que la
+petición llegó hasta la lógica de negocio sin pasar por ninguna autorización: cualquiera que
+sepa la URL puede crear, editar y borrar el catálogo entero con un `curl`.
+
+El punto 1 de la §2 de este documento deja de ser deuda y pasa a ser **un incidente abierto**.
+
+> ⚠️ Ojo con `POST /productos/{id}/visitas`, que es de la misma tanda: **esa sí debe ser
+> anónima**, porque el frontend cuenta vistas sin pedir login. El arreglo no es cerrar todos los
+> `@Post` de un plumazo: es lectura y visitas anónimas, y CRUD solo para `admin` o el scope
+> `ingesta`.
+
+### 🔴 0.2 · Hay dos User Pools de Cognito, y no se hablan
+
+| | Pool del script (`cognito.env`) | Pool del frontend desplegado |
+|---|---|---|
+| User pool | `us-east-1_cH76LiA02` | otro (dominio `us-east-1ji5w1jelx`) |
+| Client | `61amk99kv70gndiupsfsebc49d` | `3ev76jdoin1ouc1grqfdi3laam` |
+| Grupos `admin` / `usuario` | ✅ | ❓ |
+| Resource server + scope `ingesta` | ✅ | ❓ |
+| Client de `client_credentials` (scraper) | ✅ | ❓ |
+| **Google federado** | 🔴 **no** | ✅ |
+
+Los dos están vivos. Un user pool tiene **un solo** dominio, así que son pools distintos y no dos
+clients del mismo.
+
+**Por qué pasó, sin culpables:** `tools/crear-cognito.sh` **nunca creó el IdP de Google** — no
+hay un solo `create-identity-provider` en el script. `TAREAS.md` lo tiene como casilla sin marcar
+desde la Semana 1, pero `README.md` y `ARQUITECTURA.md` ya lo daban por hecho. Quien construyó el
+frontend necesitaba login con Google, el pool no lo tenía, y levantó uno que sí.
+
+**Por qué es lo más bloqueante que hay:** el BFF valida contra `COGNITO_ISSUER`. Si el frontend
+emite tokens de otro pool, **todo token del frontend da 401**. El 60% y el 40% del EP1 estarían
+validando identidades distintas y la demo end-to-end no existe.
+
+> 💡 **Propuesta para la reunión** (no decidida todavía): gana el **pool del script**, porque es
+> el único con grupos `admin`/`usuario` —sin ellos no hay 403, que es el 20% del EP2—, con
+> resource server y con el client de `client_credentials` del scraper. Le falta Google, y eso
+> **se le agrega**; los grupos y el resource server no se le agregan al otro sin rehacerlos.
+> Costo: dos constantes en el frontend, más agregarle Google al script y la callback de
+> producción (el paso 7 de `DESPLIEGUE.md`, que nunca se hizo).
+
+### 0.3 · Tres contradicciones más entre lo escrito y lo desplegado
+
+| El documento dice | El despliegue hace |
+|---|---|
+| `TAREAS` / `ARQUITECTURA`: frontend en **React** con `react-oidc-context` | Es **Vue**, con el PKCE escrito a mano |
+| `ADR-015`: EC2 en subred privada detrás de VPC Link | EC2 con **IP pública directa** |
+| `README`: "Google federado" en nuestro pool | El script no lo crea |
+
+Lo de Vue **no es un problema de nota** —la rúbrica pide una librería certificada OIDC, no React—
+pero sí es un problema de informe: hoy los documentos describen un sistema que no es el que está
+corriendo.
+
+### 0.4 · Un riesgo operativo para el día de la demo
+
+Esa EC2 es del **Learner Lab**: se apaga sola cuando el laboratorio se cierra y **la IP pública
+cambia al reiniciar**. Si el DNS de Cloudflare apunta a una IP fija, el sitio se cae solo entre
+sesiones. Hay que resolverlo con una **Elastic IP** antes del ensayo, o la demo empieza con el
+dominio caído.
+
+---
+
 ## 1. Las decisiones que cambiaron en el camino
 
 Los dos PR no solo traen código: traen **ocho decisiones de arquitectura**, y solo una está
