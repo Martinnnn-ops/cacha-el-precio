@@ -116,7 +116,9 @@ respetando `robots.txt`. Ver [`docs/PLAN.md`](docs/PLAN.md#8-consideraciones-leg
 | [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | En qué orden se despliega en AWS y las restricciones del Learner Lab |
 | [`docs/adr/`](docs/adr/) | Decisiones de arquitectura, una por archivo |
 | [`gateway/README.md`](gateway/README.md) | Qué valida el BFF y cómo se prueba |
-| [`scraper-service/README.md`](scraper-service/README.md) | El scraper de Python |
+| [`product-service/README.md`](product-service/README.md) | Las rutas de productos y catálogos, y el versionado por header |
+| [`scraper-service/README.md`](scraper-service/README.md) | El scraper de Python: cómo se agrega una tienda |
+| [`infra/db/README.md`](infra/db/README.md) | Las migraciones y por qué el modelo cambió contra datos reales |
 
 ## Cómo levantarlo
 

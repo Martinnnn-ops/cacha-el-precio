@@ -23,19 +23,37 @@ Stack: **Micronaut 5 / Java 25** para `gateway` (BFF), `product-service` y `pric
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | ~310 líneas |
-| La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | ~300 líneas |
-| Por qué hay microservicios / BFF / cola, por qué Micronaut, cómo escala, ADRs | `docs/ARQUITECTURA.md` | ~570 líneas |
-| Quién hace qué, roadmap semanal, git flow, checklist | `docs/TAREAS.md` | ~410 líneas |
-| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | ~130 líneas |
-| Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | ~210 líneas |
-| Qué valida el BFF en el código, y cómo se prueba | `gateway/README.md` | ~90 líneas |
-| Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | ~145 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | corto |
+| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 312 líneas |
+| La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 407 líneas |
+| Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
+| Por qué hay microservicios / BFF / cola, por qué Micronaut, cómo escala, ADRs | `docs/ARQUITECTURA.md` | 677 líneas |
+| Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 399 líneas |
+| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 194 líneas |
+| Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 225 líneas |
+| Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 409 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
-| Presentar el proyecto a alguien de afuera | `README.md` | ~95 líneas |
+| Presentar el proyecto a alguien de afuera | `README.md` | 162 líneas |
+
+Y el README de cada módulo, que es el más corto y el que más rinde cuando la tarea es sobre ese
+módulo en concreto:
+
+| Si la tarea es sobre… | Lee | Aprox. |
+|---|---|---|
+| Qué valida el BFF en el código, y cómo se prueba | `gateway/README.md` | 83 líneas |
+| Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 108 líneas |
+| El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 168 líneas |
+| El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 120 líneas |
+| Las migraciones y por qué el modelo cambió contra datos reales | `infra/db/README.md` | 80 líneas |
+| El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |
+| El dueño del historial y del descuento real (hoy todavía un esqueleto) | `price-service/README.md` | 22 líneas |
 
 **No cargues todos los documentos.** Casi ninguna tarea necesita más de dos.
+
+> 🧹 **Fuera del índice a propósito:** `scraper-service/CONVERS.md` es un diagrama ASCII del
+> flujo del scraper de **Converse** —la marca—, no de una conversación. El nombre confunde y el
+> contenido cabe dentro de `README.arquitectura.md`. Pendiente de absorber o renombrar; es de
+> Panditax, así que se avisa antes de moverlo.
 Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pidan explícitamente.
 
 ---
@@ -100,6 +118,11 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
   `docs/ARQUITECTURA.md` §13: contexto → alternativas → decisión → **consecuencias, incluidas las malas**.
 - Al modificar un documento, **actualiza su índice** y la fecha de "última revisión" del encabezado.
 - Si un documento pasa de ~600 líneas, pártelo y actualiza la tabla de arriba.
+  ⚠️ **`docs/ARQUITECTURA.md` ya va en 677** y toca partirlo: las secciones 1 a 10 son el
+  porqué del diseño y la 11 a 13 son la nube y los ADR. Pendiente, no urgente.
+- **Los conteos de la tabla se sacan del archivo, no de memoria.** Estaban todos desfasados
+  hasta el 07-09 y faltaba `docs/REQUISITOS.md` entero. Un índice que miente hace perder más
+  tiempo que no tener índice.
 - `README.md` es la cara pública: se mantiene corto y sin detalle interno del ramo. Su tabla de
   **Estado** dice lo que corre de verdad, no lo planificado — si cambia el sistema, cambia esa
   tabla en el mismo PR.
