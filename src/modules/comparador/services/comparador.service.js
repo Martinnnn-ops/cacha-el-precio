@@ -111,7 +111,8 @@ export async function registrarVisita(id) {
     return simularRed({ visitas: vistos + 1 })
   }
 
-  return http.post(`/productos/${encodeURIComponent(id)}/visitas`, null, {
+  return http.post(`/productos/${encodeURIComponent(id)}/visitas`, {}, {
     version: V_DETALLE,
+    headers: { 'Content-Type': 'application/json' },
   })
 }
