@@ -3,7 +3,18 @@
 > Por qué el sistema está armado así. Este documento existe para responder la pregunta que se
 > hace en toda defensa: **"¿por qué no lo hiciste más simple?"**
 >
-> Complemento del [PLAN.md](PLAN.md) · Última revisión: 19-08-2026
+> Complemento del [PLAN.md](PLAN.md) · Última revisión: 07-09-2026
+
+> ⚠️ **Este documento explica el diseño que se decidió, no el sistema que está corriendo hoy.**
+> Entre el 02 y el 07 de septiembre se construyeron cosas que se apartan de acá —el scraper pasó
+> a Python, `product-service` guarda en SQLite, Caddy quedó de API Manager y la ingesta va por
+> HTTP en vez de por la cola—. **Las diferencias, una por una y con dueño, están en
+> [`INTEGRACION.md`](INTEGRACION.md).**
+>
+> No se "arregló" este documento borrando lo que ya no calza, y es a propósito: el razonamiento
+> de por qué se eligió cada cosa **sigue siendo la respuesta que hay que dar en la defensa**, y
+> varias de esas decisiones se van a retomar después de la entrega. Lo que no se puede es
+> leer solo este archivo y creer que describe la realidad.
 
 ---
 
@@ -557,7 +568,7 @@ en una sola AZ: la redundancia real es de RDS, y conviene decirlo así en vez de
 
 | Pieza | Dónde | Por qué ahí |
 |---|---|---|
-| **Frontend** (React compilado) | **S3 + CloudFront** | Son archivos estáticos. Dedicarles una máquina es una instancia más que parchar |
+| **Frontend** (Vue compilado) | **S3 + Cloudflare** | Son archivos estáticos. Dedicarles una máquina es una instancia más que parchar |
 | **API Manager** | **API Gateway HTTP API** | Valida el JWT en el borde y tiene stages. Un reverse proxy no hace ninguna de las dos |
 | **BFF + catalog + price + RabbitMQ** | **Una EC2 con Docker Compose**, subred privada | Es el mismo `docker-compose.yml` que se usa en local. Un comando, no cuatro servicios de AWS que aprender |
 | **Base de datos** | **RDS Postgres**, subred privada | Fuera del compose a propósito: si la instancia se cae, **el historial no se recupera hacia atrás** |
@@ -641,7 +652,22 @@ Lo bueno y lo malo que aceptamos. **Especialmente lo malo.**
 | 012 | Cola efímera, sin EFS | §12 |
 | 013 | Java 25 y Maven como base del backend | [`ADR-013`](adr/013-java-25-maven.md) |
 | 014 | Versionado semántico independiente por microservicio | [`ADR-014`](adr/014-versionado-semantico-por-servicio.md) |
-| 015 | Red privada con VPC Link, y el NAT y el ALB apagados cuando no se usan | [`ADR-015`](adr/015-red-privada-con-vpc-link.md) |
+| 015 | Red privada con VPC Link, y el NAT y el ALB apagados cuando no se usan | [`ADR-015`](adr/015-red-privada-con-vpc-link.md) ⚠️ |
+| 016 | `product-service` reemplaza a `catalog-service`, y se parte sin DTO | [`ADR-016`](adr/016-product-service-y-modelos-sin-dto.md) |
+| 017 | Versionado de rutas HTTP por header `X-API-VERSION` | ⬜ **por escribir** |
+| 018 | El scraper sale de Java y pasa a Python | [`ADR-018`](adr/018-scraper-en-python.md) |
+| 019 | Quién es el API Manager, y qué hace Caddy | ⬜ **por escribir** |
+
+⚠️ **Tres de los ADR ya escritos quedaron tocados por lo que se construyó después**, y hay que
+marcarlos antes de citarlos en el informe:
+
+| ADR | Qué dice | Qué pasó |
+|---|---|---|
+| **010** · una RDS con esquema por servicio | Postgres para todos | `product-service` usa **SQLite**; la RDS no existe |
+| **013** · Java 25 y Maven como base del backend | todo el backend en Java | El scraper es **Python**. ✅ Ya acotado, ver [`ADR-018`](adr/018-scraper-en-python.md) |
+| **015** · backend en subred privada con VPC Link | nada expuesto a internet | La EC2 tiene **IP pública directa** y no hay VPC Link |
+
+El detalle de cada una está en [`INTEGRACION.md` §1](INTEGRACION.md).
 
 **Por qué vale la pena:** el razonamiento ya está escrito acá, así que es mayormente copiar y
 pegar. Y en una defensa, un ADR que dice *"consideramos X, lo descartamos porque Y, y aceptamos

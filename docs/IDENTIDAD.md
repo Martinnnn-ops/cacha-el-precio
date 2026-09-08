@@ -19,7 +19,7 @@ Creado el **30-08-2026** con `tools/crear-cognito.sh` y verificado end-to-end.
 | **User Pool** `cacha-el-precio` | El directorio de usuarios. Se entra con el correo |
 | **Dominio del Hosted UI** | La pantalla de login que hospeda AWS. Sin esto no hay flujo de código |
 | **Resource server** `https://api.cachaelprecio.cl` | Define permisos propios de *nuestra* API. Tiene el scope `ingesta` |
-| **App client `frontend`** | Sin secreto. Authorization Code + PKCE. Es el que usa el React |
+| **App client `frontend`** | Sin secreto. Authorization Code + PKCE. Es el que usa el frontend Vue |
 | **App client `scraper`** | Con secreto. `client_credentials`. Es el que usa el proceso que captura precios |
 | **App client `pruebas`** | Sin secreto, sin OAuth ni callbacks. Solo `ADMIN_USER_PASSWORD_AUTH`, para que los tests saquen un token real sin navegador |
 | **Grupos `admin` y `usuario`** | Viajan dentro del token. Es lo que el BFF mira para decidir 403 |
@@ -78,7 +78,7 @@ un solo uso. Si devolviera el token, quedaría en el historial del navegador, en
 servidor y en el `Referer`. El código, sin el desafío PKCE que solo tiene ese navegador, no
 sirve de nada aunque alguien lo intercepte.
 
-**Por qué el `frontend` no tiene secreto.** Un React compilado es un archivo que cualquiera
+**Por qué el `frontend` no tiene secreto.** Un frontend compilado es un archivo que cualquiera
 puede abrir y leer. Un secreto ahí no es un secreto. PKCE existe justamente para reemplazarlo:
 el navegador inventa un valor al azar, manda su hash al pedir el código, y al canjearlo muestra
 el valor original. Nadie más puede completar el canje.
