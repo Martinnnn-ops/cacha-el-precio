@@ -16,6 +16,7 @@ Stack: **Micronaut (Java) + AWS + Cognito + RabbitMQ + React**. 4 microservicios
 | La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | ~300 líneas |
 | Por qué hay microservicios / BFF / cola, por qué Micronaut, cómo escala, ADRs | `docs/ARQUITECTURA.md` | ~570 líneas |
 | Quién hace qué, roadmap semanal, git flow, checklist | `docs/TAREAS.md` | ~410 líneas |
+| **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 215 líneas |
 | En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | ~130 líneas |
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | ~210 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | ~145 líneas |

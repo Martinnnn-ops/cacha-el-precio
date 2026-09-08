@@ -10,6 +10,12 @@ que no dice por qué.
 
 ---
 
+> 🔁 **Si lo que necesitas es levantar todo en una cuenta nueva** —porque se acabaron los
+> tokens, porque resetearon la cuenta, o porque el proyecto se muda a una cuenta de AWS
+> normal— el documento es [`MIGRACION.md`](MIGRACION.md), no este. Ahí está el orden de los
+> scripts, qué está automatizado y qué todavía es a mano, y **qué datos se pierden si no se
+> respaldan antes**.
+
 ## 0. Antes de tocar nada: cómo es el Learner Lab
 
 Esto no es una cuenta de AWS normal y las diferencias muerden justo en el despliegue.
