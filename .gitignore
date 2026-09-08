@@ -72,3 +72,6 @@ cognito.env
 
 # Generado por tools/crear-api-gateway.sh: cambia con cada cuenta de AWS
 api-gateway.env
+
+# Respaldos de datos: nunca al repo
+respaldos/

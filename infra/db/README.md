@@ -78,3 +78,26 @@ rechaza, y entre acertar y equivocarse hay **0,04**. La causa es que el número 
 **El matcher tiene que extraer el número de modelo y exigir coincidencia exacta**, dejando el
 trigrama para el resto del nombre. Eso es trabajo del matcher, no del esquema, pero si no se
 hace el comparador va a emparejar zapatos distintos con total seguridad.
+
+---
+
+## 🪤 Si agregaste un archivo a `infra/postgres/init/` y no pasó nada
+
+Los scripts de esa carpeta **solo corren cuando el volumen de Postgres se crea vacío**. Es
+comportamiento de la imagen oficial, no un error nuestro: si el volumen ya existe, Docker asume
+que la base está inicializada y los ignora en silencio.
+
+Pasó de verdad: `02-scraper-schema.sql` se agregó el 07-09-2026, y en los equipos que tenían el
+stack levantado desde el 27-08 **el esquema `scraper` nunca se creó**. El scraper de Python
+arranca y falla contra una base sin sus tablas.
+
+Se aplica a mano, sin perder nada:
+
+```bash
+set -a && source .env && set +a
+docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
+  < infra/postgres/init/02-scraper-schema.sql
+```
+
+`docker compose down -v` también funciona, pero **borra los datos**. Con el historial de precios
+encima, no es una opción.

@@ -42,18 +42,46 @@ Se corre **contra la EC2 que está viva**, no después de perderla.
 # En la EC2, o por ssh
 cd /ruta/del/proyecto
 
-# La base de product-service (SQLite dentro del volumen)
-docker compose cp product-service:/app/data/product.db ./respaldo-product.db
-
-# El Postgres del scraper: productos e historial de precios
-docker compose exec -T postgres pg_dump -U "$DB_USER" -d "$DB_NAME" \
-  --schema=scraper > ./respaldo-scraper.sql
-
-# Las imágenes, si el bucket tiene algo
-aws s3 sync "s3://$AWS_S3_BUCKET" ./respaldo-imagenes/
+./tools/respaldar.sh                 # crea respaldos/AAAAMMDD-HHMMSS/
+CON_S3=1 ./tools/respaldar.sh        # y además baja las imágenes del bucket
 ```
 
-Guardar los tres archivos **fuera** de la cuenta de AWS. No en el repo: son datos, no código.
+Deja una carpeta con `scraper.sql` (productos e historial), `product.db` (el catálogo) y un
+`MANIFIESTO.txt` que dice qué se guardó y cuánto pesa.
+
+**El script se verifica solo**, y esa es la parte que importa: comprueba que el `.db` sea de
+verdad una base SQLite y que el volcado traiga filas de productos, no solo la estructura. Si algo
+salió vacío lo dice y termina con código distinto de cero. *La falla clásica de un respaldo es que
+corre, no da error, y guarda cero bytes* — el problema se descubre el día que hay que restaurar.
+
+Para volver atrás:
+
+```bash
+./tools/respaldar.sh --listar
+./tools/respaldar.sh --restaurar respaldos/20260907-231927
+```
+
+Pide escribir `RESTAURAR` antes de sobrescribir nada.
+
+> ⚠️ **Guarda la carpeta FUERA de la máquina y fuera de la cuenta de AWS.** El repo la ignora a
+> propósito: son datos, no código.
+
+---
+
+> 🪤 **Una trampa que muerde sin migrar nada, encontrada el 07-09 probando esto.**
+> Los archivos de `infra/postgres/init/` **solo se ejecutan cuando el volumen de Postgres se crea
+> vacío**. `02-scraper-schema.sql` se agregó el 07-09, pero los volúmenes del equipo son del
+> 27-08: en cualquier equipo que ya tuviera el stack levantado, **el esquema `scraper` nunca se
+> creó**, y el scraper de Python falla al arrancar contra una base que no tiene sus tablas.
+>
+> El arreglo, sin perder los datos que ya haya:
+>
+> ```bash
+> docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
+>   < infra/postgres/init/02-scraper-schema.sql
+> ```
+>
+> `docker compose down -v` también lo arregla, pero **borra todos los datos**. No es la salida.
 
 ---
 
@@ -181,21 +209,19 @@ Hoy `crear-cognito.sh` solo declara las de `localhost`. Las de producción se ag
 | EC2 y despliegue del compose | 🔴 a mano |
 | Bucket de S3 y frontend | 🔴 a mano |
 | DNS y certificados | 🔴 a mano |
-| Respaldo y restauración de datos | 🔴 a mano, con los comandos del punto 1 |
+| Respaldo y restauración de datos | ✅ `tools/respaldar.sh`, probado de punta a punta |
 | URL de retorno de producción | 🔴 a mano |
 
-**Tres de nueve.** La regla de "todo por script" está cumplida para la identidad y el API
+**Cuatro de nueve.** La regla de "todo por script" está cumplida para la identidad y el API
 Manager; el resto todavía se reconstruye leyendo este documento. Eso es mejor que nada —hoy la
 alternativa era la memoria— pero no es lo que promete el ADR-015.
 
 ### Lo siguiente, en orden de lo que más duele
 
 1. **El IdP de Google en `crear-cognito.sh`.** Es el hueco que ya causó un problema real.
-2. **Un `tools/respaldar.sh`** con los comandos del punto 1. Es media hora y es lo único que hoy
-   separa una migración de una pérdida de datos.
-3. **`tools/crear-ec2.sh`**, aunque sea la versión simple: lanzar la instancia, abrir el security
+2. **`tools/crear-ec2.sh`**, aunque sea la versión simple: lanzar la instancia, abrir el security
    group e instalar Docker.
-4. `tools/crear-red.sh`, cuando se retome el ADR-015.
+3. `tools/crear-red.sh`, cuando se retome el ADR-015.
 
 ---
 
