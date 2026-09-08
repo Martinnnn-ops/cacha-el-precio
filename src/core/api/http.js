@@ -8,15 +8,10 @@ import axios from 'axios'
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
-// El Product Service versiona por cabecera (@Version de Micronaut) y tiene tres
-// versiones del mismo controlador registradas. Sin esta cabecera responde 400
-// con "More than 1 route matched the incoming request".
-//
-// OJO: la versión NO es global, es POR ENDPOINT. Cada versión declara sólo
-// algunas rutas, así que pedir /productos/{id} con 0.3.0 devuelve 404 porque
-// esa versión no implementa el detalle. Quien sabe qué versión necesita cada
-// llamada es la capa de servicios, y la pasa en `version`.
-export const API_VERSION = import.meta.env.VITE_API_VERSION ?? '0.3.0'
+// El Product Service ASP.NET Core versiona mediante la cabecera `Version`.
+// El gateway también la fija al reenviar, pero enviarla desde aquí mantiene
+// explícito el contrato y permite hablar directamente con el servicio.
+export const API_VERSION = import.meta.env.VITE_API_VERSION ?? '1.0'
 
 // Sin URL base no hay backend contra el que hablar: los servicios lo consultan
 // para responder con datos de ejemplo en lugar de fallar.
@@ -32,10 +27,7 @@ const http = axios.create({
 http.interceptors.request.use((config) => {
   const version = config.version ?? API_VERSION
 
-  // Micronaut acepta las dos; se mandan ambas porque el servicio declara las
-  // dos en su OpenAPI y no está documentado cuál tiene precedencia.
-  config.headers['X-API-VERSION'] = version
-  config.headers['X-VERSION'] = version
+  config.headers.Version = version
 
   const token = leerToken()
 
@@ -71,9 +63,14 @@ http.interceptors.response.use(
     if (respuesta) {
       const { status } = respuesta
 
-      // Micronaut devuelve los errores en formato HAL: el detalle útil está
-      // en _embedded.errors[].message.
-      const detalle = respuesta.data?._embedded?.errors?.[0]?.message
+      // ASP.NET puede responder Problem Details, mientras que el gateway usa
+      // { estado, error, mensaje }. Se admiten ambos para no filtrar detalles
+      // técnicos a la interfaz.
+      const detalle =
+        respuesta.data?.detail ??
+        respuesta.data?.mensaje ??
+        respuesta.data?.title ??
+        respuesta.data?.error
 
       // El detalle técnico —versión de la API, ruta ambigua, traza— va a la
       // consola SÓLO en desarrollo. Al usuario se le dice qué le pasa a él,

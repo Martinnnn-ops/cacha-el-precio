@@ -18,13 +18,13 @@ const SITIO = (process.env.VITE_SITE_URL ?? 'https://cacha-el-precio.com').repla
 // productos sin duplicar el valor a mano (en .env.production está VITE_API_BASE_URL).
 const env = loadEnv('production', process.cwd(), '')
 
-const API = (env.VITE_API_BASE_URL ?? 'https://api.cacha-el-precio.com').replace(
+const API = (env.VITE_API_BASE_URL ?? 'https://api.cacha-el-precio.com/api').replace(
   /\/+$/,
   '',
 )
 
-// Versión del listado, la misma que la capa de servicios usa para GET /productos.
-const V_LISTADO = '0.3.0'
+// Versión del contrato ASP.NET Core, enviada mediante la cabecera `Version`.
+const VERSION = env.VITE_API_VERSION ?? '1.0'
 
 // Rutas que NO deben indexarse. Coincide con lo que bloquea robots.txt: las
 // pantallas de sesión no aportan nada en un buscador y sólo generan
@@ -59,21 +59,20 @@ try {
   // el sitemap no debe tumbar la compilación.
   let productos = []
   try {
-    const respuesta = await fetch(`${API}/productos`, {
+    const respuesta = await fetch(`${API}/products`, {
       headers: {
         Accept: 'application/json',
-        'X-API-VERSION': V_LISTADO,
-        'X-VERSION': V_LISTADO,
+        Version: VERSION,
       },
     })
 
     if (!respuesta.ok) {
-      console.warn(`sitemap · GET /productos → ${respuesta.status}: sin productos`)
+      console.warn(`sitemap · GET /api/products → ${respuesta.status}: sin productos`)
     } else {
       productos = await respuesta.json()
     }
   } catch (error) {
-    console.warn(`sitemap · GET /productos no disponible: ${error.message}`)
+    console.warn(`sitemap · GET /api/products no disponible: ${error.message}`)
   }
 
   const paginas = routes.filter(
