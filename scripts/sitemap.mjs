@@ -6,12 +6,25 @@
 
 import { writeFileSync } from 'node:fs'
 
-import { createServer } from 'vite'
+import { createServer, loadEnv } from 'vite'
 
 const SITIO = (process.env.VITE_SITE_URL ?? 'https://cacha-el-precio.com').replace(
   /\/+$/,
   '',
 )
+
+// Misma fuente de configuración que el build: Vite carga .env.production en
+// "npm run build" y aquí hace falta saber contra qué API consultar los
+// productos sin duplicar el valor a mano (en .env.production está VITE_API_BASE_URL).
+const env = loadEnv('production', process.cwd(), '')
+
+const API = (env.VITE_API_BASE_URL ?? 'https://api.cacha-el-precio.com').replace(
+  /\/+$/,
+  '',
+)
+
+// Versión del listado, la misma que la capa de servicios usa para GET /productos.
+const V_LISTADO = '0.3.0'
 
 // Rutas que NO deben indexarse. Coincide con lo que bloquea robots.txt: las
 // pantallas de sesión no aportan nada en un buscador y sólo generan
@@ -39,6 +52,29 @@ const vite = await createServer({
 
 try {
   const { routes } = await vite.ssrLoadModule('/src/core/router/routes.js')
+  const { slugProducto } = await vite.ssrLoadModule('/src/shared/utils/slug.js')
+
+  // Productos contra el backend real. Si el backend no está (build local sin
+  // URL de API), el sitemap queda con las páginas estáticas y listo: generar
+  // el sitemap no debe tumbar la compilación.
+  let productos = []
+  try {
+    const respuesta = await fetch(`${API}/productos`, {
+      headers: {
+        Accept: 'application/json',
+        'X-API-VERSION': V_LISTADO,
+        'X-VERSION': V_LISTADO,
+      },
+    })
+
+    if (!respuesta.ok) {
+      console.warn(`sitemap · GET /productos → ${respuesta.status}: sin productos`)
+    } else {
+      productos = await respuesta.json()
+    }
+  } catch (error) {
+    console.warn(`sitemap · GET /productos no disponible: ${error.message}`)
+  }
 
   const paginas = routes.filter(
     (ruta) =>
@@ -55,6 +91,22 @@ try {
 
   const hoy = new Date().toISOString().slice(0, 10)
 
+  // El detalle se sirve en /producto/<slug>, con el slug derivado del nombre
+  // (ver shared/utils/slug.js). El slug que genera este script y el que genera
+  // la app en el navegador son idénticos porque usan la misma función.
+  const urlsProductos = productos
+    .map((producto) =>
+      [
+        '  <url>',
+        `    <loc>${SITIO}/producto/${slugProducto(producto)}</loc>`,
+        `    <lastmod>${hoy}</lastmod>`,
+        '    <changefreq>daily</changefreq>',
+        '    <priority>0.7</priority>',
+        '  </url>',
+      ].join('\n'),
+    )
+    .join('\n')
+
   const urls = paginas
     .map((ruta) => {
       const [frecuencia, prioridad] = FRECUENCIA[ruta.name] ?? ['monthly', '0.5']
@@ -70,16 +122,20 @@ try {
     })
     .join('\n')
 
+  const todas = [urls, urlsProductos].filter(Boolean).join('\n')
+
   writeFileSync(
     'public/sitemap.xml',
     `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls}
+${todas}
 </urlset>
 `,
   )
 
-  console.log(`sitemap.xml · ${paginas.length} páginas · ${SITIO}`)
+  console.log(
+    `sitemap.xml · ${paginas.length} páginas · ${productos.length} productos · ${SITIO}`,
+  )
 } finally {
   await vite.close()
 }
