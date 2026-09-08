@@ -7,7 +7,7 @@ juntando lo que haga falta de `product` y `price`.
 > 🎯 Este módulo **es el 40% del EP1**. La rúbrica pide, textual: validar *issuer* y *audience*,
 > verificar *firma* y *vigencia*, autorización por rol, y códigos de error adecuados.
 
-## Estado · 07-09-2026
+## Estado · 08-09-2026
 
 | | Qué | Dónde |
 |---|---|---|
@@ -18,7 +18,8 @@ juntando lo que haga falta de `product` y `price`.
 | ✅ | **`token_use = access`** — un id_token no sirve para autorizar | [`ValidadorDeTokenUse`](src/main/java/cl/cachaelprecio/gateway/seguridad/ValidadorDeTokenUse.java) |
 | ✅ | **Roles** desde `cognito:groups` → `@Secured("admin")` | `application.properties` |
 | ✅ | **401 y 403 en JSON**, con formato parejo | [`ManejadorDeErroresDeAcceso`](src/main/java/cl/cachaelprecio/gateway/seguridad/ManejadorDeErroresDeAcceso.java) |
-| ⬜ | Consultar de verdad a `product-service` y `price-service` | pendiente |
+| ✅ | **Consultar de verdad a `product-service`** | [`ClienteDeProductos`](src/main/java/cl/cachaelprecio/gateway/cliente/ClienteDeProductos.java) |
+| ⬜ | Componer con `price-service` (historial y descuento real) | pendiente: ese servicio todavía está vacío |
 | ⬜ | Test con un token **real** de Cognito (client `pruebas`) | pendiente: necesita credenciales del lab |
 
 ## Las rutas
@@ -26,12 +27,41 @@ juntando lo que haga falta de `product` y `price`.
 | Ruta | Quién entra | Para qué está |
 |---|---|---|
 | `GET /health` | cualquiera | Lo consulta el healthcheck del contenedor, que no tiene token |
-| `GET /api/precios` | autenticado | **200** con token · **401** sin token |
-| `GET /api/admin/diagnostico` | grupo `admin` | **403** para un usuario sin el rol |
-| `GET /api/yo` | autenticado | Devuelve los grupos y scopes que el BFF leyó del token |
+| `GET /productos` · `/productos/{id}` | **cualquiera** | El catálogo. Consulta a `product-service` |
+| `GET /catalogos` | **cualquiera** | Las categorías de prenda |
+| `GET /seguimiento` | autenticado | **200** con token · **401** sin token |
+| `POST` / `DELETE /seguimiento/{id}` | autenticado | Seguir y dejar de seguir un producto |
+| `GET /api/admin/diagnostico` | grupo `admin` | El **403** para un usuario sin el rol |
+| `GET /api/yo` | autenticado | Los grupos y scopes que el BFF leyó del token |
 
-⚠️ `/api/precios` todavía devuelve datos de ejemplo. Existe para probar la capa de seguridad,
-que es lo que se califica; el paso siguiente es que consulte a los servicios de verdad.
+### Por qué el catálogo es público
+
+Porque esto es un comparador de precios. Obligar a iniciar sesión para ver un precio que
+cualquiera puede leer entrando al sitio de la tienda convierte una herramienta pública en un
+servicio con cuenta, y de paso lo saca de los buscadores. Está decidido desde la semana 0 y
+escrito en el [ADR-007](../docs/adr/007-catalogo-publico-sin-token.md).
+
+Por eso el **401** de la demo sale de `/seguimiento`, que es privado por su naturaleza, y no de
+cerrar el catálogo. Es la diferencia entre proteger lo que hay que proteger y proteger todo para
+que la demo salga fácil.
+
+### La cabecera que product-service exige
+
+`product-service` tiene **tres versiones registradas sobre la misma ruta** y sin
+`X-API-VERSION` responde **400** — *"More than 1 route matched the incoming request"*. El BFF la
+manda siempre: si quien llama pidió una versión se respeta, y si no, usa la que sabe hablar.
+
+Eso último es lo que hace que el BFF sirva de algo y no sea un proxy: el día que
+`product-service` jubile la `0.1.0`, se cambia una constante acá y el frontend no se entera.
+
+### La lista de seguimiento
+
+⚠️ Se guarda **en memoria y se pierde al reiniciar**. Está dicho acá y en el código, no
+escondido: hoy no hay tabla para esto. El controlador habla con un repositorio y no con un mapa,
+así que cuando tenga que sobrevivir a un despliegue se cambia esa clase y nada más.
+
+El dueño de la lista sale del **token**, nunca de un parámetro de la URL. Si viniera en la URL,
+cualquiera con sesión podría pedir la lista de otro cambiando un número.
 
 ## El detalle que muerde: Cognito no manda `aud`
 

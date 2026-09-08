@@ -18,7 +18,7 @@ import java.util.Set;
  * sesion, 401 sin ella.</b>
  *
  * <p>Es la ruta que hace honesta la demo del 401. El catalogo es publico a
- * proposito ([ADR-007]), asi que cerrarlo solo para poder mostrar un 401 seria
+ * proposito (ADR-007), asi que cerrarlo solo para poder mostrar un 401 seria
  * romper el producto para ganar una casilla. Esto en cambio <b>tiene</b> que ser
  * privado por su propia naturaleza: son los productos que una persona eligio
  * seguir, y nadie mas deberia verlos.

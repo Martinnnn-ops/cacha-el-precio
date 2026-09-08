@@ -91,7 +91,7 @@ por bueno que esté el resto.
 |---|---|---|---|
 | 🟢 | **Validación del JWT en el BFF** | **40% EP1** | **Hecha el 07-09**: firma contra JWKS, `iss`, vigencia, `client_id`, `token_use` y roles desde `cognito:groups`. 7 tests verdes |
 | 🟡 | **Frontend con OIDC** | **60% EP1** | Desplegado y con PKCE real, **pero contra el otro user pool**. Está en un repo aparte, todavía no en este |
-| 🔴 | **200 / 401 / 403 demostrables** | 20% EP2 | El 401 ya se prueba en test. El 200 y el 403 necesitan un token real: falta |
+| 🟢 | **200 / 401 / 403 demostrables** | 20% EP2 | Medidos en el API Gateway con token real (`docs/evidencia/`). El 401 sale de `/seguimiento` y el 403 del scope `ingesta`, sin cerrar el catálogo ([ADR-007](adr/007-catalogo-publico-sin-token.md)) |
 
 ### El resto
 
