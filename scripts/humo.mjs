@@ -121,38 +121,36 @@ try {
 
   console.log('\n=== adaptador del Product Service ===')
   {
-    const { adaptarProductos, adaptarCategorias, FUENTE_UNICA } = await load(
+    const { adaptarProductos, adaptarCategorias, adaptarTiendas, FUENTE_UNICA } = await load(
       '/src/modules/comparador/services/producto.adapter.js',
     )
 
-    // Forma exacta que devuelve la API. Un catálogo es una CATEGORÍA, no una
-    // tienda: cada fila es un producto con un solo precio.
-    const CATALOGOS = [
-      { id: 2, nombre: 'Poleras', descripcion: '' },
-      { id: 3, nombre: ' Pantalones ', descripcion: '' },
-      { id: 9, nombre: null },
-    ]
+    // Forma exacta que devuelve ProductResponse en el backend ASP.NET Core.
     const FILAS = [
-      { id: 2, nombre: 'Polera básica', descripcion: 'Algodón', precio: 9990, catalogoId: 2, activo: true },
-      { id: 4, nombre: 'Polera manga larga', descripcion: '', precio: 15990, catalogoId: 2, activo: false },
-      { id: 5, nombre: 'Jeans slim', descripcion: '', precio: 29990, catalogoId: 3, activo: true },
-      { id: 8, nombre: 'Huérfano', descripcion: '', precio: 100, catalogoId: 77, activo: true },
-      { id: 9, nombre: '', precio: 100, catalogoId: 2, activo: true },
-      { id: 10, nombre: 'Rota', precio: 'x', catalogoId: 2, activo: true },
+      { id: 2, externalId: 'rip-2', store: 'Ripley', name: 'Polera básica', brand: 'Basement', category: 'Poleras', price: 9990, sizes: { xs: true, s: true }, description: 'Algodón', url: 'https://example.com/2', image: null, active: true },
+      { id: 4, store: 'Ripley', name: 'Polera manga larga', brand: 'Basement', category: 'Poleras', price: 15990, sizes: { m: true }, active: false },
+      { id: 5, store: 'Zara', name: 'Jeans slim', brand: 'Zara', category: ' Pantalones ', price: 29990, sizes: { l: true, xl: true }, active: true },
+      { id: 8, store: null, name: 'Sin tienda', brand: '', category: '', price: 100, sizes: {}, active: true },
+      { id: 9, store: 'Paris', name: '', brand: 'X', category: 'Poleras', price: 100, sizes: {}, active: true },
+      { id: 10, store: 'Paris', name: 'Rota', brand: 'X', category: 'Poleras', price: 'x', sizes: {}, active: true },
     ]
 
-    const adaptados = adaptarProductos(FILAS, CATALOGOS)
+    const adaptados = adaptarProductos(FILAS)
 
     check('una fila de la API es un producto', adaptados.length === 4, `${adaptados.length} productos`)
-    check('  el catálogo se traduce a categoría',
+    check('  conserva la categoría del contrato',
       adaptados.find((p) => p.id === '2').categoria === 'Poleras')
     check('  recorta los espacios del nombre de la categoría',
       adaptados.find((p) => p.id === '5').categoria === 'Pantalones')
-    check('  un catálogo desconocido deja la categoría vacía, no "undefined"',
+    check('  una categoría ausente queda vacía, no "undefined"',
       adaptados.find((p) => p.id === '8').categoria === '')
-    check('  activo=false se traduce a sin stock',
+    check('  active=false se traduce a sin stock',
       adaptados.find((p) => p.id === '4').precios[0].stock === false)
-    check('  no inventa marca', adaptados.every((p) => p.marca === ''))
+    check('  adapta marca y externalId',
+      adaptados.find((p) => p.id === '2').marca === 'Basement' &&
+      adaptados.find((p) => p.id === '2').codigo === 'rip-2')
+    check('  convierte el objeto sizes en tallas disponibles',
+      adaptados.find((p) => p.id === '2').precios[0].tallas.join(',') === 'XS,S')
     check('  sin precio de lista no inventa descuento',
       adaptados.every((p) => p.precios[0].precioLista === null))
     check('  historial vacío, no undefined',
@@ -161,15 +159,18 @@ try {
     check('descarta filas sin nombre', !adaptados.some((p) => p.nombre === ''))
     check('descarta precios que no son números', !adaptados.some((p) => p.nombre === 'Rota'))
 
-    // Mientras el backend no guarde precios por tienda hay UNA sola fuente.
-    // Ponerle un nombre neutro evita que la interfaz diga "más barato en X".
-    check('todos los precios vienen de la misma fuente',
-      new Set(adaptados.map((p) => p.precios[0].tienda)).size === 1)
-    check('  y esa fuente no se llama como una tienda',
-      FUENTE_UNICA.nombre === 'Precio publicado', FUENTE_UNICA.nombre)
+    check('cada precio queda asociado a su tienda',
+      adaptados.find((p) => p.id === '2').precios[0].tienda === 'ripley' &&
+      adaptados.find((p) => p.id === '5').precios[0].tienda === 'zara')
+    check('sin tienda usa una fuente neutra',
+      adaptados.find((p) => p.id === '8').precios[0].tienda === FUENTE_UNICA.id)
 
-    const cats = adaptarCategorias(CATALOGOS)
-    check('las categorías descartan las que no tienen nombre', cats.length === 2)
+    const cats = adaptarCategorias(FILAS)
+    check('deriva categorías únicas desde los productos',
+      cats.map((c) => c.nombre).join(',') === 'Pantalones,Poleras')
+    const tiendas = adaptarTiendas(FILAS)
+    check('deriva tiendas únicas desde los productos',
+      tiendas.map((t) => t.id).join(',') === 'catalogo,paris,ripley,zara')
 
     const { precioMasBajo: pmb, ahorroMaximo: am } = await load('/src/shared/utils/precios.js')
     const polera = adaptados.find((p) => p.id === '2')
@@ -510,7 +511,7 @@ try {
 
     check('empieza sin sesión', cuenta.autenticado === false)
 
-    // Sin VITE_GOOGLE_CLIENT_ID configurado no se puede entrar, y hay que
+    // Sin el App Client de Cognito configurado no se puede entrar, y hay que
     // decirlo sin nombrar la variable de entorno.
     await cuenta.entrarConGoogle()
     check('sin cliente configurado avisa y no rompe',
@@ -818,8 +819,7 @@ try {
       '/src/modules/comparador/services/producto.adapter.js',
     )
     const real = adaptarProductos(
-      [{ id: 2, nombre: 'Polera básica', descripcion: 'Cuello redondo', precio: 9990, catalogoId: 2, activo: true }],
-      [{ id: 2, nombre: 'Poleras' }],
+      [{ id: 2, store: null, name: 'Polera básica', brand: '', category: 'Poleras', description: 'Cuello redondo', price: 9990, sizes: {}, active: true }],
     )[0]
 
     const p = createPinia()
@@ -1437,8 +1437,7 @@ try {
       '/src/modules/comparador/services/producto.adapter.js',
     )
     const sinUrl = adaptarProductos(
-      [{ id: 1, nombre: 'X', precio: 100, catalogoId: 2, activo: true }],
-      [{ id: 2, nombre: 'Poleras' }],
+      [{ id: 1, store: null, name: 'X', brand: '', category: 'Poleras', price: 100, sizes: {}, active: true }],
     )[0]
 
     check('  la API sin url deja la oferta sin enlace',
@@ -1910,8 +1909,8 @@ try {
 }
 
 // ——— conexión real con el Product Service (sólo si está levantado) ———
-const API = process.env.PRODUCT_SERVICE_URL ?? 'http://localhost:8081'
-const VERSION = process.env.VITE_API_VERSION ?? '0.3.0'
+const API = process.env.BACKEND_URL ?? 'http://localhost:8080'
+const VERSION = process.env.VITE_API_VERSION ?? '1.0'
 
 async function pedir(ruta, cabeceras = {}) {
   const ctrl = new AbortController()
@@ -1934,16 +1933,16 @@ try {
   const salud = await pedir('/health')
   check(`el servicio responde en ${API}`, salud.estado === 200, `/health ${salud.estado}`)
 
-  const sinVersion = await pedir('/productos')
+  const sinVersion = await pedir('/api/products')
   check(
-    'sin cabecera de versión el servicio devuelve 400',
-    sinVersion.estado === 400 && sinVersion.cuerpo.includes('More than 1 route matched'),
+    'el gateway responde aunque el navegador no envíe la versión',
+    sinVersion.estado === 200,
     `HTTP ${sinVersion.estado}`,
   )
 
-  const conVersion = await pedir('/productos', { 'X-API-VERSION': VERSION })
+  const conVersion = await pedir('/api/products', { Version: VERSION })
   check(
-    `con X-API-VERSION: ${VERSION} responde 200`,
+    `con Version: ${VERSION} responde 200`,
     conVersion.estado === 200,
     `HTTP ${conVersion.estado}`,
   )
@@ -1951,9 +1950,8 @@ try {
   const filas = JSON.parse(conVersion.cuerpo)
   check('la respuesta es un array', Array.isArray(filas), `${filas.length} filas`)
 
-  const cats = JSON.parse((await pedir('/catalogos', { 'X-API-VERSION': VERSION })).cuerpo)
-  const { adaptarProductos } = await import('../src/modules/comparador/services/producto.adapter.js')
-  const adaptados = adaptarProductos(filas, cats)
+  const { adaptarProductos, adaptarCategorias } = await import('../src/modules/comparador/services/producto.adapter.js')
+  const adaptados = adaptarProductos(filas)
 
   check(
     'el adaptador digiere la respuesta real',
@@ -1963,7 +1961,7 @@ try {
 
   if (adaptados.length > 0) {
     check(
-      '  resuelve el nombre de la categoría desde /catalogos',
+      '  conserva la categoría del ProductResponse',
       adaptados.every((p) => p.categoria !== ''),
       [...new Set(adaptados.map((p) => p.categoria))].join(', '),
     )
@@ -1978,17 +1976,13 @@ try {
       adaptados.every((p) => precioMasBajo(p) !== null || p.precios[0].stock === false),
     )
 
-    const fuentes = new Set(adaptados.flatMap((p) => p.precios.map((o) => o.tienda)))
-    if (fuentes.size < 2) {
-      nota(
-        `sólo hay ${fuentes.size} fuente de precio: la API no guarda precios por ` +
-          'tienda, así que hoy la app puede listar y buscar, pero no comparar.',
-      )
-    }
+    const categorias = adaptarCategorias(filas)
+    check('  deriva categorías desde la misma respuesta',
+      categorias.every((c) => c.nombre !== ''))
   }
 
-  const cors = await fetch(`${API}/productos`, {
-    headers: { 'X-API-VERSION': VERSION, Origin: 'http://localhost:5173' },
+  const cors = await fetch(`${API}/api/products`, {
+    headers: { Version: VERSION, Origin: 'http://localhost:5173' },
   })
   const permite = cors.headers.get('access-control-allow-origin')
 
@@ -1998,7 +1992,7 @@ try {
     nota(
       'el servicio no manda Access-Control-Allow-Origin: en desarrollo se usa ' +
         'el proxy de Vite (/api). Para producción hay que configurar CORS en ' +
-        'Micronaut o servir front y API bajo el mismo dominio.',
+        'ASP.NET Core o servir front y API bajo el mismo dominio.',
     )
   }
 

@@ -8,7 +8,7 @@ npm install
 npm run dev     # http://localhost:5173
 npm run build
 npm run humo    # contraste, adaptador, stores, render de vistas, seguridad de
-                # rutas, y la capa de servicios contra :8081 si está levantado
+                # rutas, y la capa de servicios contra :8080 si está levantado
 ```
 
 Sin `VITE_API_BASE_URL` definida la capa de servicios responde con los datos de
@@ -22,35 +22,37 @@ cp .env.example .env     # ya viene apuntando al proxy
 npm run dev
 ```
 
-El servicio de Micronaut vive en `localhost:8081`. Tres cosas de su contrato
-que están resueltas en el código y conviene conocer:
+En desarrollo el frontend habla con el gateway ASP.NET Core de
+`cacha-el-precio` en `localhost:8080`. El navegador pide `/api` al servidor de
+Vite y el proxy conserva ese prefijo al reenviar.
 
 | Qué pasa | Dónde se resuelve |
 |---|---|
-| El servicio registra 3 versiones de `/productos` a la vez y **sin cabecera de versión responde 400** | `core/api/http.js` manda `X-API-VERSION` en cada petición |
-| **La versión no es global, es por endpoint**: `GET /productos/{id}` sólo existe en 0.1.0, y con 0.3.0 devuelve 404 | cada llamada declara la suya: `http.get(url, { version })`. Las constantes están arriba de `comparador.service.js` |
-| **No manda cabeceras CORS**, así que el navegador bloquearía la llamada directa | proxy de Vite: el front pide a `/api` y Vite reenvía a `:8081` |
-| Sus errores vienen en formato HAL (`_embedded.errors[].message`) | el interceptor de respuesta los traduce a un mensaje mostrable |
+| El contrato vigente es `1.0` | `core/api/http.js` manda `Version: 1.0` en cada petición |
+| Las rutas públicas son `GET /api/products` y `GET /api/products/{id}` | `VITE_API_BASE_URL=/api` y el servicio llama a `/products` |
+| El frontend y el gateway ocupan puertos distintos en desarrollo | el proxy de Vite reenvía `/api` a `BACKEND_URL=http://localhost:8080` |
+| ASP.NET y el gateway pueden devolver Problem Details o `{ error, mensaje }` | el interceptor traduce ambos formatos a mensajes mostrables |
 
 > **Para producción el proxy no sirve.** O el front y la API van bajo el mismo
-> dominio, o hay que habilitar CORS de verdad en Micronaut.
+> dominio, o hay que habilitar CORS en el gateway ASP.NET Core.
 
 ### El modelo no coincide, y hay un adaptador
 
 ```
-API   Producto { id, nombre, descripcion, precio, catalogoId, activo }
-      Catalogo { id, nombre, descripcion }        → una CATEGORÍA
+API   Product { id, externalId, store, name, brand, category, price,
+                sizes, description, url, image, active }
 App   Producto { id, nombre, categoria, precios[], historial[] }
 ```
 
-`services/producto.adapter.js` traduce una cosa en la otra: cada fila es un
-producto y `catalogoId` se resuelve al nombre de la categoría.
+`services/producto.adapter.js` traduce una cosa en la otra. `category` alimenta
+los filtros, `store` identifica la fuente de precio y `sizes` se transforma en
+la lista de tallas disponibles.
 
 #### Lo que falta para que esto sea un comparador
 
-La API guarda **un precio por producto** y no tiene noción de tienda. Sin dos
-precios del mismo producto no hay nada que comparar, que es la razón de ser de
-la aplicación. Hace falta una tabla de ofertas:
+La API guarda una oferta por fila, pero todavía no relaciona automáticamente
+el mismo artículo entre varias tiendas. Para comparar una prenda equivalente
+hace falta una identidad de producto compartida y ofertas separadas:
 
 ```
 Oferta { id, productoId, tiendaId, precio, precioLista, stock, fecha }
@@ -65,12 +67,11 @@ Mientras tanto la interfaz se degrada sola en vez de mentir:
 
 | Falta en la API | Qué hace la app hoy |
 |---|---|
-| precios por tienda | oculta «Ofertas del día», el filtro de tiendas y el «más barato en X»; avisa en la portada |
+| agrupación del mismo producto entre tiendas | cada oferta se muestra como un producto independiente |
 | precio de lista | no pinta el porcentaje de descuento |
-| stock | usa `activo` como equivalente |
+| stock por talla | usa `active` para la oferta y `sizes` para cada talla |
 | historial de precios | la ficha muestra «todavía no tenemos historial» |
-| marca | se oculta |
-| autenticación | `modules/cuenta` apunta a `/auth/login` y `/auth/registro`, que aún no existen |
+| contador de visitas | no se envía ninguna llamada porque el backend no ofrece ese endpoint |
 
 ---
 
@@ -234,20 +235,17 @@ Dos piezas que sostienen el aspecto:
 
 ---
 
-### Qué versión pide cada endpoint
+### Contrato consumido
 
-Sale de leer los tres OpenAPI que publica el servicio en `/swagger-ui`:
+| Endpoint | Acceso | Versión |
+|---|---|---|
+| `GET /api/products` | público | `Version: 1.0` |
+| `GET /api/products/{id}` | público | `Version: 1.0` |
+| `POST/PUT/DELETE /api/products` | requiere token y scope de escritura | `Version: 1.0` |
 
-| Endpoint | 0.1.0 | 0.2.0 | 0.3.0 | Usa |
-|---|:--:|:--:|:--:|---|
-| `GET /productos` | ✓ | ✓ | ✓ (con filtros) | **0.3.0** |
-| `GET /productos/{id}` | ✓ | — | — | **0.1.0** |
-| `GET /catalogos` | ✓ | ✓ | ✓ | 0.3.0 |
-| `POST/PUT/DELETE` | ✓ | — | — | 0.1.0 |
-
-> Lo ideal sería que el backend dejara de exponer tres versiones parciales a la
-> vez. Mientras tanto, `comparador.service.js` declara la versión de cada
-> llamada y `npm run humo` lo comprueba contra el servicio de verdad.
+El frontend sólo consume las operaciones públicas. Las categorías y tiendas
+se derivan de la respuesta del listado; no se consulta el alias legado
+`/catalogos`.
 
 ---
 
@@ -259,20 +257,19 @@ navegador y a la vista de cualquier extensión.
 
 ### Configurar
 
-En Google Cloud Console, credenciales de tipo **Aplicación web**:
-
-| Campo | Valor |
-|---|---|
-| Orígenes de JavaScript | `http://localhost:5173` y `https://TU-DOMINIO` |
-| URI de redirección | `http://localhost:5173/auth/google` y `https://TU-DOMINIO/auth/google` |
+El frontend usa Cognito Hosted UI y fuerza el proveedor Google. Configura en el
+App Client público de Cognito (sin secret) los callbacks
+`http://localhost:5173/auth/google` y `https://TU-DOMINIO/auth/google`:
 
 ```bash
-VITE_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+VITE_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
+VITE_COGNITO_DOMAIN=https://tu-dominio.auth.tu-region.amazoncognito.com
 ```
 
-**No pongas el secreto de cliente.** PKCE existe justamente para no necesitarlo
-en el navegador; si lo añades queda publicado en el bundle. `npm run humo`
-comprueba que no aparezca.
+El id y el secreto OAuth de Google se guardan en la configuración del proveedor
+federado dentro de Cognito. **No pongas ningún secreto en `.env`, en una
+variable `VITE_` ni en Git**: Vite lo publicaría en el bundle. `npm run humo`
+comprueba que no aparezca el prefijo habitual de un secreto de Google.
 
 ### Qué protege qué
 
