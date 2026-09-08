@@ -39,6 +39,8 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    depends_on:
+      - gateway
     networks:
       - cep
   # ───────────────────────────────────────────────────────────────────────────
@@ -111,6 +113,39 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+
+    networks: [cep]
+
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Gateway (BFF) — la puerta de entrada, y donde se valida el token
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Es a quien Caddy le reenvía todo. Valida el JWT contra el JWKS de Cognito
+  #  y recién entonces consulta a product-service.
+  #
+  #  NO publica puertos al host a propósito: solo Caddy debería poder hablarle.
+  #  Si se expusiera, existiría una puerta que esquiva a Caddy y al API Gateway.
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: cep-gateway
+    restart: unless-stopped
+
+    environment:
+      GATEWAY_PORT: 8080
+      # Dentro del compose el host es el NOMBRE DEL SERVICIO. Cada contenedor
+      # tiene su propio localhost, y ahí no hay nadie escuchando.
+      PRODUCT_URL: http://product-service:8081
+      # Los tres valores de Cognito salen de cognito.env, que no se versiona.
+      # Sin ellos el servicio arranca pero rechaza todos los tokens.
+      # Van entre comillas: el mensaje de ${VAR:?...} lleva dos puntos y sin
+      # comillas YAML lo lee como el inicio de otra clave.
+      COGNITO_ISSUER: "${COGNITO_ISSUER:?falta COGNITO_ISSUER, pega cognito.env en el .env}"
+      COGNITO_JWKS_URI: "${COGNITO_JWKS_URI:?falta COGNITO_JWKS_URI}"
+      COGNITO_CLIENT_IDS_VALIDOS: "${COGNITO_CLIENT_IDS_VALIDOS:?falta COGNITO_CLIENT_IDS_VALIDOS}"
+
+    depends_on:
+      - product-service
 
     networks: [cep]
 
