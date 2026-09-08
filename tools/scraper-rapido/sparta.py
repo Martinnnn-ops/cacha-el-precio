@@ -2,8 +2,8 @@
 """
 Scraper de arranque para Sparta (Magento GraphQL publico).
 
-Esto NO es el scraper-service definitivo: ese es una Lambda de Micronaut y va
-en su propio modulo. Este script existe por una sola razon, y conviene tenerla
+Esto NO es el scraper-service definitivo: ese servicio es Python y vive en
+scraper-service/. Este script existe por una sola razon, y conviene tenerla
 clara antes de tocarlo:
 
     El historial de precios solo existe si empieza a acumularse. Cada dia que

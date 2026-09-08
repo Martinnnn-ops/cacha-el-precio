@@ -121,7 +121,7 @@ if [[ "${1:-}" == "--restaurar" ]]; then
     fi
   fi
 
-  verde "Listo. Comprueba con: curl -H 'X-API-VERSION: 0.1.0' http://localhost:8081/productos"
+  verde "Listo. Comprueba con: curl -H 'Version: 1.0' http://localhost:8081/api/products"
   exit 0
 fi
 

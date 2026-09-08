@@ -1,13 +1,13 @@
 # Scraper de arranque · Sparta
 
-**Esto no es `scraper-service`.** El definitivo es una Lambda de Micronaut y va en su propio
-módulo (ver `docs/ARQUITECTURA.md` §2). Esto es un script de una sola pieza que existe por una
+**Esto no es `scraper-service`.** El definitivo es el servicio Python de `scraper-service/`.
+Esto es un script de una sola pieza que existe por una
 razón concreta:
 
 > El historial de precios solo existe si empieza a acumularse. Cada día que no corre es un
 > hueco que después **no se recupera**. `TAREAS.md` lo pedía para la semana 0.
 
-Arrancó el **27-08-2026**. Cuando exista el scraper de verdad, estas capturas se re-ingestan
+Arrancó el **27-08-2026**. Estas capturas se pueden reingestar en el scraper principal
 y el historial no se pierde: guardamos el JSON **crudo**, sin normalizar (ADR-011, S3 como
 fuente de verdad).
 

@@ -24,7 +24,7 @@ no para dictar el proyecto: la docente dio libertad de nube, de lenguaje y de id
 pide es un sistema **funcional, escalable y defendible**. Con eso en mente, el dato útil es este:
 
 > Ambas rúbricas evalúan casi por completo **la capa de identidad, el API Manager y el frontend**.
-> El scraping, el matching, RabbitMQ y el historial de precios no tienen indicador propio.
+> El scraping, el matching, la mensajería y el historial de precios no tienen indicador propio.
 
 La lectura correcta **no** es "el dominio no importa". El dominio de precios es lo que hace que
 esta sea una arquitectura con razón de ser y no un CRUD de ejemplo, y es de lo que se habla
@@ -115,7 +115,7 @@ Para pasar de una columna a la otra se multiplica por 0,6.
 
 La pauta está redactada sobre un caso de ejemplo (Pedidos360, Angular, Azure AD, Spring Boot),
 pero la docente aclaró que **la idea, el lenguaje y la nube son libres mientras se justifiquen**.
-Nosotros vamos con **Micronaut + AWS + Cognito** en el backend y **Vue 3** en el frontend, y esa
+Nosotros vamos con **ASP.NET Core + AWS + Cognito** en el backend y **Vue 3** en el frontend, y esa
 justificación está escrita en [ARQUITECTURA.md](ARQUITECTURA.md).
 
 > 📌 **Vue, no React.** Varios documentos decían React porque así estaba planificado; el frontend
@@ -138,7 +138,7 @@ comercial. Basta nombrar la equivalencia una vez en el informe y en la presentac
 | **Login con Google** | Google como **IdP federado** en el User Pool (adicional al registro propio) |
 | **OAuth2** | **Authorization Code + PKCE** para el frontend · **Client Credentials** para el scraper |
 | **API Manager** | **API Gateway HTTP API** con JWT Authorizer: stages dev/prod, CORS, throttling, OpenAPI |
-| **Mensajería** | **RabbitMQ** entre ingesta y procesamiento (ver [ARQUITECTURA.md §6](ARQUITECTURA.md#6-por-qué-mensajería-y-no-llamadas-directas)) |
+| **Integración** | HTTP interno entre scraper y Product Service; mensajería pospuesta hasta tener consumidores reales (ver [ADR-020](adr/020-csharp-y-simplificacion-de-servicios.md)) |
 | **Validación en los servicios** | `micronaut-security-jwt` valida firma, issuer, audience, vigencia y roles contra el JWKS |
 
 ### Equivalencias de vocabulario (una tabla en el informe y listo)
@@ -157,7 +157,7 @@ y no se vuelve a tocar:
 | "valida **audience**" | Ver la nota de abajo | La configuración del authorizer + el código de validación en el BFF |
 
 El detalle técnico del `audience` en Cognito está en
-[ARQUITECTURA.md §9](ARQUITECTURA.md#9-el-detalle-del-audience-en-cognito).
+[ARQUITECTURA.md](ARQUITECTURA.md#seguridad).
 
 ---
 

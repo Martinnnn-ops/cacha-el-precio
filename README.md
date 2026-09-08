@@ -1,177 +1,147 @@
 # Cacha el Precio
 
-**Comparador de precios de ropa y calzado en Chile.**
-Muestra si el descuento que anuncia una tienda es real, comparando el mismo producto entre varias
-tiendas y guardando el historial de precios día por día.
+Comparador de precios de ropa y calzado en Chile. Reúne productos publicados por distintas
+tiendas, conserva sus observaciones de precio y permite comprobar si un descuento es real.
 
-> Proyecto del ramo **DSY1107 · Desarrollo Cloud Native I** · Equipo de 3
-> 🌐 En línea: **[cacha-el-precio.com](https://www.cacha-el-precio.com)** · Primera entrega: 13 de septiembre de 2026
-
----
-
-## El problema
-
-El SERNAC ya persiguió a Falabella y Paris por inflar precios antes del Cyber. En un caso, un
-producto se promocionaba con **65% de descuento** usando como referencia $198.900, cuando días
-antes esa referencia rondaba los $100.000. El descuento real era 30%.
-
-Hoy el comprador no tiene forma de saber eso. **Cacha el Precio** existe para dárselo.
+> Proyecto de **DSY1107 · Desarrollo Cloud Native I**. La aplicación pública se encuentra en
+> [cacha-el-precio.com](https://www.cacha-el-precio.com).
 
 ## Qué hace
 
-- **Compara el mismo producto entre tiendas.**
-- **Guarda el historial.** Tres capturas diarias, desde que el sistema arrancó el 27 de agosto.
-- **Muestra el descuento real**, medido contra el mínimo que efectivamente observamos, no contra
-  el precio de referencia que pone la tienda.
-- **Avisa por talla.** Si el 42 está agotado, sirve saber dónde sí está.
+- recopila productos públicos mediante scrapers específicos por tienda;
+- mantiene el historial de precio y disponibilidad en PostgreSQL;
+- publica el catálogo actual en Product Service;
+- expone el catálogo al frontend a través de un gateway protegido con Cognito;
+- conserva enlaces e imágenes para derivar a la tienda, sin vender productos.
 
-No vendemos nada: la app informa y deriva a la tienda.
+## Arquitectura actual
 
-> ⚠️ **Sobre cómo se comparan dos productos.** El plan original usaba el *style code* de fábrica
-> (ej. `HV9774`), que es idéntico en todas las tiendas. Medido contra el catálogo real el 27-08,
-> **solo Nike lo publica** (96% de sus fichas); el resto de las marcas, 0%. Así que el style code
-> sirve cuando está, pero no puede ser el mecanismo principal. El matching por texto tampoco
-> basta solo: `574 Negra` vs `515 Negra` da 0,660 de similitud y **son zapatos distintos**. La
-> conclusión medida está en [`docs/BITACORA.md`](docs/BITACORA.md) y el matcher todavía no está
-> implementado.
-
-## Estado, al 07-09-2026
-
-Lo que está corriendo de verdad, no lo que está planificado.
-
-| | Pieza | Estado |
-|---|---|---|
-| 🟢 | **Frontend** | En línea en `www.cacha-el-precio.com` (S3 + Cloudflare) |
-| 🟢 | **API** | En línea en `api.cacha-el-precio.com` (EC2 + Caddy → `product-service`) |
-| 🟢 | **Scraper de Sparta** | 3 capturas diarias desde el 27-08 |
-| 🟢 | **Validación de JWT en el BFF** | Firma, emisor, vigencia, `client_id`, `token_use` y roles — y **el tráfico ya pasa por ahí** |
-| 🟡 | **Identidad** | Cognito levantado por script, pero **hay dos user pools** que no se hablan |
-| 🔴 | **API Manager** | No hay API Gateway todavía: hoy el rol lo cumple Caddy |
-| 🔴 | **Base de datos** | SQLite en `product-service` y Postgres en el scraper. **La RDS no existe** |
-| 🔴 | **CI** | Sin workflows |
-
-> 📌 **La deuda técnica, con dueño y fecha, está en [`docs/INTEGRACION.md`](docs/INTEGRACION.md).**
-> Ese documento es el que hay que leer antes de tocar nada: explica qué decisiones se tomaron
-> construyendo, cuáles contradicen lo escrito, y qué está roto ahora mismo.
-
-## Cómo está construido
-
-```
-   Frontend Vue                          Cognito  (OIDC · PKCE · grupos)
-   (S3 + Cloudflare)                        ▲
-        │                                   │ valida el token contra el JWKS
-        ▼                                   │
-   API Gateway ── JWT Authorizer ───────────┤   ← el API Manager: CORS, stages
-        │                                   │
-        ▼                                   │
-   Caddy  (TLS, enrutado, en la EC2)        │
-        │                                   │
-        ▼                                   │
-   gateway / BFF ───────────────────────────┘   ← vuelve a validar, y autoriza
-        │            │                              por rol (cognito:groups)
-        ▼            ▼
-  product-service   price-service
-  (Micronaut,       (Micronaut,
-   SQLite)           todavía vacío)
-        ▲
-        │ HTTP
-  scraper-service ──▶ Postgres (esquema scraper) ──▶ S3 (imágenes)
-  (Python, FastAPI)
+```text
+Frontend Vue ──▶ API Gateway ──▶ Caddy ──▶ Gateway ASP.NET Core
+                                              │
+                                              ▼
+                                      Product Service C# ──▶ SQLite
+                                              ▲
+                                              │ HTTP / API v1
+Scraper Python ──▶ PostgreSQL + S3 ────────────┘
 ```
 
-**Por qué el token se valida dos veces.** En el API Gateway se rechaza lo que claramente no
-sirve —sin token, vencido, de otro emisor— antes de gastar la instancia. En el BFF se vuelve a
-validar y ahí se decide **quién puede hacer qué** leyendo los grupos. Si el API Gateway fuera la
-única defensa, cualquiera que alcanzara la EC2 por otra vía entraría sin token.
+Los servicios de aplicación se estandarizaron en **C# y ASP.NET Core 10**. El scraper permanece
+en Python porque ese ecosistema es adecuado para extracción y procesamiento de datos. La elección
+de C# no pretende ser universal: en este equipo reduce el riesgo de entrega porque su responsable
+tiene más experiencia con C# que con Java, y permite compartir herramientas, configuración,
+inyección de dependencias, autenticación y patrones asíncronos entre el gateway y Product Service.
 
-⚠️ Lo que todavía **falta**: la ingesta del scraper va por HTTP directo en vez de por RabbitMQ, y
-`price-service` está desplegado pero vacío. Las dos cosas, con dueño y fecha, en
-[`docs/INTEGRACION.md`](docs/INTEGRACION.md).
+Se retiraron `price-service`, RabbitMQ y las migraciones SQL de servicios que nunca las consumían.
+`price-service` era un proceso vacío: desplegarlo aumentaba superficie operativa sin poseer una
+capacidad real. El historial sigue siendo responsabilidad del scraper hasta que su carga o ciclo
+de vida justifique separarlo. RabbitMQ se podrá reintroducir cuando exista un consumidor asíncrono
+real y se necesiten reintentos o backpressure. La decisión completa y sus costos están en el
+[ADR-020](docs/adr/020-csharp-y-simplificacion-de-servicios.md).
 
-| Capa | Tecnología |
-|---|---|
-| Backend | **Micronaut 5** · Java 25 · Maven — `gateway`, `product-service`, `price-service` |
-| Scraper | **Python 3** · FastAPI — servicio aparte, fuera del monorepo Maven |
-| Identidad | **AWS Cognito** — OIDC, Authorization Code + PKCE |
-| API Manager | **AWS API Gateway** HTTP API con JWT Authorizer — *pendiente* |
-| Mensajería | **RabbitMQ** con DLQ y reintentos — *levantado, todavía sin usar* |
-| Datos | **SQLite** (`product-service`) · **PostgreSQL** (scraper) · **S3** (imágenes) |
-| Frontend | **Vue 3** · Pinia · Vite — [repo aparte](https://github.com/Panditax727/Cacha-el-Precio-Frontend) |
-| Infra | **EC2 con Docker Compose** ([ADR-008](docs/adr/008-ec2-docker-compose.md)) · S3 + Cloudflare |
-
-Las razones detrás de cada decisión están en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) y en
-[`docs/adr/`](docs/adr/).
-
-## Fuentes de datos
-
-| Tienda | Cómo se obtiene | Estado |
+| Pieza | Tecnología | Persistencia |
 |---|---|---|
-| **Sparta** | Sitemap + JSON-LD de la ficha · también el capturador rápido de `tools/` | 🟢 Capturando |
-| **Falabella · Paris · Ripley · Hites · Converse** | Sitemap + JSON-LD, un parser por tienda | 🟡 Escritos y con tests, sin correr en producción |
-| Nike.cl | Requiere navegador headless | Post-MVP |
+| Gateway/BFF | ASP.NET Core 10 | seguimiento temporal en memoria |
+| Product Service | ASP.NET Core 10 + EF Core | SQLite, propiedad del servicio |
+| Scraper | Python 3.14 + FastAPI | PostgreSQL; imágenes en S3 |
+| Identidad | AWS Cognito | administrada por AWS |
+| Entrada pública | API Gateway + Caddy | — |
+| Frontend | Vue 3 + Pinia + Vite | repositorio separado |
 
-Se consultan únicamente **datos públicos de precio y stock**, con un request cada 1–2 segundos y
-respetando `robots.txt`. Ver [`docs/PLAN.md`](docs/PLAN.md#8-consideraciones-legales-y-éticas).
+PostgreSQL no se eliminó porque el scraper sí lo usa para historial y datos de extracción. SQLite
+evita infraestructura compartida para Product Service, pero sus límites de escritura concurrente
+se deben reevaluar antes de escalar horizontalmente.
 
-## Documentación
+## Contrato entre scraper y Product Service
 
-| Documento | Para qué |
-|---|---|
-| [`docs/INTEGRACION.md`](docs/INTEGRACION.md) | **Empieza acá.** Qué está roto, qué se decidió construyendo y qué contradice lo escrito |
-| [`docs/PLAN.md`](docs/PLAN.md) | La idea, el alcance, las tiendas, el modelo de datos, los riesgos |
-| [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) | Por qué el sistema está armado así |
-| [`docs/TAREAS.md`](docs/TAREAS.md) | Estado semana a semana y modo de trabajo |
-| [`docs/EVALUACIONES.md`](docs/EVALUACIONES.md) | Qué pide el ramo y cómo lo cumplimos |
-| [`docs/BITACORA.md`](docs/BITACORA.md) | Registro de avance. En septiembre **es** el informe |
-| [`docs/REQUISITOS.md`](docs/REQUISITOS.md) | Historias de usuario, requisitos funcionales y no funcionales |
-| [`docs/IDENTIDAD.md`](docs/IDENTIDAD.md) | Cómo funciona el login, cómo se valida el token y cómo se replica |
-| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | En qué orden se despliega en AWS y las restricciones del Learner Lab |
-| [`docs/MIGRACION.md`](docs/MIGRACION.md) | Cómo levantar todo en una cuenta de AWS nueva, y qué datos se pierden si no se respaldan |
-| [`docs/adr/`](docs/adr/) | Decisiones de arquitectura, una por archivo |
-| [`gateway/README.md`](gateway/README.md) | Qué valida el BFF y cómo se prueba |
-| [`product-service/README.md`](product-service/README.md) | Las rutas de productos y catálogos, y el versionado por header |
-| [`scraper-service/README.md`](scraper-service/README.md) | El scraper de Python: cómo se agrega una tienda |
-| [`infra/db/README.md`](infra/db/README.md) | Las migraciones y por qué el modelo cambió contra datos reales |
+El scraper sincroniza por HTTP usando `Version: 1.0`. La identidad idempotente es el par
+`(store, externalId)`, con un índice único en SQLite. Crea con `POST /api/products` y actualiza con
+`PUT /api/products/{id}`; también envía marca, categoría, URL, imagen, descripción y estado.
 
-## Cómo levantarlo
+## Requisitos
 
-Requiere **JDK 25** y **Docker**. El Maven Wrapper descarga la versión de Maven del proyecto.
+- .NET SDK 10;
+- Python 3.14;
+- `uv` o `pip` para el scraper;
+- Docker y Docker Compose para levantar el entorno completo.
 
-### 1. La infraestructura
+## Desarrollo local
+
+Clona y restaura los servicios C#:
 
 ```bash
-cp .env.example .env      # y rellena las contraseñas
-docker compose up -d
+git clone https://github.com/Martinnnn-ops/cacha-el-precio.git
+cd cacha-el-precio
+dotnet restore CachaElPrecio.slnx
+dotnet build CachaElPrecio.slnx
+```
+
+Ejecuta Product Service y el gateway en terminales separadas:
+
+```bash
+dotnet run --project product-service/Product-Service.csproj --launch-profile http
+PRODUCT_URL=http://localhost:8081 dotnet run --project gateway/Gateway.csproj
+```
+
+Prepara el scraper:
+
+```bash
+cd scraper-service
+uv sync --all-extras
+uv run pytest -m "not red"
+```
+
+O levanta la solución con contenedores:
+
+```bash
+cp .env.example .env
+# Completa DB_PASSWORD y la configuración de Cognito.
+docker compose up --build -d
 docker compose ps
 ```
 
-Levanta Postgres 16, RabbitMQ 3.13, `product-service` y el `scraper-api`. Postgres y RabbitMQ
-deben decir `healthy`; los otros dos, `running`. El panel de RabbitMQ queda en
-`http://localhost:15672`. Es el mismo archivo que corre en la EC2
-([ADR-008](docs/adr/008-ec2-docker-compose.md)).
+| Servicio | Puerto local | Salud |
+|---|---:|---|
+| Gateway | 8080, a través de Caddy | `http://localhost:8080/health` |
+| Product Service | 8081, solo loopback | `http://localhost:8081/health` |
+| Scraper API | 8000, solo loopback | `http://localhost:8000/health` |
+| PostgreSQL | 5432, solo loopback | healthcheck de Compose |
 
-### 2. Los servicios Java
+Product Service aplica automáticamente las migraciones EF Core al iniciar. Para administrarlas:
 
 ```bash
-./mvnw verify                      # compila y testea los tres módulos
-./mvnw -pl gateway mn:run          # o el que necesites
+dotnet tool install --global dotnet-ef --version 10.0.11
+dotnet ef migrations list --project product-service/Product-Service.csproj
+dotnet ef database update --project product-service/Product-Service.csproj
+dotnet ef migrations has-pending-model-changes --project product-service/Product-Service.csproj
 ```
 
-| Servicio | Puerto | `/health` |
-|---|---|---|
-| `gateway` (BFF) | 8080 | `http://localhost:8080/health` |
-| `product-service` | 8081 | `http://localhost:8081/health` |
-| `price-service` | 8082 | `http://localhost:8082/health` |
-| `scraper-api` (Python) | 8000 | `http://localhost:8000/health` |
+## Comprobaciones antes de un PR
 
-El `gateway` necesita además las tres variables de Cognito. Ver
-[`gateway/README.md`](gateway/README.md).
+```bash
+dotnet format CachaElPrecio.slnx --verify-no-changes --no-restore
+dotnet build CachaElPrecio.slnx --no-restore
+cd scraper-service
+uv run pytest -m "not red"
+uv run ruff check .
+```
 
-### 3. El scraper de arranque
+## Documentación
 
-Captura precios de Sparta 3 veces al día con un timer de systemd. Es el que tiene el historial
-acumulado. Ver [`tools/scraper-rapido/README.md`](tools/scraper-rapido/README.md).
+| Documento | Contenido |
+|---|---|
+| [ARQUITECTURA](docs/ARQUITECTURA.md) | vista técnica y límites de servicios |
+| [ADR-020](docs/adr/020-csharp-y-simplificacion-de-servicios.md) | migración a C# y simplificación |
+| [TAREAS](docs/TAREAS.md) | estado, prioridades y flujo de trabajo |
+| [BITÁCORA](docs/BITACORA.md) | avances y evidencia cronológica |
+| [INTEGRACIÓN](docs/INTEGRACION.md) | deuda descubierta al integrar ramas anteriores |
+| [IDENTIDAD](docs/IDENTIDAD.md) | Cognito, tokens y autorización |
+| [DESPLIEGUE](docs/DESPLIEGUE.md) | despliegue en AWS |
+| [Product Service](product-service/README.md) | API, modelo y migraciones |
+| [Gateway](gateway/README.md) | rutas, seguridad y configuración |
+| [Scraper](scraper-service/README.md) | tiendas, persistencia y ejecución |
 
-## Equipo
+## Flujo Git
 
-Tres estudiantes de Ingeniería en Informática.
+Las funcionalidades se desarrollan en `feature/*`, se revisan mediante PR hacia `development` y
+solo después avanzan a `main`. Quien abre el PR no lo mezcla por su cuenta.

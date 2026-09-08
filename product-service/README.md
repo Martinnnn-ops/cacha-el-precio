@@ -1,108 +1,102 @@
-# product-service
+# Product Service
 
-Microservicio encargado de administrar los catálogos y productos de **Cacha el Precio**.
-
-## Estado actual
-
-- Versión del microservicio: `0.1.0`.
-- Java 25, Micronaut y Maven.
-- Persistencia con SQLite y migraciones de Flyway.
-- API REST documentada con OpenAPI y Swagger UI.
-- Contratos Protobuf preparados para integrar gRPC.
-- Modelos utilizados directamente en las solicitudes y respuestas HTTP.
-
-## Estructura
-
-```text
-controller -> service -> repository -> SQLite
-                    ^
-                  model
-```
-
-Por ahora no se utilizan DTO. Los controladores reciben y devuelven los modelos `Catalogo` y
-`Producto` directamente. Esta decisión se puede revisar si aparecen campos internos o si el
-contrato HTTP comienza a diferenciarse del modelo persistido.
+Catálogo actual de Cacha el Precio, implementado con ASP.NET Core 10, EF Core y SQLite. Recibe los
+productos normalizados por el scraper y los expone al gateway. La base pertenece exclusivamente a
+este servicio.
 
 ## Ejecutar
 
-El proyecto necesita que Maven use Java 25:
+Desde la raíz del repositorio:
 
 ```bash
-JAVA_HOME=/usr/lib/jvm/java-25-openjdk ./mvnw -pl product-service mn:run
+dotnet restore product-service/Product-Service.csproj
+dotnet ef database update --project product-service/Product-Service.csproj
+dotnet run --project product-service/Product-Service.csproj --launch-profile http
 ```
 
-- HTTP: `http://localhost:8081`
-- gRPC: `localhost:50051`
-- Swagger UI: `http://localhost:8081/swagger-ui/index.html`
-- Health: `http://localhost:8081/health`
-- SQLite: archivo local `product.db`
+El perfil HTTP escucha en `http://localhost:8081`. En desarrollo están disponibles:
 
-Se pueden cambiar con `PRODUCT_PORT`, `PRODUCT_GRPC_PORT` y `PRODUCT_DB_URL`.
+- salud: `GET /health`;
+- OpenAPI: `GET /openapi/v1.json`;
+- Scalar: `GET /scalar/v1`.
 
-## Docker
+El contenedor ejecuta las migraciones pendientes al arrancar y almacena la base en
+`/app/data/product.db`.
 
-La imagen se construye desde la raíz del repositorio porque el módulo utiliza el `pom.xml` padre:
+## Contrato HTTP v1
+
+Todas las llamadas utilizan el encabezado `Version: 1.0`.
+
+| Método | Ruta | Resultado |
+|---|---|---|
+| GET | `/api/products` | listado completo |
+| GET | `/api/products/{id}` | producto por ID interno |
+| GET | `/api/products/by-category/{category}` | filtro por categoría normalizada |
+| GET | `/api/products/by-price/{price}` | filtro por precio exacto |
+| GET | `/api/products/by-size/{size}` | productos con esa talla disponible |
+| POST | `/api/products` | crea y devuelve `201` |
+| PUT | `/api/products/{id}` | reemplaza y devuelve `204` |
+| DELETE | `/api/products/{id}` | elimina el producto |
+
+Ejemplo de escritura:
+
+```json
+{
+  "externalId": "SKU-123",
+  "store": "sparta",
+  "name": "Zapatilla urbana",
+  "brand": "Ejemplo",
+  "category": "Zapatillas",
+  "price": 59990,
+  "sizes": {
+    "xs": false,
+    "s": true,
+    "m": true,
+    "l": false,
+    "xl": false,
+    "xxl": false
+  },
+  "description": "Descripción pública",
+  "url": "https://tienda.example/producto",
+  "image": "https://imagenes.example/producto.webp",
+  "active": true
+}
+```
+
+`(store, externalId)` tiene un índice único filtrado. Los productos creados manualmente pueden
+omitir ambos valores, pero la sincronización del scraper siempre los envía.
+
+## Migraciones
 
 ```bash
-docker build \
-  --file product-service/Dockerfile \
-  --tag cachaelprecio/product-service:0.1.0 \
-  .
+dotnet tool install --global dotnet-ef --version 10.0.11
+dotnet ef migrations add Nombre --project product-service/Product-Service.csproj
+dotnet ef database update --project product-service/Product-Service.csproj
+dotnet ef migrations list --project product-service/Product-Service.csproj
+dotnet ef migrations has-pending-model-changes --project product-service/Product-Service.csproj
 ```
 
-Para ejecutar solamente este microservicio y conservar la base SQLite en un volumen:
+No edites la base con SQL manual. Cada cambio del modelo debe quedar representado por una
+migración versionada.
+
+## Configuración y Docker
+
+La conexión se sobreescribe sin modificar archivos:
 
 ```bash
-docker run --rm \
-  --name product-service \
-  --publish 8081:8081 \
-  --publish 50051:50051 \
-  --volume product-service-data:/app/data \
-  cachaelprecio/product-service:0.1.0
+ConnectionStrings__Sqlite="Data Source=/tmp/product.db" \
+  dotnet run --project product-service/Product-Service.csproj
 ```
-
-El servicio queda disponible en `http://localhost:8081`. Para detenerlo se utiliza `Ctrl + C`.
-
-También se puede administrar desde el Compose ubicado en la raíz del repositorio:
 
 ```bash
-docker compose build product-service
-docker compose up product-service
+docker build -f product-service/Dockerfile -t cachaelprecio/product-service .
+docker run --rm -p 8081:8081 -v product-data:/app/data cachaelprecio/product-service
 ```
 
-Para construir la imagen y levantar el contenedor en un solo paso:
+## Verificación
 
 ```bash
-docker compose up --build product-service
+dotnet format product-service/Product-Service.csproj --verify-no-changes --no-restore
+dotnet build product-service/Product-Service.csproj --no-restore
+dotnet ef migrations has-pending-model-changes --project product-service/Product-Service.csproj
 ```
-
-El volumen `product-service-datos` conserva la base SQLite cuando el contenedor se detiene.
-
-## Versionado HTTP
-
-Las versiones se seleccionan mediante el header `X-API-VERSION` y utilizan el formato SemVer.
-Los listados mantienen la misma ruta y cambian su comportamiento según la versión solicitada.
-
-```bash
-curl -H 'X-API-VERSION: 0.1.0' http://localhost:8081/productos
-curl -H 'X-API-VERSION: 0.2.0' http://localhost:8081/productos
-curl -H 'X-API-VERSION: 0.3.0' 'http://localhost:8081/productos?soloActivos=true'
-```
-
-| Versión | Productos | Catálogos |
-| --- | --- | --- |
-| `0.1.0` | Listado básico | Listado básico |
-| `0.2.0` | Listado ordenado por nombre | Listado ordenado por nombre |
-| `0.3.0` | Filtros por catálogo y estado | Filtro por nombre |
-
-Las operaciones CRUD comienzan en la versión `0.1.0`.
-
-## Base de datos
-
-Flyway ejecuta las migraciones ubicadas en `src/main/resources/db/migration`. Cada cambio de
-estructura debe agregarse en una migración nueva sin modificar las anteriores.
-
-## Protobuf
-
-El archivo `src/main/proto/product.proto` se compila y genera las fuentes Java. Los RPC se
-agregarán cuando se defina el contrato de comunicación con los demás microservicios.

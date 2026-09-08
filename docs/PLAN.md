@@ -4,7 +4,11 @@
 > Para el **cómo está construido** ver [`ARQUITECTURA.md`](ARQUITECTURA.md).
 > Para el **quién hace qué y cuándo** ver [`TAREAS.md`](TAREAS.md).
 >
-> Documento vivo · Última revisión: 07-09-2026
+> Documento vivo · Última revisión: 08-09-2026
+>
+> La topología original de costos incluía RabbitMQ y cuatro servicios. Desde el 08-09 la
+> arquitectura ejecutable fue simplificada por el [ADR-020](adr/020-csharp-y-simplificacion-de-servicios.md):
+> no hay RabbitMQ ni `price-service`; PostgreSQL permanece para el scraper.
 
 ---
 
@@ -311,7 +315,7 @@ de paso, es nuestro respaldo si el crédito de AWS se agota (ver §7).
 | **Lambda + EventBridge** | Se "despierta" 3 veces al día, corre 30 segundos, se apaga. **90 invocaciones al mes** | **$0** — el free tier es 1.000.000 de requests/mes |
 | **S3 (crudo)** | ~90 archivos JSON de 1–2 MB al mes ≈ 150 MB | **~$0,003/mes** |
 | **RDS Postgres** | `db.t4g.micro` corriendo 24/7 | ⚠️ **~$15–25/mes** — el único costo real del proyecto |
-| **EC2** | Los 4 servicios en un `docker compose` | `t3.small` ≈ **~$15/mes**; se apaga fuera de horario |
+| **EC2** | Caddy, gateway, Product Service, scraper y PostgreSQL en Compose | `t3.small` ≈ **~$15/mes**; se apaga fuera de horario |
 
 **Estrategia de crédito:**
 
@@ -321,16 +325,13 @@ de paso, es nuestro respaldo si el crédito de AWS se agota (ver §7).
 3. **`aws s3 sync` a local una vez por semana** — respaldo del historial en el PC, gratis.
 4. **Apagar la EC2 fuera de horario de trabajo**: el crédito se consume solo si está prendida.
 5. ❌ **No usar EKS**: el control plane cuesta ~USD 73/mes y se come el crédito.
-6. ❌ **No usar Amazon MQ**: ~USD 22/mes. RabbitMQ es un contenedor más del compose.
+6. ❌ **No usar Amazon MQ ni RabbitMQ todavía**: no hay consumidores asíncronos que justifiquen la operación de una cola.
 
-### ⚠️ Sobre la persistencia de RabbitMQ
+### Integración sin cola en el MVP
 
-"RabbitMQ con volumen persistente" suena bien, pero amarra la cola al disco de una instancia
-concreta y agrega complejidad. **Decisión consciente: la cola es efímera.** Si RabbitMQ se reinicia y
-pierde mensajes, se reprocesan desde el crudo en S3.
-
-Escrito así, deja de ser una debilidad y pasa a ser una decisión con fundamento — que es
-exactamente lo que se evalúa en la defensa.
+La sincronización actual es HTTP directa después de persistir en PostgreSQL. Esto reduce piezas,
+pero puede dejar el catálogo atrasado si Product Service está caído. Una cola durable se evaluará
+cuando existan más consumidores o se requiera backpressure; ver ADR-020.
 
 ---
 
@@ -361,7 +362,7 @@ Si alguna tienda solicita que dejemos de consultarla, se retira del sistema.
 | **El historial queda vacío** | Scraper corriendo desde el 19 de agosto, aunque sea con cron local. **Riesgo número uno del proyecto** |
 | **Nada desplegado el día de EP2** | Hay que mostrar el sistema andando en la nube. Despliegue en la Semana 2, no en la 3 |
 | **La cuenta de AWS Academy bloquea Cognito** | 🔴 **Sigue sin probarse.** Plan B: **Keycloak como un contenedor más del compose** |
-| **Confusión con el `aud` de Cognito** | Documentado en [ARQUITECTURA.md §9](ARQUITECTURA.md#9-el-detalle-del-audience-en-cognito) |
+| **Confusión con el `aud` de Cognito** | Documentado en [ARQUITECTURA.md](ARQUITECTURA.md#seguridad) |
 | **Sparta cambia o cierra su GraphQL** | Hites queda como segunda fuente; el crudo en S3 permite reprocesar lo capturado |
 | **El matching por nombre falla mucho** | Se mide con 30 productos en la Semana 2. Si es malo, el MVP muestra solo los matches confirmados y se reporta el número honesto |
 | **El crédito de AWS se agota** | S3 como fuente de verdad; sin EKS, sin Amazon MQ, sin Fargate; apagar la EC2 fuera de horario |

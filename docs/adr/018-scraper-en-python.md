@@ -30,8 +30,8 @@ escrito en ninguna parte.
 
 ## Decisión
 
-`scraper-service` es un servicio **Python 3 con FastAPI**, fuera del monorepo Maven. Sale del
-`pom.xml` raíz, tiene su propio `pyproject.toml` y su propio `Dockerfile`, y se levanta desde el
+`scraper-service` es un servicio **Python 3 con FastAPI**. Tiene su propio `pyproject.toml` y su
+propio `Dockerfile`, y se levanta desde el
 mismo `docker-compose.yml` que el resto.
 
 Sigue siendo **un microservicio del sistema**: un proceso que se despliega solo, con su propio
@@ -52,18 +52,16 @@ ciclo de vida y su propia base. Lo único que cambia es en qué está escrito.
 
 ### Lo que cuesta, y hay que decirlo
 
-- **Dos cadenas de construcción.** `./mvnw verify` ya no compila el sistema completo: hay que
-  correr también las pruebas de Python. Cuando exista CI, son dos trabajos y no uno.
+- **Dos cadenas de construcción.** `dotnet build` no comprueba Python: hay que correr también
+  sus pruebas y linters. Cuando exista CI, son dos trabajos y no uno.
 - **Dos ecosistemas de dependencias** que vigilar, y por lo tanto dos superficies distintas.
 - **El conocimiento se puede concentrar en una persona.** Si solo uno del equipo toca Python, ese
   servicio queda sin segunda opinión — y en un ramo donde la nota es individual, eso perjudica a
   los tres. Se compensa con el `README.arquitectura.md` del servicio, que explica cómo agregar
   una tienda sin haber escrito el resto.
-- **El ADR-013 queda acotado**, no anulado: sigue mandando sobre los servicios Micronaut.
+- **El ADR-013 quedó reemplazado** para los servicios activos por el ADR-020.
 
 ### Lo que NO cambia
 
-El número de microservicios sigue siendo cuatro (`gateway`, `product`, `price`, `scraper`), y la
-frontera entre ellos es la misma. Un módulo de Maven es cómo se organiza el código fuente; un
-microservicio es un proceso que se despliega solo. Son cosas distintas y esta decisión solo toca
-la primera.
+La frontera del scraper sigue siendo la misma: posee su persistencia y se despliega por separado.
+El retiro posterior de `price-service` no cambia esa independencia.

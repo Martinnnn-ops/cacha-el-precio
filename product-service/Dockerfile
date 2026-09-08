@@ -1,38 +1,33 @@
-FROM maven:3.9.16-eclipse-temurin-25-noble AS builder
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
-WORKDIR /workspace
+WORKDIR /src
 
-COPY pom.xml ./
-COPY product-service/pom.xml product-service/pom.xml
+COPY product-service/Product-Service.csproj product-service/
+RUN dotnet restore product-service/Product-Service.csproj
 
-RUN mvn -q -f product-service/pom.xml dependency:go-offline
+COPY product-service/ product-service/
+RUN dotnet publish product-service/Product-Service.csproj \
+    --configuration Release \
+    --output /app/publish \
+    --no-restore \
+    /p:UseAppHost=false
 
-COPY product-service/openapi.properties product-service/openapi.properties
-COPY product-service/src product-service/src
-
-RUN mvn -q -f product-service/pom.xml package -DskipTests
-
-FROM eclipse-temurin:25-jre-noble
-
-RUN groupadd --system product-service \
-    && useradd --system --gid product-service --home-dir /app --shell /usr/sbin/nologin product-service \
-    && mkdir -p /app/data \
-    && chown -R product-service:product-service /app
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
 WORKDIR /app
 
-COPY --from=builder --chown=product-service:product-service \
-    /workspace/product-service/target/product-service-0.1.0.jar \
-    /app/product-service.jar
+COPY --from=build /app/publish .
 
-ENV PRODUCT_PORT=8081 \
-    PRODUCT_GRPC_PORT=50051 \
-    PRODUCT_DB_URL="jdbc:sqlite:/app/data/product.db?foreign_keys=on&busy_timeout=5000&journal_mode=WAL"
+RUN mkdir -p /app/data \
+    && chown -R "$APP_UID:0" /app
 
-EXPOSE 8081 50051
+ENV ASPNETCORE_HTTP_PORTS=8081 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    ConnectionStrings__Sqlite="Data Source=/app/data/product.db"
 
+EXPOSE 8081
 VOLUME ["/app/data"]
 
-USER product-service
+USER $APP_UID
 
-ENTRYPOINT ["java", "-jar", "/app/product-service.jar"]
+ENTRYPOINT ["dotnet", "Product-Service.dll"]

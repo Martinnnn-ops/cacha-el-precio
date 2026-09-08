@@ -1,5 +1,5 @@
 <mxfile host="app.diagrams.net" type="device">
-  <diagram name="1 - Camino del usuario" id="camino-usuario">
+  <diagram name="1 - Objetivo de despliegue (ver ADR-020)" id="camino-usuario">
     <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">
       <root>
         <mxCell id="0" />
@@ -86,7 +86,7 @@
     </mxGraphModel>
   </diagram>
 
-  <diagram name="2 - Camino del dato" id="camino-dato">
+  <diagram name="2 - Histórico descartado por ADR-020" id="camino-dato">
     <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">
       <root>
         <mxCell id="0" />
