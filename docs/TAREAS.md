@@ -4,7 +4,7 @@
 > Si tienes 15 minutos y no sabes qué hacer, abre este documento, busca la semana en curso y
 > toma cualquier tarea que no esté marcada.
 >
-> Última revisión: **27-08-2026**
+> Última revisión: **07-09-2026**
 
 ---
 
@@ -26,7 +26,7 @@
 ## 📋 Índice
 
 - [Cómo nos repartimos el trabajo](#-cómo-nos-repartimos-el-trabajo)
-- [Dónde estamos hoy](#-dónde-estamos-hoy--27-08-2026)
+- [Dónde estamos hoy](#-dónde-estamos-hoy--07-09-2026)
 - [Las tres fechas que mandan](#-las-tres-fechas-que-mandan)
 - [Semana 1 · 28–30 ago](#-semana-1--2830-ago--destrabar-cognito)
 - [Semana 2 · 31 ago – 6 sep](#-semana-2--31-ago--6-sep--todo-a-la-nube)
@@ -65,29 +65,51 @@ Una hora, los sábados. Tres cosas y se acaba:
 
 ---
 
-## 📍 Dónde estamos hoy · 27-08-2026
+## 📍 Dónde estamos hoy · 07-09-2026
 
-Estado real, verificado contra el repo y contra AWS — no de memoria.
+Estado real, verificado contra el repo **y contra el sistema desplegado** — no de memoria.
+
+### Los cuatro innegociables del EP1
+
+Se confirmaron en clase el 26-08 y no son negociables: sin cualquiera de ellos **no hay entrega**,
+por bueno que esté el resto.
+
+| | Innegociable | Estado |
+|---|---|---|
+| 1 | **IDaaS** (Cognito) | 🟡 **Existe, pero hay DOS user pools** que no se hablan — ver [`INTEGRACION.md` §0.2](INTEGRACION.md) |
+| 2 | **API Manager** (API Gateway) | 🔴 **No existe.** Caddy quedó de API Manager de facto, y la decisión "API Gateway, no Caddy" sigue sin cerrarse |
+| 3 | **Sistema desplegado en internet** | 🟢 **Sí** — `www.cacha-el-precio.com` y `api.cacha-el-precio.com` responden |
+| 4 | **Informe ejecutivo de 5 páginas** justificando el IDaaS y el API Manager | 🔴 Sin empezar. Sale de los ADR, y hay 6 de 19 escritos |
+
+> 🔴 **El número 2 es el que más duele**, porque el enunciado del EP1 nombra el API Gateway
+> textualmente y el informe se califica justamente por justificar esa elección. Un reverse proxy
+> no valida JWT en el borde ni tiene stages ni throttling.
+
+### Lo que se califica
+
+| | Pieza | Peso | Estado |
+|---|---|---|---|
+| 🟢 | **Validación del JWT en el BFF** | **40% EP1** | **Hecha el 07-09**: firma contra JWKS, `iss`, vigencia, `client_id`, `token_use` y roles desde `cognito:groups`. 7 tests verdes |
+| 🟡 | **Frontend con OIDC** | **60% EP1** | Desplegado y con PKCE real, **pero contra el otro user pool**. Está en un repo aparte, todavía no en este |
+| 🔴 | **200 / 401 / 403 demostrables** | 20% EP2 | El 401 ya se prueba en test. El 200 y el 403 necesitan un token real: falta |
+
+### El resto
 
 | | Pieza | Estado |
 |---|---|---|
-| ✅ | Repo, ramas y acuerdos de trabajo | Andando. `main` protegido, `development` libre |
-| ✅ | **Scraper de Sparta** | 🟢 **Capturando 3 veces al día desde el 27-08.** 2.088 productos por corrida |
-| ✅ | **Los 4 módulos del backend** | `gateway`, `product-service`, `price-service` y `scraper-service`. Los cuatro compilan, pasan sus tests y responden `/health` |
-| ✅ | Decisión de cómputo | **EC2 + Docker Compose**, cerrada y escrita en [ADR-008](adr/008-ec2-docker-compose.md) |
-| 🔴 | **Cognito en AWS Academy** | **Sin probar.** Es el riesgo número uno del proyecto |
-| ⬜ | Frontend | No existe |
-| 🟡 | BFF / validación de JWT | El módulo `gateway` existe y arranca; **falta la validación**, que es el 40% del EP1 |
-| ⬜ | API Gateway | No existe |
-| ⬜ | RDS, VPC, despliegue | No existe |
-| ⬜ | Scraper de Hites | No existe. El endpoint del plan original **da 500** |
-| ⬜ | CI en GitHub Actions | **0 workflows.** Estaba escrito como si existiera |
-| ⬜ | ADR | 3 de 14 escritos (008, 013, 014) |
+| 🟢 | Scraper de Sparta | Capturando 3 veces al día desde el 27-08 |
+| 🟢 | `product-service` + scraper Python | Mergeados el 07-09 (PR #10 y #11), corriendo en la EC2 |
+| 🔴 | **Escrituras de `/productos` sin autorización** | **Incidente abierto y expuesto a internet** — [`INTEGRACION.md` §0.1](INTEGRACION.md) |
+| 🔴 | Base de datos | SQLite en la EC2, no la RDS que prometen los documentos |
+| 🔴 | Red (VPC, subredes privadas, NAT) | No existe: la EC2 tiene IP pública directa |
+| ⬜ | CI en GitHub Actions | **0 workflows**, arrastrado desde la Semana 1 |
+| 🟡 | ADR | 6 de 19 escritos (006, 008, 013, 014, 015, 016) |
 
-> 🔴 **Lo más importante de esta tabla:** todo lo que puntúa en el EP1 —el 60% del frontend y
-> el 40% del BFF— **todavía no existe**, y ambos dependen de que Cognito se pueda levantar.
+> 📌 **Lo que cambió respecto de la revisión anterior (27-08):** se integró el trabajo de los tres,
+> el sistema llegó a internet y el BFF ya valida. Lo que apareció en el camino son **ocho
+> decisiones de arquitectura sin ADR** y **dos problemas graves**, todo en
+> [`INTEGRACION.md`](INTEGRACION.md).
 
----
 
 ## 📅 Las tres fechas que mandan
 
