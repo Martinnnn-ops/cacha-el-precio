@@ -477,7 +477,10 @@ export const useComparadorStore = defineStore('comparador', () => {
     error.value = null
 
     try {
-      productos.value = await obtenerProductos()
+      // `forzar` viaja hasta el servicio: allí hay una caché de la petición y
+      // si no se le dice que la descarte, devuelve lo mismo que ya está en
+      // pantalla y la recarga no recarga nada.
+      productos.value = await obtenerProductos({ forzar })
       actualizadoEn.value = Date.now()
     } catch (e) {
       error.value = e.message
