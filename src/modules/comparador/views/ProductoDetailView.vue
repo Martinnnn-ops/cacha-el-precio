@@ -1,6 +1,7 @@
 <script setup>
 import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
@@ -24,14 +25,28 @@ const props = defineProps({
 })
 
 const store = useComparadorStore()
+const router = useRouter()
 const { producto, cargando, error } = storeToRefs(store)
 const { nombreTienda, colorTienda } = useTiendas()
 
 // La URL del detalle es el slug, pero la API identifica los productos por id.
 // La vista resuelve slug -> id mirando el catálogo ya cargado en el store (si
 // no está cargado, se trae antes). Con el slug se llega a la URL y con el id
-// se pide la ficha; si el slug no corresponde a ningún producto, se muestra
-// como si ya no estuviera.
+// se pide la ficha.
+//
+// Si el slug no corresponde a ningún producto, se va al 404 de verdad y no se
+// pinta la ficha vacía. El motivo no es estético:
+//
+//   · el patrón `/producto/:slug` acepta CUALQUIER texto, así que hay
+//     infinitas URLs válidas. Quedándose aquí, todas responden como página
+//     buena: para Google eso es un «soft 404» y penaliza el sitio entero;
+//   · la ruta del 404 lleva `meta.sinAnuncios`, y esta no. Pintando la ficha
+//     vacía, el layout muestra igual su bloque de cierre — un anuncio en una
+//     página sin contenido propio, que es lo que las políticas de AdSense
+//     prohíben y puede costar la cuenta completa.
+//
+// Se usa `replace` y no `push` para que la URL mala no quede en el historial:
+// el botón de atrás no debe devolver a una página que no existe.
 async function cargarPorSlug(slug) {
   if (store.productos.length === 0) {
     await store.cargarProductos()
@@ -41,11 +56,11 @@ async function cargarPorSlug(slug) {
 
   if (!encontrado) {
     store.producto = null
+    router.replace({ name: 'no-encontrado' })
     return
   }
 
   await store.cargarProducto(encontrado.id)
-
 }
 
 watch(() => props.slug, cargarPorSlug, { immediate: true })

@@ -207,7 +207,7 @@ durante el render, el usuario ve una pantalla con salida en vez de un blanco.
 |---|---|---|
 | `/` | `InicioView` | Portada: destacado, Lo más reciente, Lo más visto, Categorías populares, Ofertas del día y dos huecos de anuncio. |
 | `/comparador` | `ComparadorView` | Búsqueda, filtro por tienda y rejilla de resultados. Acepta `?categoria=Poleras`. |
-| `/producto/:id` | `ProductoDetailView` | Precio por tienda e historial. |
+| `/producto/:slug` | `ProductoDetailView` | Precio por tienda e historial. Un slug que no está en el catálogo cae en el 404. |
 | `/entrar`, `/registro` | módulo `cuenta` | Sesión. |
 | `/terminos`, `/privacidad`, `/preguntas` | módulo `legal` | Páginas de texto. |
 
@@ -309,7 +309,7 @@ aquí evita que un enlace preparado haga daño desde el propio frontend.
 | Riesgo | Qué se hace |
 |---|---|
 | **Open redirect** — `/entrar?volver=https://sitio-falso.cl` te devolvería a un sitio ajeno con la confianza de venir del tuyo | `rutaInternaSegura()` sólo acepta rutas que empiezan por una barra: descarta `//host`, `\`, cualquier esquema (`javascript:`, `data:`) y los caracteres de control |
-| **Parámetro de ruta arbitrario** — `/producto/../algo` saldría a la red con lo que sea | la forma del id se declara en la ruta (`:id(\d{1,12})`), así que ni llega a la vista; la vista lo revalida igualmente |
+| **Parámetro de ruta arbitrario** — `/producto/loquesea` respondería como una página buena | el patrón `:slug` acepta cualquier texto, así que la forma ya no filtra nada: lo hace el `beforeEnter` de la ruta, que comprueba contra el catálogo y manda al 404 antes de montar la vista. La vista conserva su propio redirect para cuando solo cambia el parámetro, que es el caso que `beforeEnter` no ve |
 | **Texto de la URL sin límite** | `textoDeUrl()` quita los caracteres de control y recorta a 120 |
 | **Título de pestaña manipulable** | `afterEach` compone el título sólo con textos del mapa de rutas, nunca con algo de la URL |
 | **Vistas de sesión** | guard `soloInvitados` / `requiereSesion` en `core/router/index.js` |
