@@ -48,10 +48,18 @@ async function filasProductos({ forzar = false } = {}) {
   if (forzar) cacheFilas = null
   if (cacheFilas) return cacheFilas
 
-  cacheFilas = http.get('/productos', { version: VERSION }).catch((error) => {
-    cacheFilas = null
+  // `esta` guarda la promesa que crea ESTA llamada, para poder comprobar al
+  // fallar que la caché siga siendo la suya. Sin esa comprobación, una
+  // petición lenta que falla tarde borraba la caché que había puesto un
+  // «Reintentar» posterior, y las tres llamadas de la portada —productos,
+  // categorías y tiendas— volvían a descargar el catálogo cada una por su
+  // lado. Es una carrera: no falla siempre, y cuando falla parece lentitud.
+  const esta = http.get('/productos', { version: VERSION }).catch((error) => {
+    if (cacheFilas === esta) cacheFilas = null
     throw error
   })
+
+  cacheFilas = esta
 
   return cacheFilas
 }

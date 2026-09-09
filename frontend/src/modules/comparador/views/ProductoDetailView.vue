@@ -53,11 +53,23 @@ async function cargarPorSlug(slug) {
     await store.cargarProductos()
   }
 
+  // `cargarProductos` NUNCA lanza: captura el fallo y lo deja en `store.error`
+  // para no borrar lo que ya estuviera en pantalla. Así que hay que
+  // preguntárselo explícitamente. Si la carga falló, no sabemos si el producto
+  // existe, y mandar al 404 afirmaría algo que no nos consta: se muestra el
+  // estado de error con reintento, que es lo que el usuario necesita en una
+  // caída. Enviar al 404 aquí convertía cualquier enlace compartido en
+  // «página no encontrada» mientras la API estuviera abajo.
+  if (store.error && store.productos.length === 0) {
+    store.producto = null
+    return
+  }
+
   const encontrado = store.productos.find((p) => slugProducto(p) === slug)
 
   if (!encontrado) {
     store.producto = null
-    router.replace(rutaNoEncontrada(`/producto/${slug}`))
+    router.replace(rutaNoEncontrada('producto', slug))
     return
   }
 
