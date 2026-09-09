@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
   //
   // En producción esto no aplica: o el front y la API van tras el mismo
   // dominio (mismo origen), o hay que configurar CORS en el gateway.
-  const destino = env.BACKEND_URL ?? 'http://localhost:8080'
+  const destino = env.PRODUCT_SERVICE_URL ?? env.BACKEND_URL ?? 'http://localhost:8080'
 
   return {
     plugins: [vue()],

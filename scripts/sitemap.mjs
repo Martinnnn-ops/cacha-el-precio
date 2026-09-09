@@ -13,15 +13,17 @@ const SITIO = (process.env.VITE_SITE_URL ?? 'https://cacha-el-precio.com').repla
   '',
 )
 
-// Misma fuente de configuración que el build: Vite carga .env.production en
-// "npm run build" y aquí hace falta saber contra qué API consultar los
-// productos sin duplicar el valor a mano (en .env.production está VITE_API_BASE_URL).
+// Node no usa el proxy de Vite. Se prefiere el destino absoluto del gateway y,
+// si no está definido, una VITE_API_BASE_URL absoluta.
 const env = loadEnv('production', process.cwd(), '')
 
-const API = (env.VITE_API_BASE_URL ?? 'https://api.cacha-el-precio.com').replace(
-  /\/+$/,
-  '',
-)
+const apiConfigurada = env.PRODUCT_SERVICE_URL ?? env.BACKEND_URL
+const apiPublica = /^https?:\/\//.test(env.VITE_API_BASE_URL ?? '')
+  ? env.VITE_API_BASE_URL
+  : undefined
+const API = (apiConfigurada ?? apiPublica ?? 'https://api.cacha-el-precio.com')
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, '')
 
 // Versión del contrato ASP.NET Core, enviada mediante la cabecera `Version`.
 const VERSION = env.VITE_API_VERSION ?? '1.0'
