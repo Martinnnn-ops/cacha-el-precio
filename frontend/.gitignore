@@ -12,17 +12,25 @@ dist
 dist-ssr
 *.local
 
-# Configuración local de esta máquina: aquí van el id de cliente de Google y
-# los ids de bloque de AdSense. Se comparte .env.example como plantilla, no
-# este. Los .env.test/.env.live/.env.fallo SÍ van al repo: son parte de las
-# pruebas y no contienen nada privado.
+# Configuración local de esta máquina. Se comparte .env.example como
+# plantilla, no este.
 .env
 
-# Archivos de test/respaldo (solo se usan localmente)
+# Respaldos y pruebas de una sola máquina: esos sí se quedan fuera.
 .env.bak*
-.env.anuncios
 .env.humo
-.env.fallo
+
+# ⚠️ .env.anuncios y .env.fallo NO van aquí, aunque estuvieron hasta el 09-09.
+#
+# Los usa `npm run humo` con `mode: 'anuncios'` y `mode: 'fallo'`. Ignorados,
+# Vite no encontraba nada que cargar y las pruebas no fallaban: pasaban a
+# probar otra cosa. La de «el store no borra lo que ya tenías» terminaba
+# cargando los datos de ejemplo con éxito en vez de provocar el error de red
+# que quería comprobar.
+#
+# Una prueba que solo funciona en la máquina donde alguien creó el archivo a
+# mano no protege a nadie. Ninguno de los dos tiene secretos: son ids públicos
+# y una URL a un puerto que no escucha nadie.
 
 # Generado en build
 public/sitemap.xml

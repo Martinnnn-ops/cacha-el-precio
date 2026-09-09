@@ -20,6 +20,11 @@
 !frontend/.env.production
 !frontend/.env.live
 !frontend/.env.test
+# Entornos que consume `npm run humo`: uno con todos los bloques de anuncio
+# configurados y otro apuntando a un backend inexistente. Sin ellos las
+# pruebas no fallan, que sería lo útil: pasan a probar otra cosa.
+!frontend/.env.anuncios
+!frontend/.env.fallo
 *.pem
 *.p12
 *.key
