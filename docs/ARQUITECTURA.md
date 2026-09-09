@@ -72,7 +72,7 @@ URL, imagen y disponibilidad. `canonicalKey` intenta reconocer el mismo modelo e
 
 Usa PostgreSQL en el esquema `product`. Comparte servidor con el scraper para reducir operación,
 pero no tablas ni acceso: cada servicio mantiene su esquema y cruza la frontera por HTTP. La
-decisión y los costos del matching heurístico están en el ADR-021.
+decisión y los costos del matching heurístico están en el ADR-025.
 
 ### Scraper
 

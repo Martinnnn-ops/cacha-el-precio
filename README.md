@@ -141,7 +141,7 @@ BACKEND_URL=http://127.0.0.1:8080 npm run humo
 |---|---|
 | [ARQUITECTURA](docs/ARQUITECTURA.md) | vista técnica y límites de servicios |
 | [ADR-020](docs/adr/020-csharp-y-simplificacion-de-servicios.md) | migración a C# y simplificación |
-| [ADR-021](docs/adr/021-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta en PostgreSQL |
+| [ADR-025](docs/adr/025-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta en PostgreSQL |
 | [TAREAS](docs/TAREAS.md) | estado, prioridades y flujo de trabajo |
 | [BITÁCORA](docs/BITACORA.md) | avances y evidencia cronológica |
 | [INTEGRACIÓN](docs/INTEGRACION.md) | deuda descubierta al integrar ramas anteriores |

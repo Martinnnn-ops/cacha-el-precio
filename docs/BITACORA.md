@@ -436,7 +436,7 @@ PYTHONPATH=scraper-service/src uv run --no-project --with pytest --with pydantic
 y separó producto canónico de oferta. `canonicalKey` agrupa el mismo modelo entre tiendas y
 `(store, externalId)` hace el POST idempotente; la respuesta entrega `offers[]`, imágenes por
 oferta y tallas abiertas como `S`, `38` o `42.5`. La decisión y el riesgo del matching heurístico
-quedaron en el ADR-021.
+quedaron en el ADR-025.
 
 El scraper amplió las categorías de ropa, accesorios y baño, lee JSON-LD anidado,
 `ProductGroup`, `AggregateOffer`, precios chilenos y tallas de variantes. El frontend ya traduce

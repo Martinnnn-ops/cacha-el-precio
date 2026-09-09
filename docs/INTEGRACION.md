@@ -25,7 +25,7 @@ suplantación de navegador. Para ingesta en vivo hace falta permiso o un feed au
 
 ## Actualización de catálogo y persistencia · 08-09
 
-El [ADR-021](adr/021-catalogo-multi-oferta-postgresql.md) reemplaza la decisión transitoria de
+El [ADR-025](adr/025-catalogo-multi-oferta-postgresql.md) reemplaza la decisión transitoria de
 SQLite: Product Service ahora usa el esquema PostgreSQL `product`, separado de `scraper` por
 propiedad y migraciones. Un producto canónico agrupa múltiples ofertas identificadas por
 `(store, externalId)`; las tallas son listas abiertas y admiten números.
@@ -49,7 +49,7 @@ este documento con una decisión explícita:
 - `price-service` se elimina porque estaba vacío y no poseía una capacidad real;
 - RabbitMQ se retira mientras no existan productores ni consumidores;
 - el scraper conserva PostgreSQL e historial y sincroniza por HTTP v1;
-- Product Service evolucionó después a PostgreSQL y catálogo multi-oferta (ADR-021);
+- Product Service evolucionó después a PostgreSQL y catálogo multi-oferta (ADR-025);
 - las migraciones huérfanas de `catalog` y `price` se eliminan.
 
 Por eso los puntos 5, 5b, 6 y 8 de abajo se conservan como evidencia histórica, pero ya tienen

@@ -1,4 +1,4 @@
-# ADR-021 · Catálogo canónico multi-oferta en PostgreSQL
+# ADR-025 · Catálogo canónico multi-oferta en PostgreSQL
 
 - **Estado:** aceptado
 - **Fecha:** 08-09-2026

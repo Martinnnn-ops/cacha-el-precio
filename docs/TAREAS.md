@@ -103,7 +103,7 @@ por bueno que esté el resto.
 | 🟡 | Base de datos | Product Service migrado al esquema PostgreSQL `product`; pendiente validar/desplegar en AWS |
 | 🔴 | Red (VPC, subredes privadas, NAT) | No existe: la EC2 tiene IP pública directa |
 | ⬜ | CI en GitHub Actions | **0 workflows**, arrastrado desde la Semana 1 |
-| 🟡 | ADR | ADR-020 y ADR-021 documentan C#, simplificación y catálogo multi-oferta; faltan decisiones históricas |
+| 🟡 | ADR | ADR-020 y ADR-025 documentan C#, simplificación y catálogo multi-oferta; faltan decisiones históricas |
 
 > 📌 **Lo que cambió respecto de la revisión anterior (27-08):** se integró el trabajo de los tres,
 > el sistema llegó a internet y el BFF ya valida. Lo que apareció en el camino son **ocho
