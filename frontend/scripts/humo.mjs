@@ -2014,6 +2014,22 @@ try {
     const categorias = adaptarCategorias(filas)
     check('  deriva categorías desde la misma respuesta',
       categorias.every((c) => c.nombre !== ''))
+
+    // Dos tiendas venden la misma prenda con el mismo nombre. Si el slug sale
+    // solo del nombre, las dos comparten URL: la ficha resuelve con `find` y
+    // devuelve la primera, así que la segunda oferta no tiene ninguna
+    // dirección que lleve a ella —y el sitemap emite la misma URL dos veces—.
+    // Se comprueba contra los datos REALES porque con los de ejemplo no pasa:
+    // ahí cada producto ya trae sus tiendas dentro.
+    const { slugProducto: slugDe } = await import('../src/shared/utils/slug.js')
+    const slugs = adaptados.map((p) => slugDe(p))
+    const repetidos = slugs.filter((s, i) => slugs.indexOf(s) !== i)
+
+    check(
+      '  cada producto tiene una URL propia',
+      repetidos.length === 0,
+      repetidos.length > 0 ? `repetidos: ${[...new Set(repetidos)].join(', ')}` : `${slugs.length} slugs únicos`,
+    )
   }
 
   const cors = await fetch(`${API}/productos`, {
