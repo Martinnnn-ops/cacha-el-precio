@@ -2107,6 +2107,24 @@ try {
       Object.keys(adaptados[0]).filter((k) => k === 'vistas' || k === 'agregadoHace').join(', ') || 'ninguno',
     )
 
+    // Y que esos campos traigan el dato de la API, no un relleno. `vistas`
+    // tiene que ser un número —puede ser 0, un producto puede no tener
+    // visitas— y `agregadoHace` un número de días, no null: si el backend
+    // dejara de mandar `createdAt`, «Lo más reciente» volvería a ordenar por
+    // nada y nadie se enteraría.
+    check(
+      '  con el contador de visitas del backend',
+      adaptados.every((p) => Number.isFinite(p.vistas)),
+      `máx ${Math.max(...adaptados.map((p) => p.vistas))}`,
+    )
+    check(
+      '  y con la antigüedad calculada de createdAt',
+      adaptados.every((p) => Number.isFinite(p.agregadoHace)),
+      adaptados.every((p) => Number.isFinite(p.agregadoHace))
+        ? `${adaptados[0].agregadoHace} días el primero`
+        : 'algún producto sin fecha',
+    )
+
     const { slugProducto: slugDe } = await import('../src/shared/utils/slug.js')
     const slugs = adaptados.map((p) => slugDe(p))
     const repetidos = slugs.filter((s, i) => slugs.indexOf(s) !== i)

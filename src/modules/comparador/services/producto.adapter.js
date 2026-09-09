@@ -114,26 +114,18 @@ export function adaptarProductos(filas = []) {
       categoria: texto(fila.category),
       imagen: texto(fila.image) || null,
 
-      // ┌─ DOS CAMPOS QUE LA API NO DA, Y LA PORTADA ORDENA POR ELLOS ──────┐
-      // │ «Lo más visto» ordena por `vistas` y «Lo más reciente» por        │
-      // │ `agregadoHace`. Con los datos de ejemplo funcionan, porque ahí    │
-      // │ vienen puestos; contra la API real los dos quedan neutros y las   │
-      // │ dos secciones muestran el catálogo en el orden en que llegó.      │
-      // │ No se rompe nada, pero tampoco cumplen lo que su título promete.  │
-      // └───────────────────────────────────────────────────────────────────┘
+      // Los dos campos por los que ordena la portada: «Lo más visto» usa
+      // `vistas` y «Lo más reciente» usa `agregadoHace`. Desde la Fase 4 el
+      // backend los expone (`visits` y `createdAt`), así que las dos secciones
+      // ordenan de verdad. Antes quedaban neutros y enseñaban el catálogo en
+      // el orden en que venía, sin que nada avisara.
 
       // El nombre es `vistas` y no `visitas`: es el que leen el store
       // (`masVistos`) y la portada. Escribir `visitas` dejaba un campo que no
       // consultaba nadie y `vistas` en undefined, así que el orden salía del
       // `?? 0` de todos los productos — es decir, no había orden.
-      // El contador vuelve en la Fase 4; el backend C# no lo expone todavía.
-      vistas: 0,
+      vistas: Number(fila.visits ?? 0) || 0,
 
-      // `createdAt` NO existe en ProductResponse, así que esto es siempre
-      // null. Se deja leyendo el campo a propósito: el día que el backend lo
-      // exponga, la antigüedad y «Lo más reciente» empiezan a funcionar sin
-      // tocar nada. Hasta entonces, `RecienteBanner` ya oculta el epígrafe
-      // cuando no hay dato, en vez de enseñar un hueco.
       agregadoHace: diasDesde(fila.createdAt),
       // Campos de ficha que la API todavía no expone. Si algún día los trae,
       // los bloques de la vista aparecen solos.
