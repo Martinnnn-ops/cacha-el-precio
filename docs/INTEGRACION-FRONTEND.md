@@ -371,7 +371,7 @@ forma de saber cuál de las dos fue.
 Rama creada desde `development`, excepciones del `.gitignore` probadas con `git check-ignore`, y
 las decisiones de §7 tomadas y argumentadas ([ADR-021](adr/021-contrato-publico-en-el-bff.md)).
 
-### Fase 1 · El frontend entra, sin tocar una línea de su código
+### Fase 1 · El frontend entra, sin tocar una línea de su código — ✅ hecha (§11)
 
 `git subtree add --prefix=frontend`, `npm install`, `npm run humo` y `npm run build`.
 
@@ -380,7 +380,7 @@ cero cambios funcionales. Las pruebas de humo corren en modo `test`, que deja `V
 vacía y usa los datos de ejemplo: **no necesitan backend**, así que esta fase se puede cerrar sin
 que el backend haya arrancado nunca.
 
-### Fase 2 · Levantar el backend de verdad y medir el contrato
+### Fase 2 · Levantar el backend de verdad y medir el contrato — ✅ hecha (§13)
 
 Es la fase que más riesgo quita, y no estaba prevista: **nadie ha ejecutado nunca este backend**
 (ver el aviso de §0). Antes de adaptar el frontend a un contrato, hay que saber qué responde ese
