@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+.git/
+.env
+respaldos/

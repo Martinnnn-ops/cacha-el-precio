@@ -129,8 +129,9 @@ def construir_servicio(cfg: Settings, repo) -> ScraperService:
             ProductServiceClient(cfg.product_service_url, timeout=cfg.http_timeout)
         )
 
-    return ScraperService(scrapers, repo, delay=demora, image_service=image_service,
-                          sync_service=sync_service)
+    return ScraperService(
+        scrapers, repo, delay=demora, image_service=image_service, sync_service=sync_service
+    )
 
 
 # De donde saca cada tienda sus URLs de producto.
@@ -142,6 +143,18 @@ def sitemap_de(cfg: Settings, tienda: str) -> str | None:
         "hites": cfg.hites_sitemap,
         "sparta": cfg.sparta_sitemap,
     }.get(tienda)
+
+
+def descubrir_urls(cfg: Settings, tienda: str, limite: int, http: HttpClient) -> list[str]:
+    """Obtiene las paginas que debe procesar una tienda."""
+    if tienda == "falabella":
+        return cfg.falabella_listing_urls[:limite]
+
+    url = sitemap_de(cfg, tienda)
+    if not url:
+        return []
+    crudas = leer_sitemap(url, http, max_urls=limite * 4)
+    return _solo_fichas(tienda, crudas)[:limite]
 
 
 # Registro unico de tiendas: lo usan tanto el filtro de URLs como el
@@ -164,15 +177,11 @@ def _solo_fichas(tienda: str, urls: list[str]) -> list[str]:
 
 def leer_urls(args: argparse.Namespace, cfg: Settings) -> list[str]:
     if getattr(args, "sitemap", False):
-        url = sitemap_de(cfg, args.tienda)
-        if not url:
-            log.error("la tienda %s no tiene sitemap configurado", args.tienda)
+        if not sitemap_de(cfg, args.tienda):
+            log.error("la tienda %s no tiene una fuente automatica configurada", args.tienda)
             raise SystemExit(2)
         http = HttpClient(timeout=cfg.http_timeout, user_agent=cfg.http_user_agent)
-        # Se pide de mas y luego se filtra: si el sitemap mezcla
-        # categorias, pedir justo el limite dejaria muy pocas fichas.
-        crudas = leer_sitemap(url, http, max_urls=args.limite * 4)
-        return _solo_fichas(args.tienda, crudas)[: args.limite]
+        return descubrir_urls(cfg, args.tienda, args.limite, http)
     if args.url:
         return list(args.url)
     ruta = Path(args.urls)
@@ -199,10 +208,15 @@ def main(argv: list[str] | None = None) -> int:
     origen = b.add_mutually_exclusive_group(required=True)
     origen.add_argument("--urls", help="archivo con una URL por linea")
     origen.add_argument("--url", action="append", help="URL suelta (repetible)")
-    origen.add_argument("--sitemap", action="store_true",
-                        help="descubre las URLs desde el sitemap de la tienda")
-    b.add_argument("--limite", type=int, default=50,
-                   help="maximo de URLs a barrer con --sitemap (por defecto 50)")
+    origen.add_argument(
+        "--sitemap", action="store_true", help="descubre las URLs desde el sitemap de la tienda"
+    )
+    b.add_argument(
+        "--limite",
+        type=int,
+        default=50,
+        help="maximo de URLs a barrer con --sitemap (por defecto 50)",
+    )
 
     d = sub.add_parser("descubrir", help="lista URLs de producto desde el sitemap")
     d.add_argument("tienda")
@@ -220,17 +234,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.comando == "tiendas":
         for t in _TIENDAS:
             sm = sitemap_de(cfg, t)
-            print(f"{t}\t{'sitemap disponible' if sm else 'sin sitemap: hay que dar las URLs'}")
+            print(
+                f"{t}\t"
+                f"{'fuente automatica disponible' if sm else 'hay que dar URLs autorizadas'}"
+            )
         return 0
 
     if args.comando == "descubrir":
-        url = sitemap_de(cfg, args.tienda)
-        if not url:
-            log.error("la tienda %s no tiene sitemap configurado", args.tienda)
+        if not sitemap_de(cfg, args.tienda):
+            log.error("la tienda %s no tiene una fuente automatica configurada", args.tienda)
             return 2
         http = HttpClient(timeout=cfg.http_timeout, user_agent=cfg.http_user_agent)
-        crudas = leer_sitemap(url, http, max_urls=args.limite * 4)
-        for u in _solo_fichas(args.tienda, crudas)[: args.limite]:
+        for u in descubrir_urls(cfg, args.tienda, args.limite, http):
             print(u)
         return 0
 

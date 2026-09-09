@@ -2,13 +2,12 @@
 """
 Lleva los productos scrapeados al Product Service.
 
-Product Service guarda en SQLite y el frontend lee de ahi; el scraper
-guarda en PostgreSQL y es dueño de sus datos. Este sincronizador hace de
-puente y crea o actualiza los productos segun existan.
+Product Service y el scraper guardan en esquemas PostgreSQL separados.
+Este sincronizador cruza el límite por HTTP: nunca escribe directamente
+en las tablas que pertenecen al catálogo.
 
-La identidad compartida es (tienda, id externo), el mismo par que usa
-el dominio del scraper. Esto evita duplicados aunque cambien nombre,
-precio o URL.
+Product Service agrupa las ofertas por una clave canónica de marca/modelo;
+dentro del producto, (tienda, id externo) identifica cada oferta.
 
 Ademas de precio y categoria, el producto lleva lo que el frontend pide
 para mostrarse completo: url (el boton "ver en tienda"), imagen y marca.
@@ -20,6 +19,7 @@ import logging
 
 from scraper.domain.categoria import categoria_de
 from scraper.domain.product import Product
+from scraper.domain.product_identity import canonical_key
 from scraper.infrastructure.http.product_service_client import ProductServiceClient
 
 log = logging.getLogger(__name__)
@@ -28,56 +28,33 @@ log = logging.getLogger(__name__)
 class ProductServiceSync:
     """
     Sincronizador hacia el Product Service. No sabe de HTML ni de SQL:
-    solo recibe un Product del dominio y decide crear o actualizar.
+    solo recibe un Product del dominio y publica una oferta idempotente.
 
     Adapta el producto del scraper al contrato ingles de Product Service.
     """
 
     def __init__(self, cliente: ProductServiceClient) -> None:
         self._cliente = cliente
-        self._existentes: dict[tuple[str, str], int] = {}
-        self._cargados = False
 
     def sincronizar(self, producto: Product) -> bool:
-        """Crea o actualiza un producto en Product Service. False si no hay nada que hacer."""
-        producto_id = self._id_existente(producto.store, producto.external_id)
+        """Crea o actualiza la oferta en Product Service."""
         payload = {
+            "canonicalKey": canonical_key(producto.brand, producto.name),
             "externalId": producto.external_id,
             "store": producto.store,
             "name": producto.name,
             "brand": producto.brand or "Sin marca",
             "category": categoria_de(producto),
             "price": producto.price,
-            "sizes": {
-                "xs": False,
-                "s": False,
-                "m": False,
-                "l": False,
-                "xl": False,
-                "xxl": False,
-            },
+            "sizes": producto.sizes,
             "description": producto.description or "",
             "url": producto.product_url,
             "image": producto.image_card_url
             or producto.image_detail_url
-            or producto.image_url,
+            or producto.image_url
+            or producto.source_image_url,
             "active": producto.available,
         }
 
-        if producto_id is not None:
-            self._cliente.actualizar_producto(producto_id, payload)
-            return True
-
-        creado = self._cliente.crear_producto(payload)
-        self._existentes[producto.clave] = creado["id"]
+        self._cliente.sincronizar_producto(payload)
         return True
-
-    def _id_existente(self, tienda: str, external_id: str) -> int | None:
-        """Id interno para el par estable (tienda, id externo), o None."""
-        if not self._cargados:
-            for product in self._cliente.listar_productos():
-                key = (product.get("store", ""), product.get("externalId", ""))
-                self._existentes[key] = int(product["id"])
-            self._cargados = True
-
-        return self._existentes.get((tienda, external_id))

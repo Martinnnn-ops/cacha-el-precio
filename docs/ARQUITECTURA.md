@@ -13,11 +13,11 @@ Persona ──▶ Frontend Vue ──▶ API Gateway ──▶ Caddy ──▶ G
                                                            │ HTTP v1
                                                            ▼
                                                    Product Service C#
-                                                           │
-                                                        SQLite
+                                                           │ esquema product
                                                            ▲
                                                            │ sincronización
-Scraper Python ───────▶ PostgreSQL                          │
+Scraper Python ───────▶ PostgreSQL ◀────────────────────────┘
+       │               esquema scraper
        │              (productos + historial) ─────────────┘
        └─────────────▶ S3 (imágenes)
 ```
@@ -35,7 +35,7 @@ Scraper Python ───────▶ PostgreSQL                          │
 | API Gateway | JWT en el borde, CORS y stages | creado y probado, **fuera del camino real** |
 | Caddy | TLS y proxy hacia el BFF | activo |
 | Gateway | autorización de negocio y contrato público | ASP.NET Core 10 |
-| Product Service | catálogo vigente | ASP.NET Core 10 + EF Core + SQLite |
+| Product Service | catálogo vigente y ofertas | ASP.NET Core 10 + EF Core + PostgreSQL |
 | Scraper | extracción, normalización e historial | Python + PostgreSQL + S3 |
 | Cognito | usuarios, login, grupos y tokens | existen dos pools por reconciliar |
 | CDN del sitio | TLS y caché de los archivos estáticos | **Cloudflare**, no CloudFront ([ADR-023](adr/023-cloudflare-como-cdn.md)) |
@@ -65,13 +65,14 @@ reiniciar y no permite múltiples réplicas coherentes.
 
 ### Product Service
 
-Es dueño del catálogo vigente y no del historial. Su modelo incluye identidad externa, tienda,
-nombre, marca, categoría, precio actual, tallas, descripción, URL, imagen y estado. EF Core aplica
-las migraciones al arranque; `(Store, ExternalId)` evita duplicar un artículo de la misma tienda.
+Es dueño del catálogo vigente y no del historial. Un `Product` representa marca/modelo y agrupa
+varias `ProductOffer`; cada oferta contiene tienda, identidad externa, precio actual, tallas,
+URL, imagen y disponibilidad. `canonicalKey` intenta reconocer el mismo modelo entre tiendas y
+`(Store, ExternalId)` evita duplicar una oferta. EF Core aplica las migraciones al arranque.
 
-SQLite se eligió por simplicidad y propiedad local del dato. Es adecuado para el volumen actual,
-pero su modelo de escritura limita el escalado horizontal. Antes de varias réplicas se debe migrar
-a un motor compartido o cambiar la estrategia de persistencia.
+Usa PostgreSQL en el esquema `product`. Comparte servidor con el scraper para reducir operación,
+pero no tablas ni acceso: cada servicio mantiene su esquema y cruza la frontera por HTTP. La
+decisión y los costos del matching heurístico están en el ADR-021.
 
 ### Scraper
 
@@ -128,12 +129,12 @@ despliegue usa variables de entorno o Secrets Manager.
 
 | Almacén | Dueño | Contenido | Motivo de permanencia |
 |---|---|---|---|
-| SQLite | Product Service | catálogo actual | simple, embebido y suficiente para el MVP |
-| PostgreSQL | Scraper | extracción e historial | consultas históricas y escrituras del scraper |
+| PostgreSQL `product` | Product Service | catálogo y ofertas actuales | multiwriter, índices y respaldo común |
+| PostgreSQL `scraper` | Scraper | extracción e historial | consultas históricas y escrituras del scraper |
 | S3 | Scraper | imágenes | binarios fuera de las bases relacionales |
 
 Las antiguas migraciones `catalog` y `price` se eliminaron porque ningún proceso las consumía.
-PostgreSQL no se elimina mientras el scraper dependa de su esquema.
+Compartir el servidor no comparte la propiedad del dato: ningún servicio consulta el esquema del otro.
 
 ## Comunicación síncrona y mensajería
 
@@ -164,8 +165,8 @@ Docker Compose ejecuta en una EC2:
 - scraper API;
 - PostgreSQL.
 
-Product Service usa un volumen SQLite propio. Solo Caddy expone la aplicación; los puertos de
-Product Service, scraper y PostgreSQL se atan a `127.0.0.1` cuando se publican para diagnóstico.
+Product Service y scraper usan el volumen de PostgreSQL con esquemas separados. Solo Caddy expone
+la aplicación; sus puertos y PostgreSQL se atan a `127.0.0.1` al publicarse para diagnóstico.
 API Gateway continúa delante de Caddy como API Manager.
 
 La situación actual de red pública, los dos User Pools y los pasos de la cuenta AWS están en
@@ -176,7 +177,7 @@ La situación actual de red pública, los dos User Pools y los pasos de la cuent
 | Señal | Acción |
 |---|---|
 | latencia o CPU alta en gateway | agregar réplicas; antes persistir seguimiento fuera de memoria |
-| contención de escritura SQLite | migrar Product Service a una persistencia multiwriter |
+| matching canónico une o separa modelos mal | permitir `canonicalKey` manual y revisar candidatos |
 | barridos saturan Product Service | limitar concurrencia y evaluar cola durable |
 | historial crece | índices, particionado o retención en PostgreSQL |
 | imágenes crecen | políticas de ciclo de vida y CDN sobre S3 |
@@ -199,3 +200,4 @@ La situación actual de red pública, los dos User Pools y los pasos de la cuent
 | [022](adr/022-identidad-de-producto-entre-tiendas.md) | identidad de producto entre tiendas | propuesta, sin implementar |
 | [023](adr/023-cloudflare-como-cdn.md) | Cloudflare como CDN | vigente |
 | [024](adr/024-cors-en-el-api-manager.md) | CORS solo en el API Manager | vigente |
+| [025](adr/025-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta y PostgreSQL | vigente |

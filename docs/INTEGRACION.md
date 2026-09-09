@@ -9,7 +9,36 @@
 > Se lee en dos partes: **§1 qué decisiones cambiaron** (y cuáles no quedaron escritas) y
 > **§2 qué hay que arreglar**, en orden de gravedad.
 >
-> Última revisión: **09-09-2026**
+> Última revisión: **09-09-2026, integración de visitas con catálogo PostgreSQL**
+
+## Actualización de ingesta e imágenes · 08-09
+
+Falabella expone el sitemap, pero su WAF devuelve `403` al agente identificado cuando este
+descarga fichas individuales. El scraper ahora usa páginas públicas de categoría y lee su
+`__NEXT_DATA__`: seis peticiones entregaron 357 productos sincronizados, sin fallos, incluyendo
+SKU, precio vigente, tallas e imagen. Product Service conserva la URL de imagen de origen cuando
+S3 no está configurado, por lo que el frontend ya no depende de un almacenamiento opcional.
+
+Converse sigue teniendo parser y pruebas, pero `robots.txt` declara `User-agent: *` y
+`Disallow: /`; su sitemap también responde `403` al agente del proyecto. No se implementa una
+suplantación de navegador. Para ingesta en vivo hace falta permiso o un feed autorizado.
+
+## Actualización de catálogo y persistencia · 08-09
+
+El [ADR-021](adr/021-catalogo-multi-oferta-postgresql.md) reemplaza la decisión transitoria de
+SQLite: Product Service ahora usa el esquema PostgreSQL `product`, separado de `scraper` por
+propiedad y migraciones. Un producto canónico agrupa múltiples ofertas identificadas por
+`(store, externalId)`; las tallas son listas abiertas y admiten números.
+
+Con esto quedan históricamente resueltos los puntos 3, 8 y la limitación de una oferta por fila.
+Permanece el riesgo de matching heurístico de marca/modelo, mitigado con `canonicalKey` manual.
+
+## Actualización de visitas y fecha de alta · 09-09
+
+La función de visitas y `createdAt` que llegó a `development` sobre SQLite se conservó al traer
+la versión remota: ahora vive en el producto canónico PostgreSQL. El incremento usa un `UPDATE`
+atómico en el repositorio EF Core y la fecha se guarda como `timestamptz`; no se trasladó la
+migración SQLite porque sus tipos `TEXT`/`INTEGER` no son válidos para este proveedor.
 
 ## Actualización arquitectónica · 08-09
 
@@ -20,7 +49,7 @@ este documento con una decisión explícita:
 - `price-service` se elimina porque estaba vacío y no poseía una capacidad real;
 - RabbitMQ se retira mientras no existan productores ni consumidores;
 - el scraper conserva PostgreSQL e historial y sincroniza por HTTP v1;
-- Product Service conserva SQLite y deduplica por `(store, externalId)`;
+- Product Service evolucionó después a PostgreSQL y catálogo multi-oferta (ADR-021);
 - las migraciones huérfanas de `catalog` y `price` se eliminan.
 
 Por eso los puntos 5, 5b, 6 y 8 de abajo se conservan como evidencia histórica, pero ya tienen

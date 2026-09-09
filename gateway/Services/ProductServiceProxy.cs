@@ -45,8 +45,9 @@ public sealed class ProductServiceProxy(HttpClient client)
                     ? categoria.GetString()
                     : null)
                 .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
-                .GroupBy(nombre => nombre!, StringComparer.OrdinalIgnoreCase)
-                .Select(grupo => new CategorySummary(grupo.First(), grupo.Count()))
+                .Select(nombre => nombre!)
+                .GroupBy(nombre => nombre, StringComparer.OrdinalIgnoreCase)
+                .Select(grupo => new CategorySummary(grupo.Key, grupo.Count()))
                 .OrderBy(categoria => categoria.Nombre, StringComparer.CurrentCulture)
                 .ToList();
         }

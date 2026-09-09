@@ -1,62 +1,53 @@
 # Product Service
 
-Catálogo actual de Cacha el Precio, implementado con ASP.NET Core 10, EF Core y SQLite. Recibe los
-productos normalizados por el scraper y los expone al gateway. La base pertenece exclusivamente a
-este servicio.
+Catálogo canónico de Cacha el Precio, implementado con ASP.NET Core 10, EF Core y PostgreSQL.
+Cada producto representa una marca/modelo y contiene una o más ofertas de tiendas distintas.
+El servicio es dueño del esquema `product`; el scraper conserva sus datos en `scraper` y publica
+ofertas exclusivamente por HTTP.
 
 ## Ejecutar
 
-Desde la raíz del repositorio:
+Desde la raíz, con PostgreSQL disponible:
 
 ```bash
 dotnet restore product-service/Product-Service.csproj
-dotnet ef database update --project product-service/Product-Service.csproj
-dotnet run --project product-service/Product-Service.csproj --launch-profile http
+ConnectionStrings__PostgreSql='Host=localhost;Port=5432;Database=cachaelprecio;Username=cachaelprecio;Password=TU_PASSWORD;Search Path=product,public' \
+  dotnet ef database update --project product-service/Product-Service.csproj
+ConnectionStrings__PostgreSql='Host=localhost;Port=5432;Database=cachaelprecio;Username=cachaelprecio;Password=TU_PASSWORD;Search Path=product,public' \
+  dotnet run --project product-service/Product-Service.csproj --launch-profile http
 ```
 
-El perfil HTTP escucha en `http://localhost:8081`. En desarrollo están disponibles:
-
-- salud: `GET /health`;
-- OpenAPI: `GET /openapi/v1.json`;
-- Scalar: `GET /scalar/v1`.
-
-El contenedor ejecuta las migraciones pendientes al arrancar y almacena la base en
-`/app/data/product.db`.
+El perfil HTTP escucha en `http://localhost:8081`. En desarrollo están disponibles `/health`,
+`/openapi/v1.json` y `/scalar/v1`. El contenedor aplica las migraciones pendientes al arrancar.
 
 ## Contrato HTTP v1
 
-Todas las llamadas utilizan el encabezado `Version: 1.0`.
+Todas las llamadas utilizan `Version: 1.0`.
 
 | Método | Ruta | Resultado |
 |---|---|---|
-| GET | `/api/products` | listado completo |
-| GET | `/api/products/{id}` | producto por ID interno |
-| GET | `/api/products/by-category/{category}` | filtro por categoría normalizada |
-| GET | `/api/products/by-price/{price}` | filtro por precio exacto |
-| GET | `/api/products/by-size/{size}` | productos con esa talla disponible |
-| POST | `/api/products` | crea y devuelve `201` |
-| PUT | `/api/products/{id}` | reemplaza y devuelve `204` |
-| DELETE | `/api/products/{id}` | elimina el producto |
+| GET | `/api/products` | productos con todas sus ofertas |
+| GET | `/api/products/{id}` | producto canónico por ID |
+| GET | `/api/products/by-category/{category}` | categoría libre, sin enum cerrado |
+| GET | `/api/products/by-price/{price}` | cualquier oferta activa con ese precio |
+| GET | `/api/products/by-size/{size}` | cualquier oferta activa con esa talla |
+| POST | `/api/products` | upsert idempotente de producto/oferta; devuelve `200` |
+| PUT | `/api/products/{id}` | actualiza el producto y su oferta; devuelve `204` |
+| DELETE | `/api/products/{id}` | elimina el producto y sus ofertas |
 | POST | `/api/products/{id}/visits` | suma una visita; `204`, o `404` si no existe |
 
-Ejemplo de escritura:
+Ejemplo de una tercera oferta para el mismo modelo:
 
 ```json
 {
+  "canonicalKey": "converse:chuck-taylor-all-star",
   "externalId": "SKU-123",
-  "store": "sparta",
-  "name": "Zapatilla urbana",
-  "brand": "Ejemplo",
+  "store": "paris",
+  "name": "Zapatilla Converse Chuck Taylor All Star negra",
+  "brand": "Converse",
   "category": "Zapatillas",
   "price": 59990,
-  "sizes": {
-    "xs": false,
-    "s": true,
-    "m": true,
-    "l": false,
-    "xl": false,
-    "xxl": false
-  },
+  "sizes": ["38", "39", "42.5", "M"],
   "description": "Descripción pública",
   "url": "https://tienda.example/producto",
   "image": "https://imagenes.example/producto.webp",
@@ -64,8 +55,17 @@ Ejemplo de escritura:
 }
 ```
 
-`(store, externalId)` tiene un índice único filtrado. Los productos creados manualmente pueden
-omitir ambos valores, pero la sincronización del scraper siempre los envía.
+`canonicalKey` agrupa marca/modelo; si se omite, Product Service lo deriva del nombre. La regla
+elimina términos de género, color y talla, por lo que es una heurística y admite corrección manual.
+`(Store, ExternalId)` es único dentro de las ofertas: repetir el POST actualiza precio, tallas,
+URL, imagen y disponibilidad en lugar de duplicar la tienda.
+
+La respuesta tiene la forma:
+
+```text
+Product { id, canonicalKey, name, brand, category, description, image, offers[] }
+Offer   { id, externalId, store, price, sizes[], url, image, active, updatedAt }
+```
 
 ### Dos campos que la respuesta trae y la petición no acepta
 
@@ -79,10 +79,9 @@ olvido:
 - **`createdAt`** la pone el servicio en UTC al crear. Si viniera del cliente, el scraper podría
   fechar un producto en el futuro y quedarse para siempre el primer puesto de «Lo más reciente».
 
-Se serializa marcada como UTC (`DateTime.SpecifyKind`), con la `Z` final. Sin eso SQLite la
-devuelve con `Kind = Unspecified`, System.Text.Json la escribe sin zona, y un navegador interpreta
-una marca ISO sin zona como **hora local**: en Chile un producto recién creado parecía creado tres
-horas en el futuro.
+`createdAt` usa `DateTimeOffset` y PostgreSQL `timestamp with time zone`, por lo que la respuesta
+conserva UTC sin depender de la zona horaria de la EC2. Los productos existentes reciben la hora
+de aplicación de la migración; los nuevos se fechan explícitamente en el servicio.
 
 ## Migraciones
 
@@ -94,26 +93,17 @@ dotnet ef migrations list --project product-service/Product-Service.csproj
 dotnet ef migrations has-pending-model-changes --project product-service/Product-Service.csproj
 ```
 
-No edites la base con SQL manual. Cada cambio del modelo debe quedar representado por una
-migración versionada.
+La migración `InitialPostgreSqlCatalog` reemplaza las migraciones SQLite anteriores antes del
+primer despliegue de la versión C#. No convierte automáticamente un archivo `product.db`: si hay
+datos locales valiosos deben exportarse por la API antes de cambiar de versión.
 
-## Configuración y Docker
-
-La conexión se sobreescribe sin modificar archivos:
-
-```bash
-ConnectionStrings__Sqlite="Data Source=/tmp/product.db" \
-  dotnet run --project product-service/Product-Service.csproj
-```
+## Docker y verificación
 
 ```bash
-docker build -f product-service/Dockerfile -t cachaelprecio/product-service .
-docker run --rm -p 8081:8081 -v product-data:/app/data cachaelprecio/product-service
-```
+docker compose up --build -d postgres product-service
+curl http://localhost:8081/health
+curl -H 'Version: 1.0' http://localhost:8081/api/products
 
-## Verificación
-
-```bash
 dotnet format product-service/Product-Service.csproj --verify-no-changes --no-restore
 dotnet build product-service/Product-Service.csproj --no-restore
 dotnet ef migrations has-pending-model-changes --project product-service/Product-Service.csproj

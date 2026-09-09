@@ -2,7 +2,7 @@
 """
 Cliente HTTP hacia el Product Service (ASP.NET Core).
 
-Product Service mantiene su PROPIA base (SQLite) y es el que atiende al
+Product Service mantiene su PROPIO esquema PostgreSQL y atiende al
 frontend. El scraper no le escribe en la base: usa su API REST, igual
 que lo haria el frontend. Asi el microservicio de catalogo no necesita
 saber que existimos.
@@ -28,19 +28,10 @@ class ProductServiceClient:
     def __init__(self, base_url: str, timeout: float = 30.0) -> None:
         self._http = httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout)
 
-    def listar_productos(self) -> list[dict]:
-        r = self._http.get("/api/products", headers=_HEADERS)
-        r.raise_for_status()
-        return r.json()
-
-    def crear_producto(self, payload: dict) -> dict:
+    def sincronizar_producto(self, payload: dict) -> dict:
         r = self._http.post("/api/products", headers=_HEADERS, json=payload)
         r.raise_for_status()
         return r.json()
-
-    def actualizar_producto(self, producto_id: int, payload: dict) -> None:
-        r = self._http.put(f"/api/products/{producto_id}", headers=_HEADERS, json=payload)
-        r.raise_for_status()
 
     def close(self) -> None:
         self._http.close()

@@ -82,8 +82,8 @@ def test_sparta_saca_sku_y_marca_del_bloque_de_analytics():
     marca salen de su bloque de Analytics, no del JSON-LD.
     """
     p = SpartaParser().parse_product(html_de("sparta"))
-    assert p.external_id == "x-61200000TMICROFS2400"   # no la URL
-    assert p.brand == "ZVibes"                          # no "sparta"
+    assert p.external_id == "x-61200000TMICROFS2400"  # no la URL
+    assert p.brand == "ZVibes"  # no "sparta"
 
 
 def test_sparta_usa_el_precio_final_y_no_el_de_lista():
@@ -156,3 +156,46 @@ def test_precio_valido_sigue_pasando():
     """
     p = SpartaParser().parse_product(ok)
     assert p is not None and p.price == 1
+
+
+def test_lee_product_anidado_fuera_de_graph_y_tallas_mixtas():
+    html = """
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "mainEntity": {
+        "@type": "ProductGroup",
+        "name": "Zapatilla Chuck Taylor",
+        "brand": {"name": "Converse"},
+        "sku": "CT-1",
+        "image": "https://img.example/ct.webp",
+        "hasVariant": [
+          {"@type": "Product", "size": "38", "offers": {"price": "79.990", "priceCurrency": "CLP"}},
+          {"@type": "Product", "size": "42,5",
+           "offers": {"price": "79.990", "priceCurrency": "CLP"}},
+          {"@type": "Product", "size": ["S", "M"]}
+        ]
+      }
+    }
+    </script>
+    """
+
+    p = ParisParser().parse_product(html, "https://paris.cl/chuck-taylor")
+
+    assert p is not None
+    assert p.price == 79990
+    assert p.sizes == ["38", "42.5", "S", "M"]
+    assert p.source_image_url == "https://img.example/ct.webp"
+
+
+def test_lee_low_price_de_aggregate_offer():
+    html = """
+    <script type="application/ld+json">
+      {"@type":"Product", "name":"Polera", "sku":"P-1",
+       "offers":{"@type":"AggregateOffer", "lowPrice":"$12.990", "priceCurrency":"CLP"}}
+    </script>
+    """
+
+    p = ParisParser().parse_product(html, "https://paris.cl/polera")
+
+    assert p is not None and p.price == 12990

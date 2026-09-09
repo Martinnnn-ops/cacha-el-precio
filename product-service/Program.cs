@@ -9,11 +9,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 string connectionString =
-    builder.Configuration.GetConnectionString("Sqlite") ?? throw new InvalidOperationException("No existe ConnectionStrings:Sqlite.");
+    builder.Configuration.GetConnectionString("PostgreSql")
+    ?? throw new InvalidOperationException("No existe ConnectionStrings:PostgreSql.");
 
-builder.Services.AddDbContext<ProductDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<ProductDbContext>(options => options.UseNpgsql(
+    connectionString,
+    postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "product")));
 
-builder.Services.AddScoped<IProductRepository, SqliteProductRepository>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 builder.Services.AddScoped<ProductService>();
 

@@ -3,10 +3,10 @@
 Producto tal como lo publica UNA tienda.
 
 Ojo con el nombre: esto no es un producto canonico compartido entre
-tiendas. La misma zapatilla en converse.cl y en Falabella son dos
-Product distintos, porque cada tienda le pone su propio SKU, su propio
-nombre y su propio precio. Emparejarlas es un problema aparte y se
-resolvera cuando haya datos reales de varias tiendas.
+tiendas. La misma zapatilla en converse.cl y en Falabella son dos Product
+de este dominio porque cada tienda tiene SKU, precio y observacion propios.
+Al publicarlas, ProductServiceSync deriva una clave marca/modelo y Product
+Service las reune como ofertas de un producto canonico.
 
 La identidad es el par (store, external_id).
 """
@@ -18,13 +18,13 @@ from pydantic import BaseModel, Field
 
 class Product(BaseModel):
     # --- identidad ---
-    external_id: str          # SKU de la tienda. Ej: "A21842C-800"
-    store: str                # slug de la tienda. Ej: "converse"
+    external_id: str  # SKU de la tienda. Ej: "A21842C-800"
+    store: str  # slug de la tienda. Ej: "converse"
 
     # --- datos del producto ---
     name: str
     brand: str
-    price: int                # en la unidad minima de la moneda; CLP no tiene decimales
+    price: int  # en la unidad minima de la moneda; CLP no tiene decimales
     product_url: str
 
     description: str | None = None
@@ -39,6 +39,8 @@ class Product(BaseModel):
     image_detail_key: str | None = None
     image_hash: str | None = None
     available: bool = True
+    # Se guardan como texto para representar tanto XS/XL como 38, 42.5 o 10 US.
+    sizes: list[str] = Field(default_factory=list)
 
     # Cuando se observo. Sin esto no hay forma de saber si un precio es
     # de hoy o de hace tres semanas, ni de construir el historial.

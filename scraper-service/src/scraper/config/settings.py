@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore",          # no reventar si el .env trae claves de mas
+        extra="ignore",  # no reventar si el .env trae claves de mas
     )
 
     # --- aplicacion ---
@@ -79,6 +79,16 @@ class Settings(BaseSettings):
     falabella_sitemap: str = (
         "https://www.falabella.com/static/site/sitemaps/pdp/pdp_cl_FA_COM-index.xml"
     )
+    # Falabella protege las fichas individuales con un WAF, pero sus
+    # listados publicos incluyen en __NEXT_DATA__ todos los datos que
+    # necesitamos. Se recorren pocas paginas de categorias de vestimenta:
+    # cada una contiene hasta 60 productos, con mucha menos carga para la
+    # tienda que descargar una ficha por producto.
+    falabella_listing_categories: str = (
+        "https://www.falabella.com/falabella-cl/category/cat1320010/Poleras-Hombre,"
+        "https://www.falabella.com/falabella-cl/category/cat850068/Zapatillas-Mujer"
+    )
+    falabella_listing_pages: int = Field(default=3, ge=1, le=20)
     # Paris publica 43 sitemaps mezclando marcas, categorias y productos.
     # Se apunta directo a uno de productos (50.000 URLs) en vez de al
     # indice, para no bajar los de categorias que no sirven aqui.
@@ -91,6 +101,20 @@ class Settings(BaseSettings):
     # De los tres sub-sitemaps de Sparta, el -1-2 es 99% fichas; el
     # -1-1 es mitad categorias. Medido el 03/09/2026.
     sparta_sitemap: str = "https://sparta.cl/media/sparta/sitemap-1-2.xml"
+
+    @property
+    def falabella_listing_urls(self) -> list[str]:
+        """Paginas de listado a barrer, sin duplicar la primera pagina."""
+        bases = [
+            url.strip()
+            for url in self.falabella_listing_categories.split(",")
+            if url.strip()
+        ]
+        return [
+            base if pagina == 1 else f"{base}?page={pagina}"
+            for base in bases
+            for pagina in range(1, self.falabella_listing_pages + 1)
+        ]
 
     @property
     def es_produccion(self) -> bool:

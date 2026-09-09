@@ -28,8 +28,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 from scraper.config.settings import get_settings
 from scraper.domain.clothing import es_vestimenta
 from scraper.infrastructure.http.client import HttpClient
-from scraper.infrastructure.http.sitemap import leer_sitemap
-from scraper.main import _solo_fichas, construir_repositorio, construir_servicio, sitemap_de
+from scraper.main import construir_repositorio, construir_servicio, descubrir_urls, sitemap_de
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +63,17 @@ def health() -> dict[str, Any]:
 @app.get("/tiendas", summary="Tiendas con scraper disponible")
 def tiendas() -> list[dict[str, Any]]:
     return [
-        {"tienda": t, "sitemap": sitemap_de(_cfg, t)}
+        {
+            "tienda": t,
+            "sitemap": sitemap_de(_cfg, t),
+            "modo": (
+                "urls_autorizadas"
+                if t == "converse"
+                else "listados"
+                if t == "falabella"
+                else "sitemap"
+            ),
+        }
         for t in _servicio.tiendas()
     ]
 
@@ -100,7 +109,7 @@ def _barrer(tienda: str, urls: list[str]) -> None:
 def scrape(
     tienda: str,
     tareas: BackgroundTasks,
-    limite: int = Query(50, ge=1, le=1000, description="maximo de URLs del sitemap"),
+    limite: int = Query(50, ge=1, le=1000, description="maximo de paginas de la fuente"),
 ) -> dict[str, Any]:
     if tienda not in _servicio.tiendas():
         raise HTTPException(404, f"no hay scraper para la tienda {tienda!r}")
@@ -109,12 +118,12 @@ def scrape(
     if not url_sitemap:
         raise HTTPException(
             400,
-            f"la tienda {tienda!r} no tiene sitemap: usa el CLI pasandole las URLs a mano",
+            f"la tienda {tienda!r} no tiene una fuente automatica autorizada: "
+            "usa el CLI solo con URLs entregadas o aprobadas por la tienda",
         )
 
     http = HttpClient(timeout=_cfg.http_timeout, user_agent=_cfg.http_user_agent)
-    crudas = leer_sitemap(url_sitemap, http, max_urls=limite * 4)
-    urls = _solo_fichas(tienda, crudas)[:limite]
+    urls = descubrir_urls(_cfg, tienda, limite, http)
     if not urls:
         raise HTTPException(502, "el sitemap no devolvio ninguna URL")
 

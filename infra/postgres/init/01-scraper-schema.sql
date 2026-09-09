@@ -1,10 +1,12 @@
--- Esquema del scraper Python (FastAPI).
--- Mantiene aislamiento con los esquemas catalog/price del backend Java.
+-- Esquemas propiedad del scraper Python y Product Service.
+-- Comparten servidor, no tablas ni acceso de dominio.
 -- Se ejecuta UNA sola vez, cuando el volumen de Postgres se crea vacío.
 
 CREATE SCHEMA IF NOT EXISTS scraper;
+CREATE SCHEMA IF NOT EXISTS product;
 
 COMMENT ON SCHEMA scraper IS 'Productos scrapeados e historial de precios — scraper-service (Python)';
+COMMENT ON SCHEMA product IS 'Catálogo canónico y ofertas — Product Service (ASP.NET Core)';
 
 -- ─── Tablas ─────────────────────────────────────────────────────────────────
 

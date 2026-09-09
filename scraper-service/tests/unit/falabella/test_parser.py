@@ -40,7 +40,7 @@ def test_marca_desanidada(parser, con_stock):
     """En Falabella brand llega como {"@type":"Brand","name":"..."}."""
     p = parser.parse_product(con_stock)
     assert p.brand
-    assert not p.brand.startswith("{")     # no se colo el dict como texto
+    assert not p.brand.startswith("{")  # no se colo el dict como texto
 
 
 def test_detecta_producto_sin_stock(parser, sin_stock):
@@ -51,7 +51,7 @@ def test_detecta_producto_sin_stock(parser, sin_stock):
     p = parser.parse_product(sin_stock)
     assert p is not None
     assert p.available is False
-    assert p.price > 0                     # sin stock pero con precio publicado
+    assert p.price > 0  # sin stock pero con precio publicado
 
 
 def test_offers_vacio_no_produce_producto(parser):
@@ -68,3 +68,40 @@ def test_offers_vacio_no_produce_producto(parser):
     </head></html>
     """
     assert parser.parse_product(html) is None
+
+
+def test_extrae_varios_productos_del_listado(parser):
+    html = """
+    <script id="__NEXT_DATA__" type="application/json">
+    {"props":{"pageProps":{"results":[
+      {
+        "skuId":"SKU-1",
+        "displayName":"Zapatilla Urbana Mujer",
+        "url":"https://www.falabella.com/falabella-cl/product/1/zapatilla",
+        "brand":"CONVERSE",
+        "mediaUrls":["https://media.falabella.com/sku-1/public"],
+        "prices":[
+          {"type":"eventPrice","crossed":false,"price":["49.990"]},
+          {"type":"normalPrice","crossed":true,"price":["69.990"]}
+        ],
+        "variants":[{"type":"COLOR","options":[{
+          "label":"Negro",
+          "sizes":[
+            {"value":"38","available":true},
+            {"value":"42.5","available":true},
+            {"value":"44","available":false}
+          ]
+        }]}]
+      },
+      {"skuId":"SIN-PRECIO","displayName":"Polera","url":"https://example/polera"}
+    ]}}}
+    </script>
+    """
+
+    productos = parser.parse_listing(html)
+
+    assert len(productos) == 1
+    assert productos[0].external_id == "SKU-1"
+    assert productos[0].price == 49990
+    assert productos[0].sizes == ["38", "42.5"]
+    assert productos[0].source_image_url == "https://media.falabella.com/sku-1/public"

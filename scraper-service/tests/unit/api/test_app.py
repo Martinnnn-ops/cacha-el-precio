@@ -44,6 +44,8 @@ def test_tiendas_indica_cual_tiene_sitemap(cliente):
     por_nombre = {t["tienda"]: t for t in d}
     assert por_nombre["falabella"]["sitemap"]          # Falabella publica sitemap
     assert por_nombre["converse"]["sitemap"] is None   # Converse no
+    assert por_nombre["falabella"]["modo"] == "listados"
+    assert por_nombre["converse"]["modo"] == "urls_autorizadas"
 
 
 def test_producto_y_su_historial(cliente, producto_guardado):
@@ -70,7 +72,7 @@ def test_scrape_sin_sitemap_da_400(cliente):
     """
     r = cliente.post("/scrape/converse")
     assert r.status_code == 400
-    assert "sitemap" in r.json()["detail"]
+    assert "autorizada" in r.json()["detail"]
 
 
 def test_status_sin_barridos_da_404(cliente):

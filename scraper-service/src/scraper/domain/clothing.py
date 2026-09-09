@@ -12,25 +12,95 @@ if TYPE_CHECKING:
 
 _TERMINOS = {
     # Ropa
-    "abrigo", "blazer", "blusa", "body", "boxer", "calza", "calcetin",
-    "calcetines", "camisa", "camiseta", "chaqueta", "chaleco", "cortaviento",
-    "enterito", "falda", "jeans", "jockey", "jogger", "legging", "leggings",
-    "medias", "pantalon", "pantalones", "parka", "pijama", "polera", "poleron",
-    "poncho", "short", "shorts", "sosten", "sudadera", "sueter", "sweater",
-    "traje", "vestido", "vestuario",
+    "abrigo",
+    "blazer",
+    "blusa",
+    "body",
+    "boxer",
+    "calza",
+    "calcetin",
+    "calcetines",
+    "camisa",
+    "camiseta",
+    "chaqueta",
+    "chaleco",
+    "cortaviento",
+    "enterito",
+    "falda",
+    "jeans",
+    "jockey",
+    "jogger",
+    "legging",
+    "leggings",
+    "medias",
+    "pantalon",
+    "pantalones",
+    "parka",
+    "pijama",
+    "polera",
+    "poleron",
+    "poncho",
+    "short",
+    "shorts",
+    "sosten",
+    "sudadera",
+    "sueter",
+    "sweater",
+    "top",
+    "traje",
+    "vestido",
+    "vestuario",
+    "cardigan",
+    "jersey",
     # Calzado
-    "bota", "botas", "botin", "botines", "calzado", "mocasin", "mocasines",
-    "pantufla", "pantuflas", "sandalia", "sandalias", "zapatilla", "zapatillas",
-    "zapato", "zapatos",
+    "bota",
+    "botas",
+    "botin",
+    "botines",
+    "calzado",
+    "mocasin",
+    "mocasines",
+    "pantufla",
+    "pantuflas",
+    "sandalia",
+    "sandalias",
+    "zapatilla",
+    "zapatillas",
+    "zapato",
+    "zapatos",
+    # Accesorios de vestir
+    "bikini",
+    "bikinis",
+    "banador",
+    "bufanda",
+    "bufandas",
+    "cinturon",
+    "cinturones",
+    "corbata",
+    "corbatas",
+    "gorro",
+    "gorros",
+    "guante",
+    "guantes",
+    "sombrero",
+    "sombreros",
 }
 
 _FRASES = {
-    "ropa interior", "traje de bano", "traje de baño", "chuck taylor",
-    "all star", "run star",
+    "ropa interior",
+    "traje de bano",
+    "traje de baño",
+    "chuck taylor",
+    "all star",
+    "run star",
 }
 
 _EXCLUSIONES = {
-    "ropa de cama", "toalla", "toallas", "billetera", "billeteras",
+    "ropa de cama",
+    "toalla",
+    "toallas",
+    "billetera",
+    "billeteras",
 }
 
 
@@ -46,6 +116,4 @@ def es_vestimenta(producto: Product) -> bool:
     palabras = set(texto.split())
     if palabras & _EXCLUSIONES or any(frase in texto for frase in _EXCLUSIONES):
         return False
-    return bool(palabras & _TERMINOS) or any(
-        _normalizar(frase) in texto for frase in _FRASES
-    )
+    return bool(palabras & _TERMINOS) or any(_normalizar(frase) in texto for frase in _FRASES)
