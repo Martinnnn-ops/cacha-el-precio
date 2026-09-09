@@ -98,12 +98,12 @@ por bueno que esté el resto.
 | | Pieza | Estado |
 |---|---|---|
 | 🟢 | Scraper de Sparta | Capturando 3 veces al día desde el 27-08 |
-| 🟡 | `product-service` + scraper Python | Contrato alineado por `(store, externalId)`; pendiente desplegar la rama C# |
+| 🟡 | `product-service` + scraper Python | Catálogo canónico multi-oferta, tallas abiertas e imágenes alineadas; pendiente desplegar |
 | 🟡 | **Escrituras de productos** | El gateway C# exige el scope `ingesta`; falta desplegar y cerrar la ruta directa a la EC2 |
-| 🔴 | Base de datos | SQLite en la EC2, no la RDS que prometen los documentos |
+| 🟡 | Base de datos | Product Service migrado al esquema PostgreSQL `product`; pendiente validar/desplegar en AWS |
 | 🔴 | Red (VPC, subredes privadas, NAT) | No existe: la EC2 tiene IP pública directa |
 | ⬜ | CI en GitHub Actions | **0 workflows**, arrastrado desde la Semana 1 |
-| 🟡 | ADR | ADR-020 documenta la migración C# y simplificación; todavía faltan decisiones históricas |
+| 🟡 | ADR | ADR-020 y ADR-021 documentan C#, simplificación y catálogo multi-oferta; faltan decisiones históricas |
 
 > 📌 **Lo que cambió respecto de la revisión anterior (27-08):** se integró el trabajo de los tres,
 > el sistema llegó a internet y el BFF ya valida. Lo que apareció en el camino son **ocho
@@ -312,7 +312,8 @@ Si algo se cae el día 11 y no hay margen, no hay entrega. Por eso el freeze es 
 
 - [ ] **Kafka** — topic `precios.cambiados`. Es EP5 y EP6, **no** el EP1
 - [ ] `alert-service` suscrito a `precio.cambiado` → avisos de restock por talla
-- [ ] Nike.cl y Falabella con navegador headless
+- [ ] Nike.cl con fuente autorizada (su `robots.txt`/WAF no permite el bot actual)
+- [x] Falabella sin navegador headless: lectura eficiente de `__NEXT_DATA__` en listados públicos
 - [ ] **Ampliar a vestuario** además de calzado — es la dirección del proyecto, pero necesita el
       matching medido primero (ver [PLAN.md §2](PLAN.md#2-alcance))
 - [ ] Migrar de EC2 a ECS Fargate si el ramo lo pide ([ADR-008](adr/008-ec2-docker-compose.md))
