@@ -2072,6 +2072,17 @@ try {
     // dirección que lleve a ella —y el sitemap emite la misma URL dos veces—.
     // Se comprueba contra los datos REALES porque con los de ejemplo no pasa:
     // ahí cada producto ya trae sus tiendas dentro.
+    // El store ordena la portada por `vistas` y `agregadoHace`. Si el
+    // adaptador escribiera otro nombre —pasó con `visitas`—, las dos secciones
+    // ordenarían por undefined y no lo notaría nadie: no hay error, solo un
+    // orden que no es el que dice el título. Con los datos de ejemplo tampoco
+    // se ve, porque ahí los campos vienen puestos.
+    check(
+      '  produce los campos por los que la portada ordena',
+      adaptados.every((p) => 'vistas' in p && 'agregadoHace' in p),
+      Object.keys(adaptados[0]).filter((k) => k === 'vistas' || k === 'agregadoHace').join(', ') || 'ninguno',
+    )
+
     const { slugProducto: slugDe } = await import('../src/shared/utils/slug.js')
     const slugs = adaptados.map((p) => slugDe(p))
     const repetidos = slugs.filter((s, i) => slugs.indexOf(s) !== i)
