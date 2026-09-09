@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
+import { rutaNoEncontrada } from '@/modules/comparador/routes'
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import { formatearFecha, formatearPrecio } from '@/shared/utils/formato'
 import { descuento, minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
@@ -56,7 +57,7 @@ async function cargarPorSlug(slug) {
 
   if (!encontrado) {
     store.producto = null
-    router.replace({ name: 'no-encontrado' })
+    router.replace(rutaNoEncontrada(`/producto/${slug}`))
     return
   }
 

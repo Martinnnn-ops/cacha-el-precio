@@ -25,6 +25,7 @@
 # pruebas no fallan, que sería lo útil: pasan a probar otra cosa.
 !frontend/.env.anuncios
 !frontend/.env.fallo
+!frontend/.env.humo
 *.pem
 *.p12
 *.key
