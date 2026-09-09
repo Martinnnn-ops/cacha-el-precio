@@ -11,17 +11,27 @@ public static class EntityToResponse
         return new ProductResponse
         {
             Id = product.ProductId,
-            ExternalId = product.ExternalId,
-            Store = product.Store,
+            CanonicalKey = product.CanonicalKey,
             Name = product.ProductName,
             Brand = product.ProductBrand,
-            Category = product.ProductCategory.GetStringValue(),
-            Price = product.ProductPrice,
-            Sizes = product.ProductSizes,
+            Category = product.ProductCategory,
             Description = product.Description,
-            Url = product.ProductUrl,
             Image = product.ProductImage,
-            Active = product.Active
+            Offers = product.Offers
+                .OrderBy(offer => offer.Price)
+                .Select(offer => new ProductOfferResponse
+                {
+                    Id = offer.OfferId,
+                    ExternalId = offer.ExternalId,
+                    Store = offer.Store,
+                    Price = offer.Price,
+                    Sizes = offer.Sizes,
+                    Url = offer.ProductUrl,
+                    Image = offer.ProductImage,
+                    Active = offer.Active,
+                    UpdatedAt = offer.UpdatedAt
+                })
+                .ToList()
         };
     }
 }

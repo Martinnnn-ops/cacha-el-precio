@@ -9,9 +9,11 @@ public interface IProductRepository
 
     Task<ProductEntity?> GetProductByIdAsync(int id);
 
+    Task<ProductEntity?> GetProductByCanonicalKeyAsync(string canonicalKey);
+
     Task<ProductEntity> AddProductAsync(ProductEntity product);
 
-    Task UpdateProductAsync(ProductEntity newProduct);
+    Task SaveChangesAsync();
 
     Task<bool> DeleteProductByIdAsync(int id);
 

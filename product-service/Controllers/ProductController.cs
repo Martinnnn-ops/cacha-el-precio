@@ -67,8 +67,8 @@ public class ProductController : ControllerBase
     [MapToApiVersion("1.0")]
     public async Task<ActionResult<ProductResponse>> CreateProduct(ProductRequest request)
     {
-        ProductResponse product = await _service.CreateProductAsync(request);
-        return CreatedAtAction(nameof(GetProductById), new { id = product.Id }, product);
+        ProductResponse product = await _service.UpsertProductAsync(request);
+        return Ok(product);
     }
 
     [HttpPut("{id:int}")]
