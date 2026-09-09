@@ -22,6 +22,11 @@
 }
 
 :8080 {
+	# Igual que en producción, para poder medir aquí lo que pasará allá. Sin
+	# esto el tamaño de la respuesta en local no se parecería al real y la
+	# comprobación no valdría de nada.
+	encode zstd gzip
+
 	# Misma flecha que en producción: TODO pasa por el gateway, nunca directo a
 	# product-service. Si en local se pudiera esquivar el BFF, se probaría un
 	# sistema distinto del que se despliega, y el 40% del EP1 se estaría
