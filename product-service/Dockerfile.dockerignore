@@ -4,3 +4,13 @@
 !product-service/Product-Service.csproj
 !product-service/**/*.cs
 !product-service/appsettings*.json
+
+# Artefactos de una compilación local. La lista blanca de arriba deja pasar
+# **/*.cs, y eso incluye los .cs generados dentro de obj/ —AssemblyInfo y
+# compañía—, más el project.assets.json que apunta a la caché de NuGet de la
+# máquina donde se compiló. En la imagen esas rutas no existen y el build falla
+# con un error que no dice nada del problema real.
+#
+# Con esto la imagen se construye igual haya o no haya compilado alguien antes.
+product-service/obj/
+product-service/bin/

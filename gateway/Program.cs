@@ -120,7 +120,39 @@ static void MapProductRoutes(WebApplication app)
     app.MapDelete("/productos/{id:long}", ProxyToDynamic(context => $"/api/products/{context.Request.RouteValues["id"]}"))
         .RequireAuthorization("product-write");
 
-    app.MapGet("/catalogos", () => Results.Ok(ProductCategories.All)).AllowAnonymous();
+    // Sumar una visita es ANÓNIMO a propósito: el contador vale para todos, con
+    // o sin sesión. Pedir login para contar una vista sería cobrar por algo que
+    // no se le da a nadie, y dejaría «Lo más visto» midiendo solo a quien entra.
+    //
+    // Es la única escritura pública del sistema, y puede serlo porque no
+    // escribe nada que el usuario controle: solo suma uno a un contador. No
+    // acepta cuerpo, no devuelve datos y no puede alterar un precio ni un
+    // nombre. El resto de /productos sigue exigiendo el scope de escritura.
+    app.MapPost("/productos/{id:long}/visitas",
+        ProxyToDynamic(context => $"/api/products/{context.Request.RouteValues["id"]}/visits"))
+        .AllowAnonymous();
+
+    // Las categorías salen de los productos que hay de verdad, no de una lista
+    // escrita a mano. Hasta el 09-09 esto devolvía seis categorías fijas con
+    // ids del 1 al 6 que no correspondían a ningún campo del producto: era
+    // contrato público, y mentía.
+    //
+    // Es también la primera transformación real del BFF. Hasta ahora sus rutas
+    // eran passthrough puro —cambiaban el nombre de la URL y nada más—, que es
+    // el punto que el ADR-021 dejó abierto: aislaban el nombre, no los datos.
+    app.MapGet("/catalogos", async (ProductServiceProxy proxy, CancellationToken ct) =>
+    {
+        IReadOnlyList<CategorySummary>? categorias = await proxy.GetCategoriesAsync(ct);
+
+        return categorias is null
+            ? Results.Json(new
+            {
+                estado = 502,
+                error = "Servicio no disponible",
+                mensaje = "Product Service no respondió."
+            }, statusCode: StatusCodes.Status502BadGateway)
+            : Results.Ok(categorias);
+    }).AllowAnonymous();
 
     app.MapGet("/api/products", ProxyTo("/api/products")).AllowAnonymous();
     app.MapGet("/api/products/{id:int}", ProxyToDynamic(context => $"/api/products/{context.Request.RouteValues["id"]}"))
@@ -197,17 +229,4 @@ static bool HasScope(ClaimsPrincipal user, string expectedScope)
     return user.FindAll("scope")
         .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         .Contains(expectedScope, StringComparer.Ordinal);
-}
-
-static class ProductCategories
-{
-    public static readonly object[] All =
-    [
-        new { id = 1, nombre = "Calzado", descripcion = "Zapatillas y calzado" },
-        new { id = 2, nombre = "Poleras", descripcion = "Poleras y camisetas" },
-        new { id = 3, nombre = "Pantalones", descripcion = "Pantalones y jeans" },
-        new { id = 4, nombre = "Chaquetas", descripcion = "Chaquetas y abrigos" },
-        new { id = 5, nombre = "Polerones", descripcion = "Polerones y sudaderas" },
-        new { id = 6, nombre = "Accesorios", descripcion = "Accesorios de vestuario" }
-    ];
 }

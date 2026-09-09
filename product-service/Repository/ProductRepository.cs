@@ -46,6 +46,15 @@ public sealed class ProductRepository(ProductDbContext context) : IProductReposi
         return true;
     }
 
+    public async Task<bool> IncrementVisitsAsync(int id)
+    {
+        int updated = await context.Products
+            .Where(product => product.ProductId == id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(product => product.Visits, product => product.Visits + 1));
+        return updated == 1;
+    }
+
     public async Task<IReadOnlyList<ProductEntity>> GetProductsByCategoryAsync(string category)
     {
         string value = ProductIdentity.Required(category, "category");

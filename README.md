@@ -47,7 +47,7 @@ real y se necesiten reintentos o backpressure. La decisión completa y sus costo
 | Scraper | Python 3.14 + FastAPI | PostgreSQL; imágenes en S3 |
 | Identidad | AWS Cognito | administrada por AWS |
 | Entrada pública | API Gateway + Caddy | — |
-| Frontend | Vue 3 + Pinia + Vite | repositorio separado |
+| Frontend | Vue 3 + Pinia + Vite | en `frontend/`, incorporado con `git subtree` |
 
 PostgreSQL aloja ambos servicios sin mezclar su propiedad: el scraper usa el esquema `scraper` y
 Product Service usa `product`. Esto permite varias réplicas del catálogo y respaldo coherente sin
@@ -122,9 +122,17 @@ dotnet ef migrations has-pending-model-changes --project product-service/Product
 ```bash
 dotnet format CachaElPrecio.slnx --verify-no-changes --no-restore
 dotnet build CachaElPrecio.slnx --no-restore
+
 cd scraper-service
 uv run pytest -m "not red"
 uv run ruff check .
+
+# Frontend. Con el backend levantado, `humo` comprueba además la conexión real
+# contra el gateway: si se omite BACKEND_URL, esa sección se salta y el resto
+# sigue pasando, así que conviene pasarla.
+cd ../frontend
+npm run build
+BACKEND_URL=http://127.0.0.1:8080 npm run humo
 ```
 
 ## Documentación

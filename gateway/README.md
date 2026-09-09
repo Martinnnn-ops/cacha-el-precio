@@ -37,19 +37,41 @@ habla por la red interna.
 
 ## Rutas
 
-- `/api/products...`: contrato actual, proxy a Product Service;
-- `/productos...` y `/catalogos`: aliases temporales para el frontend existente;
-- `/seguimiento...`: rutas autenticadas, con persistencia en memoria;
-- `/api/yo`: inspección de claims autenticada;
-- `/api/admin/diagnostico`: exige el grupo `admin`;
-- `/health`: pública.
+El **contrato público es el de este servicio, en español** — decidido en el
+[ADR-021](../docs/adr/021-contrato-publico-en-el-bff.md). Las rutas `/api/products...` existen
+para uso interno, pero el frontend no las consume: si el navegador pidiera el mismo path que
+publica Product Service, este gateway sería un intermediario transparente y el nombre del servicio
+interno viajaría hasta el navegador de cada usuario.
 
-Las lecturas del catálogo son públicas. `POST`, `PUT` y `DELETE` requieren el scope de escritura.
+| Ruta | Acceso | Sin token |
+|---|---|---|
+| `GET /productos` · `/productos/{id}` | pública | 200 · 404 si no existe |
+| `GET /catalogos` | pública | 200 |
+| `POST /productos/{id}/visitas` | **pública** | 204 · 404 si no existe |
+| `POST` · `PUT` · `DELETE /productos` | scope de escritura | **401** |
+| `GET /seguimiento` · `POST`/`DELETE /seguimiento/{id}` | autenticada | **401** |
+| `GET /api/yo` | autenticada | **401** |
+| `GET /api/admin/diagnostico` | grupo `admin` | **401** |
+| `GET /health` | pública | 200 |
+
+Dos rutas piden explicación:
+
+- **`POST /productos/{id}/visitas` es pública a propósito.** Es la única escritura anónima del
+  sistema, y puede serlo porque no escribe nada que el usuario controle: suma uno a un contador, no
+  acepta cuerpo y no devuelve datos. Pedir sesión para contar una vista dejaría «Lo más visto»
+  midiendo solo a quien inicia sesión.
+- **`GET /catalogos` no es un alias.** Deriva las categorías del catálogo real, con su conteo.
+  Hasta el 09-09 devolvía seis categorías fijas escritas en `Program.cs`, con ids del 1 al 6 que no
+  correspondían a ningún campo del producto. Es también la única ruta que transforma datos en vez
+  de reenviarlos, que es la deuda que el ADR-021 dejó anotada: las demás aíslan el nombre, no la
+  carga útil.
+
 Si Product Service no responde, el gateway devuelve un `502` JSON estable.
 
 ## Deuda conocida
 
 - validar la implementación con tokens reales del User Pool que usará el frontend;
 - persistir el seguimiento antes de depender de él en producción;
-- retirar los aliases cuando el frontend consuma `/api/products`;
+- que las rutas en español transformen la respuesta y no solo el nombre de la URL: hoy son
+  passthrough puro salvo `/catalogos`, así que el aislamiento que consiguen es parcial;
 - restringir la EC2 para que no exista una ruta que evite API Gateway.

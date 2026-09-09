@@ -34,6 +34,7 @@ Todas las llamadas utilizan `Version: 1.0`.
 | POST | `/api/products` | upsert idempotente de producto/oferta; devuelve `200` |
 | PUT | `/api/products/{id}` | actualiza el producto y su oferta; devuelve `204` |
 | DELETE | `/api/products/{id}` | elimina el producto y sus ofertas |
+| POST | `/api/products/{id}/visits` | suma una visita; `204`, o `404` si no existe |
 
 Ejemplo de una tercera oferta para el mismo modelo:
 
@@ -65,6 +66,22 @@ La respuesta tiene la forma:
 Product { id, canonicalKey, name, brand, category, description, image, offers[] }
 Offer   { id, externalId, store, price, sizes[], url, image, active, updatedAt }
 ```
+
+### Dos campos que la respuesta trae y la petición no acepta
+
+`ProductResponse` incluye `visits` y `createdAt`, y **`ProductRequest` no los tiene**. No es un
+olvido:
+
+- **`visits`** solo cambia por `POST /api/products/{id}/visits`, que suma uno con una única
+  sentencia `UPDATE ... SET Visits = Visits + 1`. Si se pudiera mandar en el cuerpo, cualquiera con
+  el scope de escritura podría poner el número que quisiera; y si se hiciera leyendo, sumando y
+  guardando, dos visitas simultáneas leerían el mismo valor y una se perdería.
+- **`createdAt`** la pone el servicio en UTC al crear. Si viniera del cliente, el scraper podría
+  fechar un producto en el futuro y quedarse para siempre el primer puesto de «Lo más reciente».
+
+`createdAt` usa `DateTimeOffset` y PostgreSQL `timestamp with time zone`, por lo que la respuesta
+conserva UTC sin depender de la zona horaria de la EC2. Los productos existentes reciben la hora
+de aplicación de la migración; los nuevos se fechan explícitamente en el servicio.
 
 ## Migraciones
 

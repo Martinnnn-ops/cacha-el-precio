@@ -36,6 +36,7 @@ public sealed class ProductService(IProductRepository repository)
                 ProductCategory = input.Category,
                 Description = input.Description,
                 ProductImage = input.Image,
+                CreatedAt = DateTimeOffset.UtcNow,
                 Offers = [CreateOffer(input)]
             };
 
@@ -94,6 +95,16 @@ public sealed class ProductService(IProductRepository repository)
     }
 
     public Task<bool> DeleteProductById(int id) => repository.DeleteProductByIdAsync(id);
+
+    /// <summary>
+    /// Suma una visita. Es anónimo a propósito: el contador vale para todos,
+    /// con o sin sesión, y pedir login para contar una vista sería cobrar por
+    /// algo que no se le da a nadie.
+    /// </summary>
+    public async Task<bool> RegisterVisitAsync(int id)
+    {
+        return await repository.IncrementVisitsAsync(id);
+    }
 
     public async Task<IReadOnlyList<ProductResponse>> GetProductsByCategoryAsync(string category)
     {

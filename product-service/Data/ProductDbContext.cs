@@ -26,6 +26,10 @@ public class ProductDbContext : DbContext
         product.Property(p => p.ProductCategory).IsRequired().HasMaxLength(120);
         product.Property(p => p.Description).HasMaxLength(2000);
         product.Property(p => p.ProductImage).HasMaxLength(1000);
+        product.Property(p => p.Visits).IsRequired().HasDefaultValue(0);
+        product.Property(p => p.CreatedAt).IsRequired().HasDefaultValueSql("CURRENT_TIMESTAMP");
+        product.HasIndex(p => p.Visits);
+        product.HasIndex(p => p.CreatedAt);
         product.HasMany(p => p.Offers)
             .WithOne(o => o.Product)
             .HasForeignKey(o => o.ProductId)

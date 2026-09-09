@@ -36,6 +36,11 @@ namespace Product_Service.Migrations
                         .HasMaxLength(240)
                         .HasColumnType("character varying(240)");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -59,10 +64,19 @@ namespace Product_Service.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<int>("Visits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.HasKey("ProductId");
 
                     b.HasIndex("CanonicalKey")
                         .IsUnique();
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Visits");
 
                     b.ToTable("Products", "product");
                 });

@@ -9,7 +9,7 @@
 > Se lee en dos partes: **§1 qué decisiones cambiaron** (y cuáles no quedaron escritas) y
 > **§2 qué hay que arreglar**, en orden de gravedad.
 >
-> Última revisión: **08-09-2026, catálogo multi-oferta y carga Falabella**
+> Última revisión: **09-09-2026, integración de visitas con catálogo PostgreSQL**
 
 ## Actualización de ingesta e imágenes · 08-09
 
@@ -32,6 +32,13 @@ propiedad y migraciones. Un producto canónico agrupa múltiples ofertas identif
 
 Con esto quedan históricamente resueltos los puntos 3, 8 y la limitación de una oferta por fila.
 Permanece el riesgo de matching heurístico de marca/modelo, mitigado con `canonicalKey` manual.
+
+## Actualización de visitas y fecha de alta · 09-09
+
+La función de visitas y `createdAt` que llegó a `development` sobre SQLite se conservó al traer
+la versión remota: ahora vive en el producto canónico PostgreSQL. El incremento usa un `UPDATE`
+atómico en el repositorio EF Core y la fecha se guarda como `timestamptz`; no se trasladó la
+migración SQLite porque sus tipos `TEXT`/`INTEGER` no son válidos para este proveedor.
 
 ## Actualización arquitectónica · 08-09
 
@@ -132,6 +139,16 @@ Esa EC2 es del **Learner Lab**: se apaga sola cuando el laboratorio se cierra y 
 cambia al reiniciar**. Si el DNS de Cloudflare apunta a una IP fija, el sitio se cae solo entre
 sesiones. Hay que resolverlo con una **Elastic IP** antes del ensayo, o la demo empieza con el
 dominio caído.
+
+> ⚠️ **Corrección del 09-09.** Esto describe solo la mitad del problema. La instancia vive en la
+> cuenta de AWS de un compañero y **no se mantiene encendida 24/7 por decisión propia**, por
+> créditos limitados. Que `api.cacha-el-precio.com` no responda fuera de las sesiones de trabajo es
+> lo normal, no una avería.
+>
+> Una Elastic IP evita que la dirección cambie al reiniciar, pero **no enciende la instancia**. Son
+> dos problemas distintos, y el segundo es de coordinación, no de infraestructura: el día del
+> ensayo y el de la demo, alguien tiene que haberla levantado. Conviene decirlo así en el informe
+> en vez de presentarlo como un servicio caído.
 
 ---
 
@@ -400,9 +417,11 @@ Nada de lo de arriba es tan urgente como esto:
 
 | Falta | Peso | Estado |
 |---|---|---|
-| **Frontend con OIDC** | **60% del EP1** | No existe ni un `package.json`. **Sin dueño** |
-| **CI en GitHub Actions** | — | 0 workflows, arrastrado desde la semana 1 |
-| **Despliegue en AWS** | requisito para entregar | La fecha era el 6-09. Venció |
+| ~~**Frontend con OIDC**~~ | **60% del EP1** | ✅ **Existe y está en el monorepo.** Lo hizo Panditax en su repositorio; entró con `git subtree` el 09-09 conservando sus 15 commits. Ver [`INTEGRACION-FRONTEND.md`](INTEGRACION-FRONTEND.md) |
+| **CI en GitHub Actions** | — | 0 workflows, arrastrado desde la semana 1. `npm run humo` es hoy lo más parecido a un CI que hay |
+| **Despliegue en AWS** | requisito para entregar | La fecha era el 6-09. Hay sistema desplegado, pero **con el contrato viejo**: nadie ha subido todavía el backend C# ni el frontend nuevo |
 
-El frontend es la mitad más grande de la nota del EP1 y hoy no lo está haciendo nadie. Si sigue
-sin dueño 24 horas más, no llega al freeze del 10.
+> **Actualización del 09-09.** Cuando se escribió esta tabla, el frontend «no lo estaba haciendo
+> nadie». Sí lo estaba haciendo Panditax, en su propio repositorio, y este documento no se enteró.
+> Es el mismo problema que el archivo describe una y otra vez: tres personas trabajando sin cruzar
+> lo que hace cada una.

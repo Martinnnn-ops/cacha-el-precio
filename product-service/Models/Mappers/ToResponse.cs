@@ -17,6 +17,8 @@ public static class EntityToResponse
             Category = product.ProductCategory,
             Description = product.Description,
             Image = product.ProductImage,
+            Visits = product.Visits,
+            CreatedAt = product.CreatedAt,
             Offers = product.Offers
                 .OrderBy(offer => offer.Price)
                 .Select(offer => new ProductOfferResponse

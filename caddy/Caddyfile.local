@@ -1,0 +1,35 @@
+# Caddy para desarrollo local. NO se usa en la EC2: allá manda caddy/Caddyfile.
+#
+# ¿Por qué hace falta un archivo aparte? El de producción declara el sitio
+# `api.cacha-el-precio.com`, y Caddy, al arrancar, hace exactamente lo que se
+# le pidió: pedirle a Let's Encrypt un certificado para ese dominio. En una
+# máquina de desarrollo el desafío no lo puede resolver nadie —el dominio
+# apunta a la EC2, no a tu casa—, así que falla.
+#
+# Y falla de una manera que hace daño fuera de tu máquina: Let's Encrypt limita
+# los intentos fallidos por dominio y por hora. Si los tres levantamos el
+# compose en local, podemos agotar la cuota DEL DOMINIO REAL, y entonces la EC2
+# tampoco puede renovar su certificado.
+#
+# Aquí no hay ningún nombre de dominio, así que Caddy no intenta sacar ningún
+# certificado. Sirve HTTP plano en el 8080, que es lo que se quiere en local:
+# TLS es responsabilidad del borde, y en local no hay borde.
+
+{
+	# Sin este bloque Caddy escribiría un aviso por cada arranque pidiendo un
+	# correo para ACME. Acá no se usa ACME en absoluto.
+	auto_https off
+}
+
+:8080 {
+	# Igual que en producción, para poder medir aquí lo que pasará allá. Sin
+	# esto el tamaño de la respuesta en local no se parecería al real y la
+	# comprobación no valdría de nada.
+	encode zstd gzip
+
+	# Misma flecha que en producción: TODO pasa por el gateway, nunca directo a
+	# product-service. Si en local se pudiera esquivar el BFF, se probaría un
+	# sistema distinto del que se despliega, y el 40% del EP1 se estaría
+	# demostrando sobre algo que no es la cadena real.
+	reverse_proxy gateway:8080
+}

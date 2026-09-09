@@ -9,6 +9,8 @@ public sealed class ProductResponse
     public string Category { get; set; } = null!;
     public string? Description { get; set; }
     public string? Image { get; set; }
+    public int Visits { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
     public IReadOnlyList<ProductOfferResponse> Offers { get; set; } = [];
 }
 

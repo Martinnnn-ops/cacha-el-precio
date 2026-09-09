@@ -1,0 +1,39 @@
+/* Estilos de las páginas de texto largo. Compartidos por las tres. */
+.legal {
+  max-width: 68ch;
+}
+.legal__titulo {
+  margin: 0 0 var(--cep-sp-1);
+  font-size: var(--cep-fs-2xl);
+}
+.legal__fecha {
+  margin: 0 0 var(--cep-sp-6);
+  font-family: var(--cep-font-mono);
+  font-size: var(--cep-fs-xs);
+  color: var(--cep-muted);
+}
+.legal h2 {
+  margin: var(--cep-sp-8) 0 var(--cep-sp-2);
+  font-family: var(--cep-font-display);
+  font-size: var(--cep-fs-xl);
+}
+.legal h3 {
+  margin: var(--cep-sp-5) 0 var(--cep-sp-1);
+  font-family: var(--cep-font-display);
+  font-size: var(--cep-fs-lg);
+}
+.legal p,
+.legal li {
+  font-size: var(--cep-fs-base);
+  line-height: var(--cep-lh-normal);
+}
+.legal ul {
+  padding-left: var(--cep-sp-5);
+}
+.legal li {
+  margin-bottom: var(--cep-sp-2);
+}
+.legal a {
+  color: var(--cep-accent);
+  font-weight: 600;
+}

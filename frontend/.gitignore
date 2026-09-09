@@ -1,0 +1,47 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Configuración local de esta máquina. Se comparte .env.example como
+# plantilla, no este.
+.env
+
+# Respaldos de una sola máquina: esos sí se quedan fuera.
+.env.bak*
+
+# ⚠️ .env.anuncios, .env.fallo y .env.humo NO van aquí, aunque estuvieron
+# hasta el 09-09.
+#
+# Los usa `npm run humo` con mode 'anuncios', 'fallo' y 'humo'. Ignorados,
+# Vite no encontraba nada que cargar y las pruebas no fallaban: pasaban a
+# probar otra cosa. La de «el store no borra lo que ya tenías» terminaba
+# cargando los datos de ejemplo con éxito en vez de provocar el error de red
+# que quería comprobar.
+#
+# Una prueba que solo funciona en la máquina donde alguien creó el archivo a
+# mano no protege a nadie. Ninguno tiene secretos: son ids públicos y URLs a
+# localhost.
+
+# Generado en build
+public/sitemap.xml
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
