@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Configuración local de esta máquina: aquí van el id de cliente de Google y
+# los ids de bloque de AdSense. Se comparte .env.example como plantilla, no
+# este. Los .env.test/.env.live/.env.fallo SÍ van al repo: son parte de las
+# pruebas y no contienen nada privado.
+.env
+
+# Archivos de test/respaldo (solo se usan localmente)
+.env.bak*
+.env.anuncios
+.env.humo
+.env.fallo
+
+# Generado en build
+public/sitemap.xml
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

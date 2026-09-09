@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Las pantallas de sesión no aportan nada en un buscador y sólo generan
+# resultados que no llevan a ninguna parte.
+Disallow: /login
+Disallow: /entrar
+Disallow: /registro
+Disallow: /auth/
+
+Sitemap: https://cacha-el-precio.com/sitemap.xml
