@@ -503,6 +503,9 @@ git subtree push --prefix=frontend frontend-origin <rama>
 | `npm run build` | ✅ compila |
 | `npm run humo` | ⚠️ **55 comprobaciones fallidas** — ver abajo |
 
+> ✅ **Resuelto en la Fase 1.5 (ver §12).** El apartado de abajo se conserva porque explica de
+> dónde venía cada cosa. Hoy `npm run humo` da **0 comprobaciones fallidas**.
+
 ### La línea base de las pruebas: 55 fallos que ya estaban
 
 El criterio de salida de esta fase era *«cero cambios funcionales»*, y se cumple: **el mismo
@@ -552,3 +555,67 @@ Un conjunto de pruebas con 55 fallos permanentes deja de avisar de nada: cuando 
 un rojo nuevo no se distingue. `npm run humo` es lo más parecido a un CI que tiene este proyecto
 —no hay ni un workflow en `.github/`— así que arreglarlo no es cosmética, es recuperar la única
 red de seguridad que hay antes del freeze.
+
+---
+
+## 12. Fase 1.5 · Recuperar la red de seguridad · 09-09
+
+Se hizo antes de la Fase 2 por una razón de método: **el arnés de pruebas se arregla antes de
+tocar el código que va a probar**, no después. Las Fases 3 y 4 consisten justamente en cambiar el
+frontend y el contrato, que es cuando más falta hace saber si algo se rompió.
+
+`npm run humo` pasó de **55 comprobaciones fallidas a 0**, en cuatro commits.
+
+| Commit | Qué arregla | Fallos |
+|---|---|---|
+| `89a95c8` | Las pruebas piden la ficha por slug, como la aplicación de verdad | −34 |
+| `7c663d2` | Se versionan `.env.anuncios` y `.env.fallo`, que el `.gitignore` se comía | −19 |
+| `59274f7` | Un slug inexistente cae en el 404 | −2 |
+
+### 🔴 El hallazgo: anuncios en páginas que no existen
+
+De los tres, este no era un problema del arnés sino **un defecto real en producción**, y es el que
+justifica haber hecho esta fase.
+
+Cuando la ruta del detalle era `/producto/:id(\d{1,12})`, el router **rechazaba por su forma**
+cualquier cosa que no fuera un número, y caía en el 404 —que lleva `meta.sinAnuncios` justamente
+para esto—. Al pasar a `/producto/:slug`, el patrón acepta cualquier texto. Nadie quitó la
+defensa: **dejó de aplicarse sola** al cambiar el patrón.
+
+Medido antes y después, con todos los bloques de anuncio configurados:
+
+```
+antes:  1 anuncio(s) | 404:NO  | «ya no está»:sí | /producto/esto-no-existe-en-ningun-catalogo
+ahora:  0 anuncio(s) | 404:sí  | «ya no está»:no | /producto/esto-no-existe-en-ningun-catalogo
+```
+
+Dos consecuencias, y la segunda cuesta dinero:
+
+1. **Soft 404.** Infinitas URLs válidas respondiendo como página buena. Google lo cuenta contra el
+   sitio entero, no contra esas páginas.
+2. **Anuncios en una página sin contenido propio.** Las políticas de AdSense lo prohíben, y no hay
+   aviso previo: se cierra la cuenta, y con ella todos los ingresos del sitio. El propio
+   `routes.js` tenía escrito el riesgo en un comentario, para la ruta del 404.
+
+**Dónde se arregló y por qué ahí:** en un `beforeEnter` de la ruta, no en la vista. La pregunta
+«¿esta página llega a existir?» es de enrutado. Resuelta en la vista, la ficha ya se montó —con su
+layout y su bloque de anuncio— antes de descubrir que no había nada que enseñar; y en el render
+del servidor el redirect ni siquiera se espera. La vista conserva el suyo para el único caso que
+`beforeEnter` no ve: cuando solo cambia el parámetro, saltando de un producto a otro dentro de la
+aplicación.
+
+`frontend/README.md` describía la defensa vieja (*«la forma del id se declara en la ruta, así que
+ni llega a la vista»*). Se corrigió en el mismo commit: un documento que miente es peor que uno
+que falta, porque en la defensa oral la contradicción la encuentra cualquiera.
+
+### Lo que hay que contarle al equipo
+
+Los tres arreglos tocan archivos de Panditax (`scripts/humo.mjs`, `.gitignore`, `routes.js`,
+`ProductoDetailView.vue`), y `AGENTS.md` pide avisar antes de entrar en el carril de otro. Van en
+commits separados y descritos para que se vea qué se tocó sin leer un diff grande.
+
+Vale la pena decirle también lo que **no** es culpa de nadie: los 55 fallos no los introdujo su PR
+ni el de Orion. Se acumularon commit a commit, cada uno por un motivo razonable —una URL más
+legible, un `v-if` para no pintar un elemento vacío—, y ninguno de esos cambios avisó de que había
+roto una prueba, porque ya había otras en rojo. Es exactamente cómo un conjunto de pruebas deja de
+servir: no de golpe, sino de a poco.
