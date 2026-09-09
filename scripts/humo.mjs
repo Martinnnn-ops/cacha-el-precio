@@ -195,6 +195,55 @@ try {
   check('obtenerProducto(id) devuelve el producto', uno?.nombre?.includes('Jeans'), uno?.nombre)
   check('obtenerProducto(id inexistente) devuelve null', (await svc.obtenerProducto('nope')) === null)
 
+  // ——— la caché comparte la petición, pero `forzar` la descarta ———
+  //
+  // Con los datos de ejemplo la caché ni se toca, así que hace falta una URL
+  // de verdad. Se levanta un servidor propio que CUENTA las peticiones: así la
+  // prueba no depende de que el backend esté arriba y responde a lo único que
+  // importa —cuántas veces se salió a la red—, que es justo lo que no se ve
+  // mirando el valor devuelto.
+  {
+    const { createServer: crearHttp } = await import('node:http')
+    let peticiones = 0
+
+    const servidor = crearHttp((_, res) => {
+      peticiones++
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end('[]')
+    })
+
+    await new Promise((listo) => servidor.listen(0, '127.0.0.1', listo))
+    const url = `http://127.0.0.1:${servidor.address().port}`
+
+    // `define` inyecta la URL base sin necesidad de un archivo .env nuevo: el
+    // módulo lee import.meta.env.VITE_API_BASE_URL al cargarse.
+    const conApi = await createServer({
+      mode: 'test',
+      define: { 'import.meta.env.VITE_API_BASE_URL': JSON.stringify(url) },
+      server: { middlewareMode: true, hmr: false, ws: false },
+      appType: 'custom',
+      logLevel: 'error',
+    })
+
+    try {
+      const s = await conApi.ssrLoadModule(
+        '/src/modules/comparador/services/comparador.service.js',
+      )
+
+      await s.obtenerProductos()
+      await s.obtenerProductos()
+      check('dos cargas seguidas comparten una sola petición',
+        peticiones === 1, `${peticiones} petición(es)`)
+
+      await s.obtenerProductos({ forzar: true })
+      check('  y `forzar` sí vuelve a salir a la red',
+        peticiones === 2, `${peticiones} petición(es)`)
+    } finally {
+      await conApi.close()
+      await new Promise((listo) => servidor.close(listo))
+    }
+  }
+
   console.log('\n=== utilidades de precio ===')
   const { precioMasBajo, ahorroMaximo, descuento } = await load('/src/shared/utils/precios.js')
   const p1 = lista.find((p) => p.id === '1')
@@ -934,9 +983,11 @@ try {
     // pasaría igual aunque el catch siguiera vaciando la lista.
     const muerto = await createServer({
       mode: 'fallo',
-      // hmr:false porque ya hay otra instancia de Vite arriba y las dos
-      // pelearían por el puerto del WebSocket.
-      server: { middlewareMode: true, hmr: false },
+      // hmr y ws en false: ya hay otra instancia de Vite arriba y las dos
+      // pelearían por el puerto del WebSocket. `hmr: false` solo no basta —
+      // en modo middleware Vite sigue levantando el servidor de ws y escupe
+      // «Port 24678 is already in use» en medio de la salida de las pruebas.
+      server: { middlewareMode: true, hmr: false, ws: false },
       appType: 'custom',
       logLevel: 'error',
     })
@@ -1560,9 +1611,9 @@ try {
     // ids van vacíos y AdSlot no pinta nada.
     const conBloques = await createServer({
       mode: 'anuncios',
-      // hmr:false: ya hay otra instancia de Vite arriba y pelearían por el
-      // puerto del WebSocket.
-      server: { middlewareMode: true, hmr: false },
+      // hmr y ws en false: ya hay otra instancia de Vite arriba y pelearían
+      // por el puerto del WebSocket. `hmr: false` solo no basta.
+      server: { middlewareMode: true, hmr: false, ws: false },
       appType: 'custom',
       logLevel: 'error',
     })

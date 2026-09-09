@@ -32,9 +32,20 @@ function simularRed(datos) {
 
 // Categorías y tiendas vienen dentro de cada producto. Se comparte la primera
 // petición para que cargar la portada y sus filtros no duplique GET /productos.
+//
+// La caché guarda la PROMESA y no el resultado: si la portada pide productos,
+// categorías y tiendas a la vez, las tres esperan la misma petición en vuelo
+// en lugar de lanzar tres.
+//
+// `forzar` la descarta antes de pedir. Sin eso la caché vivía lo que viviera
+// la pestaña: quien dejaba el sitio abierto no volvía a ver un precio nuevo
+// nunca, y el botón de «Reintentar» del aviso de datos desactualizados
+// devolvía exactamente lo mismo que ya estaba en pantalla — reintentaba sin
+// reintentar, que es peor que no tener botón.
 let cacheFilas = null
 
-async function filasProductos() {
+async function filasProductos({ forzar = false } = {}) {
+  if (forzar) cacheFilas = null
   if (cacheFilas) return cacheFilas
 
   cacheFilas = http.get('/productos', { version: VERSION }).catch((error) => {
@@ -77,10 +88,10 @@ export async function obtenerCategorias() {
  * GET /productos. Los filtros del comparador se aplican en el store para
  * poder combinar texto, categoría, tienda, talla y precio sin múltiples viajes.
  */
-export async function obtenerProductos() {
+export async function obtenerProductos({ forzar = false } = {}) {
   if (USAR_MOCK) return simularRed(PRODUCTOS_MOCK)
 
-  return adaptarProductos(await filasProductos())
+  return adaptarProductos(await filasProductos({ forzar }))
 }
 
 /** GET /productos/:id */
