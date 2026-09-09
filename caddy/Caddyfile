@@ -31,6 +31,22 @@ api.cacha-el-precio.com {
 
     respond @cors_preflight 204
 
+    # El frontend se baja el catalogo ENTERO en cada primera carga: los filtros
+    # se aplican en el navegador, asi que no hay peticion parcial que valga.
+    # Medido sobre la respuesta real son ~389 bytes por producto, o sea ~793 KB
+    # con los 2.088 productos que el scraper ya tiene capturados. Sin esta
+    # linea eso viaja sin comprimir, y buena parte del publico entra por datos
+    # moviles.
+    #
+    # JSON comprime muchisimo porque repite las mismas claves en cada fila.
+    # zstd primero y gzip de respaldo: se elige el primero que el navegador
+    # acepte, y gzip lo acepta cualquiera.
+    #
+    # Va en Caddy y no en el gateway a proposito: comprimir es trabajo del
+    # borde. Hacerlo en ASP.NET obligaria a repetirlo en cada servicio que
+    # algun dia responda por aqui.
+    encode zstd gzip
+
     reverse_proxy gateway:8080
 }
 

@@ -90,6 +90,24 @@ public class ProductController : ControllerBase
         return Ok(await _service.GetProductsBySizeAsync(size));
     }
 
+    /// <summary>
+    /// Suma una visita a la ficha. POST y no GET porque cambia el estado del
+    /// servidor: un GET puede repetirlo cualquier proxy o precarga del
+    /// navegador, y el contador se inflaría solo.
+    /// </summary>
+    [HttpPost("{id:int}/visits")]
+    [MapToApiVersion("1.0")]
+    public async Task<ActionResult> RegisterVisit(int id)
+    {
+        bool registered = await _service.RegisterVisitAsync(id);
+
+        return registered switch
+        {
+            false => NotFound(),
+            true => NoContent()
+        };
+    }
+
     [HttpDelete("{id:int}")]
     [MapToApiVersion("1.0")]
     public async Task<ActionResult> DeleteProductById(int id)

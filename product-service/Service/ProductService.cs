@@ -49,7 +49,12 @@ public class ProductService
             Description = request.Description,
             ProductUrl = request.Url,
             ProductImage = request.Image,
-            Active = request.Active
+            Active = request.Active,
+            // En UTC, no en hora local: la EC2 corre en UTC y el equipo está en
+            // Chile. Guardar hora local haría que la antigüedad de un producto
+            // dependiera de dónde se insertó, y con el cambio de horario de
+            // Chile hasta saltaría una hora dos veces al año.
+            CreatedAt = DateTime.UtcNow
         };
 
         ProductEntity saved = await _repository.AddProductAsync(productEntity);
@@ -82,6 +87,16 @@ public class ProductService
     public async Task<bool> DeleteProductById(int id)
     {
         return await _repository.DeleteProductByIdAsync(id);
+    }
+
+    /// <summary>
+    /// Suma una visita. Es anónimo a propósito: el contador vale para todos,
+    /// con o sin sesión, y pedir login para contar una vista sería cobrar por
+    /// algo que no se le da a nadie.
+    /// </summary>
+    public async Task<bool> RegisterVisitAsync(int id)
+    {
+        return await _repository.IncrementVisitsAsync(id);
     }
 
     public async Task<IReadOnlyList<ProductResponse>> GetProductsByCategoryAsync(string category)

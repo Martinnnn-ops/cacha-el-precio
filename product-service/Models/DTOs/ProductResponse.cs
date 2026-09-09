@@ -17,4 +17,10 @@ public class ProductResponse
     public string? Url { get; set; }
     public string? Image { get; set; }
     public bool Active { get; set; }
+
+    // Los consume la portada: `Visits` ordena «Lo más visto» y `CreatedAt`
+    // ordena «Lo más reciente» y calcula la antigüedad de la ficha. Hasta el
+    // 09-09 ninguno de los dos existía y las dos secciones ordenaban por nada.
+    public int Visits { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

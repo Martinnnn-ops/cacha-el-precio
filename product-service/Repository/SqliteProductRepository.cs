@@ -59,6 +59,25 @@ public class SqliteProductRepository : IProductRepository
         return true;
     }
 
+    public async Task<bool> IncrementVisitsAsync(int id)
+    {
+        // La suma la hace la base de datos, en una sola sentencia:
+        //
+        //     UPDATE Products SET Visits = Visits + 1 WHERE ProductId = @id
+        //
+        // Y no leyendo el valor, sumándole uno en C# y volviéndolo a guardar.
+        // Con lectura y escritura por separado, dos visitas simultáneas leen el
+        // mismo número y guardan el mismo resultado: una de las dos se pierde.
+        // Aquí no puede pasar, porque el que suma es el motor.
+        //
+        // De paso evita traerse la fila entera para cambiarle un número.
+        int filas = await _context.Products
+            .Where(p => p.ProductId == id)
+            .ExecuteUpdateAsync(fila => fila.SetProperty(p => p.Visits, p => p.Visits + 1));
+
+        return filas > 0;
+    }
+
     public async Task<IReadOnlyList<ProductEntity>> GetProductsByCategoryAsync(string category)
     {
         if (string.IsNullOrWhiteSpace(category))
