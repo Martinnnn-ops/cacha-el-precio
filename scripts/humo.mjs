@@ -1977,11 +1977,35 @@ try {
     check('  y descarta caracteres de control',
       textoDeUrl('pol\u0000er\u001fa') === 'polera')
 
-    // La ruta declara la forma del id: una basura ni llega a la vista.
-    const basura = await render('/producto/no-soy-un-id', () => {})
+    // El patrón `:slug` acepta cualquier texto, así que la forma ya no filtra
+    // nada: quien decide es el guard de la ruta, comparando contra el catálogo.
+    // Por eso hay que cargarlo antes; es lo que ocurre al navegar dentro de la
+    // aplicación, que es de donde sale casi todo el tráfico.
+    const cargado = async (st) => { await st.cargarProductos() }
+
+    const basura = await render('/producto/no-soy-un-id', cargado)
     check('  /producto/<basura> cae en el 404', basura.includes('404'))
-    const negativo = await render('/producto/-1', () => {})
+    const negativo = await render('/producto/-1', cargado)
     check('  /producto/-1 también', negativo.includes('404'))
+
+    // Y el caso contrario, que es el que costó caro: SIN catálogo cargado el
+    // guard NO puede afirmar que el producto no existe. Si respondiera 404 ahí,
+    // con la API caída todo enlace compartido diría «página no encontrada» en
+    // vez de enseñar el error con reintento que la vista ya tiene.
+    const rutas = (await load('/src/modules/comparador/routes.js')).default
+    const detalle = rutas.find((r) => r.name === 'producto-detalle')
+
+    setActivePinia(createPinia())
+    check('  sin catálogo cargado el guard NO afirma que no existe',
+      detalle.beforeEnter({ params: { slug: 'lo-que-sea' } }) === true)
+
+    // Con el catálogo en memoria sí decide, y decide bien.
+    const conCatalogo = (() => { setActivePinia(createPinia()); return useComparadorStore() })()
+    await conCatalogo.cargarProductos()
+    check('  con catálogo cargado sí redirige',
+      detalle.beforeEnter({ params: { slug: 'no-existe-esta-prenda' } })?.name === 'no-encontrado')
+    check('  y deja pasar un slug real',
+      detalle.beforeEnter({ params: { slug: slugProducto(conCatalogo.productos[0]) } }) === true)
   }
 
   const s404 = await render('/ruta-que-no-existe', () => {})

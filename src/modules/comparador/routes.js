@@ -5,41 +5,47 @@
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import { slugProducto } from '@/shared/utils/slug'
 
-// ¿Ese slug corresponde a algún producto del catálogo?
+// ¿Ese slug NO corresponde a ningún producto? Solo se responde cuando se puede
+// responder de verdad, es decir con el catálogo ya en memoria.
 //
-// Vive en el router y no en la vista a propósito: la respuesta decide si la
-// página llega a existir, y eso es una decisión de enrutado. Resuelta en la
-// vista, la ficha ya se montó —con su layout y su bloque de anuncio— antes de
-// descubrir que no había nada que enseñar.
+// El guard **no pide el catálogo**. Hacerlo tenía dos efectos malos, los dos
+// medidos:
 //
-// Los import van arriba y no dentro de la función: el store ya viaja en el
-// trozo inicial porque lo importa `App.vue`, así que un import() dinámico no
-// lo movería a ninguna parte —Vite avisa de eso con INEFFECTIVE_DYNAMIC_IMPORT—
-// y solo dejaría el código pareciendo más cuidadoso de lo que es.
-async function elSlugExiste(slug) {
+//   · bloqueaba el enrutado. Hasta que la petición terminaba no se montaba
+//     nada —ni el layout ni el esqueleto de la ficha—, así que quien abría un
+//     enlace compartido veía una página en blanco durante toda la descarga.
+//     Antes veía el esqueleto de inmediato. Eso afecta a TODAS las URLs
+//     válidas, que son la mayoría;
+//   · con el backend caído el catálogo llegaba vacío, ningún slug coincidía y
+//     **todo enlace válido acababa en el 404**, justo cuando el usuario más
+//     necesita el estado de error con reintento que la vista ya tiene.
+//
+// Con el catálogo cargado —navegación dentro de la aplicación, que es de donde
+// salen casi todos los clics— la comprobación es inmediata y no pide nada. En
+// una entrada directa en frío se deja pasar y la vista se encarga: enseña su
+// esqueleto, carga, y redirige al 404 si de verdad no existe.
+function elSlugNoExiste(slug) {
   const store = useComparadorStore()
 
-  if (store.productos.length === 0) {
-    try {
-      await store.cargarProductos()
-    } catch {
-      // Si el catálogo no se pudo traer, no sabemos si el producto existe.
-      // Se deja pasar: la vista tiene su estado de error con reintento, que es
-      // mejor que un 404 que afirma algo falso.
-      return true
-    }
-  }
+  // Sin catálogo no hay nada que afirmar. Decir "no existe" sería inventar.
+  if (store.productos.length === 0) return false
 
-  return store.productos.some((producto) => slugProducto(producto) === slug)
+  return !store.productos.some((producto) => slugProducto(producto) === slug)
 }
 
 // Destino del 404 conservando la URL que se pidió. La ruta se llama
 // `no-encontrado` pero su path es el comodín `/:pathMatch(.*)*`: hay que
 // pasarle el camino troceado o Vue Router compone la raíz.
-export function rutaNoEncontrada(ruta) {
+//
+// Recibe segmentos YA DECODIFICADOS. Vue Router codifica cada uno al componer
+// la URL, así que pasarle `to.path` —que viene codificado— escapaba el `%` otra
+// vez: `/producto/polera%20azul` terminaba enseñándose como
+// `/producto/polera%2520azul`, y la idea era justamente que se pudiera leer y
+// corregir la dirección que falló.
+export function rutaNoEncontrada(...segmentos) {
   return {
     name: 'no-encontrado',
-    params: { pathMatch: ruta.replace(/^\//, '').split('/') },
+    params: { pathMatch: segmentos },
     replace: true,
   }
 }
@@ -71,8 +77,8 @@ export default [
     props: true,
     meta: { titulo: 'Detalle del producto', ancho: 'lectura' },
 
-    // Un slug que no es de ningún producto se va al 404 antes de pintar nada.
-    // Dos motivos, y el segundo cuesta dinero:
+    // Un slug que no es de ningún producto se va al 404 sin llegar a pintar la
+    // ficha. Dos motivos, y el segundo cuesta dinero:
     //
     //   · una URL inventada respondiendo como página buena es un «soft 404»,
     //     y Google lo cuenta contra el sitio entero, no contra esa página;
@@ -81,17 +87,15 @@ export default [
     //     de AdSense prohíben anuncios en páginas sin contenido propio, y
     //     saltárselo puede costar la cuenta completa.
     //
-    // `beforeEnter` NO se ejecuta cuando solo cambia el parámetro —al saltar
-    // de un producto a otro dentro de la aplicación—, y por eso la vista
-    // conserva su propio redirect para ese caso. Aquí se cubre el que importa
-    // para lo de arriba: la entrada directa, que es como llegan los enlaces
-    // compartidos y los rastreadores.
-    // Se conserva la URL que falló en vez de mandar a `/`. La ruta del 404 es
-    // el comodín `/:pathMatch(.*)*`, así que nombrarla sin parámetros compone
-    // la raíz: se veía el 404 con «localhost:5173/» en la barra, y al recargar
-    // aparecía la portada. Quien se equivoca al escribir necesita ver QUÉ URL
-    // no existe para poder corregirla.
-    beforeEnter: async (to) =>
-      (await elSlugExiste(to.params.slug)) || rutaNoEncontrada(to.path),
+    // Es síncrono a propósito (ver `elSlugNoExiste`): con el catálogo cargado
+    // responde al instante, y sin él deja pasar para que la vista lo resuelva
+    // con su esqueleto. Tampoco se ejecuta cuando solo cambia el parámetro —al
+    // saltar de un producto a otro—, y por eso la vista conserva su redirect.
+    //
+    // Se le pasa `to.params.slug`, que viene ya decodificado, y no `to.path`.
+    beforeEnter: (to) =>
+      elSlugNoExiste(to.params.slug)
+        ? rutaNoEncontrada('producto', to.params.slug)
+        : true,
   },
 ]

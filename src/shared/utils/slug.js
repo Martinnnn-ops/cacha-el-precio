@@ -32,23 +32,32 @@ const MAX_SLUG = 60
 export function slugProducto(producto) {
   if (!producto || typeof producto.nombre !== 'string') return 'producto'
 
-  const base = slugificar(producto.nombre)
   const ofertas = producto.precios ?? []
 
   // Con varias ofertas el producto YA es una prenda con sus tiendas dentro, y
   // el nombre lo identifica. Con una sola, lo que se está publicando es la
   // oferta de una tienda concreta, y la tienda es parte de su identidad.
-  if (ofertas.length !== 1) return base
-
+  //
   // Se mira el valor CRUDO y no el ya slugificado: `slugificar('')` devuelve
   // 'producto' por su valor de respaldo, así que preguntar después de pasar
   // por ella nunca daría vacío y se colaría un `-producto` al final.
-  const tienda = ofertas[0]?.tienda
+  const tienda = ofertas.length === 1 ? ofertas[0]?.tienda : null
 
-  return tienda ? `${base}-${slugificar(String(tienda))}` : base
+  if (!tienda) return slugificar(producto.nombre)
+
+  // El nombre se recorta dejándole sitio a la tienda, en vez de recortarlo a
+  // 60 y añadir el sufijo después. Si no, dos nombres largos de la MISMA
+  // tienda que coincidan en sus primeros 60 caracteres producían el mismo
+  // slug otra vez, que es justo lo que este sufijo viene a evitar.
+  const sufijo = slugificar(String(tienda))
+
+  return `${slugificar(producto.nombre, MAX_SLUG - sufijo.length - 1)}-${sufijo}`
 }
 
-export function slugificar(texto) {
+// `maximo` deja componer un slug de varias partes sin que la \u00faltima se pierda
+// por el recorte: quien va a a\u00f1adir un sufijo reserva su espacio al recortar
+// la primera parte.
+export function slugificar(texto, maximo = MAX_SLUG) {
   const normalizado = texto
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // quita tildes
@@ -56,5 +65,5 @@ export function slugificar(texto) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 
-  return normalizado.slice(0, MAX_SLUG).replace(/-+$/g, '') || 'producto'
+  return normalizado.slice(0, Math.max(1, maximo)).replace(/-+$/g, '') || 'producto'
 }
