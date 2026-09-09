@@ -50,6 +50,12 @@ const {
 
 const visitas = new Intl.NumberFormat('es-CL')
 
+// «1 visitas» se lee mal, y ahora se ve: hasta la Fase 4 el contador siempre
+// era 0, así que el plural nunca desentonaba.
+function insigniaVisitas(cuantas = 0) {
+  return `${visitas.format(cuantas)} ${cuantas === 1 ? 'visita' : 'visitas'}`
+}
+
 // Ids de los bloques de AdSense. Vacíos hasta crearlos en el panel; mientras
 // tanto AdSlot no pinta nada y la portada se ve sin huecos.
 const BLOQUE_PORTADA = import.meta.env.VITE_ADSENSE_SLOT_PORTADA ?? ''
@@ -212,7 +218,7 @@ onMounted(() => store.cargarProductos())
           :key="p.id"
           :producto="p"
           compacta
-          :insignia="`${visitas.format(p.vistas ?? 0)} visitas`"
+          :insignia="insigniaVisitas(p.vistas ?? 0)"
         />
       </BaseCarousel>
 

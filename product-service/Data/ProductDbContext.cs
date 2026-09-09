@@ -34,6 +34,29 @@ public class ProductDbContext : DbContext
         product.Property(p => p.ProductUrl).HasMaxLength(500);
         product.Property(p => p.ProductImage).HasMaxLength(500);
         product.Property(p => p.Active).IsRequired().HasDefaultValue(true);
+        product.Property(p => p.Visits).IsRequired().HasDefaultValue(0);
+
+        // La fecha la pone la APLICACIÓN al crear el producto, no la base.
+        //
+        // Lo natural sería un DEFAULT CURRENT_TIMESTAMP, pero SQLite no acepta
+        // añadir una columna con un valor por defecto no constante: falla con
+        // «Cannot add a column with non-constant default» y la migración no
+        // corre. Es una limitación real del motor, no de EF Core, y un ejemplo
+        // concreto de lo que cuesta SQLite frente a PostgreSQL —donde esto
+        // habría funcionado tal cual—.
+        //
+        // Ponerlo en la aplicación tiene además una ventaja: el valor es
+        // explícito y se puede probar sin base de datos. Y como todos los
+        // productos entran por el mismo servicio, siguen fechándose con el
+        // mismo reloj, que era lo que se buscaba.
+        product.Property(p => p.CreatedAt).IsRequired();
+
+        // «Lo más reciente» y «Lo más visto» ordenan por estas dos columnas.
+        // Sin índice, cada consulta recorre la tabla entera; con 2.088
+        // productos hoy no duele, pero el índice cuesta poco y la alternativa
+        // es descubrirlo cuando el catálogo crezca.
+        product.HasIndex(p => p.CreatedAt);
+        product.HasIndex(p => p.Visits);
         product.OwnsOne(p => p.ProductSizes, sizes =>
         {
             sizes.Property(s => s.XS)

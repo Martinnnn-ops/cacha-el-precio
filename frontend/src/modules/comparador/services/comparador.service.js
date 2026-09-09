@@ -102,6 +102,24 @@ export async function obtenerProductos({ forzar = false } = {}) {
   return adaptarProductos(await filasProductos({ forzar }))
 }
 
+/**
+ * POST /productos/:id/visitas — suma una visita a la ficha.
+ *
+ * Es la única escritura que el frontend hace sin sesión, y puede serlo porque
+ * no manda nada: el servidor solo suma uno a un contador. No lleva cuerpo.
+ *
+ * No devuelve el número nuevo a propósito. La ficha no lo enseña, y pedirlo
+ * obligaría al backend a leer la fila después de escribirla para responder un
+ * dato que nadie mira.
+ */
+export async function registrarVisita(id) {
+  if (USAR_MOCK) return
+
+  return http.post(`/productos/${encodeURIComponent(id)}/visitas`, null, {
+    version: VERSION,
+  })
+}
+
 /** GET /productos/:id */
 export async function obtenerProducto(id) {
   if (USAR_MOCK) {
