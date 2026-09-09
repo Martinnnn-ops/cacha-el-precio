@@ -394,7 +394,7 @@ contrato de verdad, no lo que dice el código que responde.
 
 **Criterio de salida:** un mapa verificado del contrato, y el backend corriendo en local.
 
-### Fase 3 · Conectar el frontend al backend, commit por commit
+### Fase 3 · Conectar el frontend al backend, commit por commit — ✅ hecha (§14)
 
 Cada commit con su prueba contra el backend de la Fase 2.
 
@@ -721,3 +721,106 @@ producto con sus ofertas dentro resuelve de una vez la comparación de precios, 
 sitemap. Hacerlo en el cliente obliga además a bajarse el catálogo entero.
 
 **Decisión para la Fase 3/4**, y hay que tomarla antes de tocar el adaptador.
+
+---
+
+## 14. Fase 3 · El frontend conectado al backend · 09-09
+
+Seis commits, cada uno con su prueba contra el backend corriendo en local.
+`npm run humo` termina en **0 fallos**, y esta vez la sección que habla con el backend real
+prueba lo que dice probar (ver el punto 6).
+
+| Commit | Qué |
+|---|---|
+| `1e4d2c3` | El frontend habla `/productos`, el contrato del BFF ([ADR-021](adr/021-contrato-publico-en-el-bff.md)) |
+| `769e6db` | El slug incluye la tienda: cada oferta tiene su URL |
+| `f6629cf` | `forzar` llega hasta la caché: el botón de «Reintentar» reintenta |
+| `10ce9cb` | La portada ordenaba por campos que el adaptador no producía |
+| `1a54d62` | Caddy comprime: **91% menos** en el catálogo |
+| `5e741da` | El 404 conserva la URL, y aparece una prueba en verde falso |
+
+### 1 · El contrato
+
+`VITE_API_BASE_URL` pierde el sufijo `/api` en producción, y el proxy de desarrollo pasa a
+**quitar** ese prefijo al reenviar en vez de conservarlo. El prefijo se queda solo para que Vite
+sepa qué interceptar: con una regla quedan cubiertas todas las rutas del backend, las de hoy y las
+que vengan. Sin él habría que enumerarlas una por una, y cada ruta nueva se olvidaría fallando
+solo en desarrollo.
+
+### 2 · El botón que reintentaba sin reintentar
+
+El store aceptaba `cargarProductos({ forzar: true })` —lo usa el aviso de datos desactualizados—
+pero llamaba a `obtenerProductos()` sin argumentos, y el servicio devolvía la promesa cacheada. La
+recarga entregaba exactamente lo que ya estaba en pantalla. Peor que no tener botón: el usuario ve
+que «funcionó» y sigue con datos viejos.
+
+La prueba no mira el valor devuelto —sería el mismo array— sino **cuántas veces se salió a la
+red**, con un servidor propio que cuenta peticiones. Así no depende de que el backend esté arriba.
+
+### 3 · Dos campos por los que la portada ordena y no existían
+
+`vistas` vs `visitas`: el store, la portada y los datos de ejemplo leen `vistas`; el adaptador
+escribía `visitas`. Resultado: un campo que no consultaba nadie y «Lo más visto» ordenando por el
+`?? 0` de todos los productos. Y `agregadoHace` sale de `fila.createdAt`, que `ProductResponse` no
+tiene: siempre `null`.
+
+Ninguno de los dos daba error. Simplemente el orden no era el que promete el título, y con datos
+de ejemplo no se ve porque ahí los campos vienen puestos.
+
+### 4 · 🔴 Nada comprimía
+
+El frontend filtra en el navegador, así que se baja el catálogo entero en cada primera carga.
+Medido con 203 productos cargados en el Product Service local, pidiendo por la cadena completa:
+
+| | |
+|---|---|
+| Sin comprimir | 73,9 KB (372 bytes/producto) |
+| Comprimido | **7,2 KB** — 9% del original |
+| Proyección a los 2.088 productos del scraper | 760 KB → **74 KB** |
+
+Con tres productos la mejora era solo del 56%: medir con el catálogo de juguete habría dado un
+número engañoso. JSON comprime tanto porque repite las mismas claves en cada fila.
+
+Va en Caddy y no en ASP.NET porque comprimir es trabajo del borde; en el gateway habría que
+repetirlo en cada servicio que algún día responda por ahí.
+
+> ⚠️ Esto **no reemplaza filtrar y paginar en el servidor**, que sigue pendiente:
+> `GetAllProducts()` no declara ningún `[FromQuery]`, así que el backend no sabría filtrar aunque
+> el frontend se lo pidiera. Comprimir reduce lo que se manda de más; no evita mandarlo.
+
+### 5 · Verificado en el navegador, no solo en las pruebas
+
+Con `npm run dev` contra el gateway local:
+
+| Qué | Resultado |
+|---|---|
+| Portada | 3 productos reales, precios y tiendas correctos |
+| Comparador | filtros de categoría, marca, talla, presupuesto y tienda, todos derivados de la respuesta |
+| `/producto/polera-basica-de-algodon-zara` | **abre la ficha de Zara** — antes esa URL no existía y llevaba a la de H&M |
+| `/producto/esta-prenda-no-existe` | 404, sin anuncios, **conservando la URL** |
+| Consola | sin errores |
+| «Lo más visto» | «0 visitas» en todo, como corresponde: el backend no expone el contador |
+
+### 6 · Una prueba que estaba en verde sin probar nada
+
+Al apuntar el frontend al backend local apareció que `.env.humo` tampoco estaba versionado. La
+sección «capa de servicios contra el backend real» corre con `mode: 'humo'`, así que sin ese
+archivo `VITE_API_BASE_URL` quedaba indefinida, se activaba `USAR_MOCK` y la sección **pasaba
+entera comprobando los datos de ejemplo**. Verde, sin haber tocado el backend: exactamente lo que
+esa sección existe para descartar.
+
+Van **cuatro** archivos que el `.gitignore` desaparecía en silencio: `.env.fallo`, `.env.anuncios`,
+`.env.humo` y `caddy/Caddyfile.local`. No es mala suerte. Son reglas heredadas de plantillas —el
+`*.local` de Vite, el `.env.*` genérico— que en un monorepo resultan más anchas de lo que quien
+las escribió tenía en mente. Conviene mirar con esa lupa cualquier `.gitignore` copiado.
+
+### Lo que queda para la Fase 4
+
+- **El contador de visitas**, decidido en esta sesión: campo, migración EF Core, endpoint anónimo
+  y restaurar las 31 líneas del frontend.
+- **`CreatedAt`** en `ProductResponse`, para que «Lo más reciente» ordene de verdad.
+- **`/catalogos`**, hoy una lista fija en `Program.cs` cuyos ids no corresponden a nada.
+- **Filtrar y paginar en el servidor.**
+- 🗣️ **La identidad de producto compartida entre tiendas** — tema del equipo, no decisión de una
+  persona. Sin ella la aplicación lista ofertas sueltas y no compara precios, que es su razón de
+  ser. El slug con la tienda arregla el defecto de alcanzabilidad, no el fondo.
