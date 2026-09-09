@@ -452,3 +452,103 @@ y la arquitectura tiene que poder levantarse completa desde cero en cualquier cu
 justamente para lo que existe [`MIGRACION.md`](MIGRACION.md).
 
 ⚠️ Nada de esto toca `main`. `development` es la rama de trabajo.
+
+---
+
+## 11. Cómo entró el frontend · Fase 1, 09-09
+
+### El comando, y por qué ese y no una copia
+
+```bash
+git remote add frontend-origin https://github.com/Panditax727/Cacha-el-Precio-Frontend.git
+git subtree add --prefix=frontend frontend-origin main
+```
+
+**Sin `--squash`, a propósito.** Con `--squash` el historial completo se aplasta en un solo commit
+y la autoría desaparece. Los 18 commits entraron con su autor original:
+
+| Autor | Commits |
+|---|---|
+| Panditax727 | 15 |
+| OrionTheProgrammer | 2 |
+| Martin Mora Alvarez | 1 |
+
+Eso no es una cortesía. En un trabajo de tres personas evaluado en parte por el aporte individual,
+`git log` es la evidencia de quién hizo qué, y aplastarlo la borra.
+
+### Qué permite el subtree que una copia no
+
+El repositorio de Panditax **sigue existiendo y él puede seguir trabajando ahí**. Con el subtree
+los cambios se traen después con un comando, sin resolver a mano archivo por archivo:
+
+```bash
+# Traer lo nuevo del repo del frontend al monorepo
+git subtree pull --prefix=frontend frontend-origin main
+
+# Y al revés, si hiciera falta devolver algo
+git subtree push --prefix=frontend frontend-origin <rama>
+```
+
+> ⚠️ **El remoto `frontend-origin` es configuración local**, no viaja en el repositorio. Quien
+> clone el monorepo y quiera sincronizar tiene que añadirlo con el primer comando de arriba.
+
+### Verificación
+
+| Qué | Resultado |
+|---|---|
+| Archivos incorporados | 108 |
+| `frontend/.env.production`, `.live`, `.test`, `.example` | ✅ versionados — la excepción del `.gitignore` funcionó en el caso real |
+| `frontend/node_modules/` y `frontend/dist/` | ✅ ignorados por las reglas que el monorepo ya tenía |
+| `npm install` | ✅ 72 paquetes, **0 vulnerabilidades** |
+| `npm run build` | ✅ compila |
+| `npm run humo` | ⚠️ **55 comprobaciones fallidas** — ver abajo |
+
+### La línea base de las pruebas: 55 fallos que ya estaban
+
+El criterio de salida de esta fase era *«cero cambios funcionales»*, y se cumple: **el mismo
+comando en el repositorio original, en el mismo commit, da exactamente el mismo número**. También
+da 59 en `2f9c1f6`, el commit anterior al PR #1. No los introdujo el traslado ni el PR de Orion:
+**venían de antes y nadie los estaba mirando.**
+
+Se dejan anotados acá porque son la referencia contra la que se compara en la Fase 3: si después
+de tocar el frontend el número sube, lo rompimos nosotros.
+
+No son 55 problemas. Son **tres**, y cada uno arrastra a muchos:
+
+**1 · La URL del detalle cambió y las pruebas no.** El commit `07872b8` cambió la ruta de
+`/producto/:id` a `/producto/:slug`. `scripts/humo.mjs` sigue renderizando `/producto/1`, que con
+el patrón nuevo **hace match pero no corresponde a ningún producto**, así que la vista muestra su
+estado de «ya no está». De ahí en cascada: sin ficha no hay migas de pan, ni muescas del ticket,
+ni enlaces a la tienda, ni gráfico de precios. **~33 de los 55.**
+
+**2 · `.env.test` no define las variables de AdSense**, así que `AdSlot` no renderiza el `<ins>`
+—que es su comportamiento correcto y deseado— pero la prueba espera encontrarlo. **5 fallos.**
+Es un desacuerdo entre la prueba y el diseño, no un defecto del código.
+
+**3 · `.env.fallo` no existe en el repositorio, y el `.gitignore` del frontend se contradice.**
+La prueba «el store no borra lo que ya tenías» arranca un Vite en `mode: 'fallo'` para que la
+petición falle **de verdad** — la idea es excelente, porque poner `error` a mano dejaría pasar un
+`catch` que vaciara la lista. Pero sin ese archivo, `VITE_API_BASE_URL` queda indefinida,
+`USAR_MOCK` se activa y la carga **tiene éxito** con los datos de ejemplo. La prueba no falla
+porque el código esté mal: falla porque nunca llega a probar nada. **4 fallos.**
+
+Lo que lo hace vistoso es el `.gitignore` del propio frontend:
+
+```gitignore
+# Los .env.test/.env.live/.env.fallo SÍ van al repo: son parte de las
+# pruebas y no contienen nada privado.
+.env
+
+# Archivos de test/respaldo (solo se usan localmente)
+.env.fallo          ← cuatro líneas más abajo, lo ignora
+```
+
+El comentario y la regla dicen lo contrario. **La prueba solo pasa en la máquina donde ese archivo
+existe sin versionar** — que es la definición de una prueba que no protege a nadie.
+
+### Lo que esto significa para el equipo
+
+Un conjunto de pruebas con 55 fallos permanentes deja de avisar de nada: cuando todo está rojo,
+un rojo nuevo no se distingue. `npm run humo` es lo más parecido a un CI que tiene este proyecto
+—no hay ni un workflow en `.github/`— así que arreglarlo no es cosmética, es recuperar la única
+red de seguridad que hay antes del freeze.

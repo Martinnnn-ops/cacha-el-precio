@@ -6,11 +6,15 @@ Guía para agentes de IA que trabajen en este repo. **Lee solo lo que la tarea n
 
 "Cacha el Precio": comparador de precios de **ropa y calzado** en Chile. Proyecto del ramo
 **DSY1107 · Desarrollo Cloud Native I**, equipo de 3, primera entrega **13-sep-2026**.
-**Ya está en producción**: `www.cacha-el-precio.com` y `api.cacha-el-precio.com`.
+**Ya está en producción**: `www.cacha-el-precio.com` y `api.cacha-el-precio.com` — con el matiz de
+que la EC2 **no se mantiene encendida 24/7**, por créditos limitados en la cuenta que la aloja. Que
+la API no responda es lo normal fuera de las sesiones de trabajo, no una avería.
 
 Stack: **.NET 10 / ASP.NET Core / C#** para `gateway` (BFF) y `product-service` ·
 **Python 3 / FastAPI** para `scraper-service` ·
-**Vue 3** en el frontend, que hoy vive en [otro repositorio](https://github.com/Panditax727/Cacha-el-Precio-Frontend) ·
+**Vue 3 + Vite** en `frontend/`, incorporado con `git subtree` desde
+[el repositorio de Panditax](https://github.com/Panditax727/Cacha-el-Precio-Frontend), que sigue
+siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACION-FRONTEND.md` §11) ·
 **AWS Cognito** como IDaaS · **EC2 con Docker Compose**.
 
 > 🔴 **Antes de tocar nada, lee `docs/INTEGRACION.md`.** El sistema desplegado y lo que dicen los
@@ -24,7 +28,7 @@ Stack: **.NET 10 / ASP.NET Core / C#** para `gateway` (BFF) y `product-service` 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
 | **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 386 líneas |
-| **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 454 líneas |
+| **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 554 líneas |
 | La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 407 líneas |
 | Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
 | Límites de servicios, BFF, persistencia, escalado y ADR | `docs/ARQUITECTURA.md` y `docs/adr/020-*.md` | — |
@@ -43,6 +47,7 @@ módulo en concreto:
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
 | Qué valida el BFF en el código, y cómo se prueba | `gateway/README.md` | 113 líneas |
+| **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 492 líneas |
 | Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 108 líneas |
 | El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 168 líneas |
 | El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 120 líneas |
