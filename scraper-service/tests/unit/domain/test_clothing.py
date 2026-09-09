@@ -25,6 +25,9 @@ def producto(nombre: str, url: str = "https://tienda.cl/producto") -> Product:
         ("Zapatillas running", "https://tienda.cl/1"),
         ("Converse Chuck Taylor", "https://tienda.cl/1"),
         ("Producto Nike", "https://tienda.cl/chaqueta-nike-1"),
+        ("Cardigan tejido", "https://tienda.cl/1"),
+        ("Bikini deportivo", "https://tienda.cl/1"),
+        ("Cinturón de cuero", "https://tienda.cl/1"),
     ],
 )
 def test_acepta_ropa_y_calzado(nombre, url):

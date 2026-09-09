@@ -5,8 +5,14 @@ from scraper.domain.product import Product
 
 
 def prod(nombre):
-    return Product(external_id="X", store="paris", name=nombre, brand="",
-                   price=100, product_url="https://paris.cl/x")
+    return Product(
+        external_id="X",
+        store="paris",
+        name=nombre,
+        brand="",
+        price=100,
+        product_url="https://paris.cl/x",
+    )
 
 
 def test_clasifica_desde_el_nombre():
@@ -18,6 +24,8 @@ def test_clasifica_desde_el_nombre():
         "Pantalon Chino Slim": "Pantalones",
         "Botin Chelsea Cuero": "Botas",
         "Sandalia Mujer Talon": "Sandalias",
+        "Bikini deportivo": "Trajes de baño",
+        "Cinturón de cuero": "Accesorios",
     }
     for nombre, esperada in casos.items():
         assert categoria_de(prod(nombre)) == esperada, nombre
@@ -25,3 +33,7 @@ def test_clasifica_desde_el_nombre():
 
 def test_sin_match_usa_fallback():
     assert categoria_de(prod("Gato Loco Tapiz")) == FALLBACK
+
+
+def test_running_no_convierte_una_polera_en_zapatilla():
+    assert categoria_de(prod("Polera Running Dri-fit Hombre")) == "Poleras"

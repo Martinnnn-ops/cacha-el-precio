@@ -24,22 +24,54 @@ if TYPE_CHECKING:
 FALLBACK = "Vestimenta"
 
 _CATEGORIAS: list[tuple[str, tuple[str, ...]]] = [
-    ("Zapatillas", ("zapatilla", "zapatillas", "calzado", "running", "championes")),
-    ("Botas", ("bota", "botas", "botin", "botines", "bomber")),
+    ("Zapatillas", ("zapatilla", "zapatillas", "calzado", "championes")),
+    ("Botas", ("bota", "botas", "botin", "botines")),
     ("Sandalias", ("sandalia", "sandalias", "chancla", "pantufla", "pantuflas")),
     ("Zapatos", ("zapato", "zapatos", "mocasin", "mocasines")),
     ("Polerones", ("poleron", "polerones", "buzo", "buzos", "hoodie", "sudadera")),
     ("Poleras", ("polera", "poleras", "camiseta", "t-shirt", "tshirt")),
     ("Camisas", ("camisa", "camisas", "blusa", "blusas", "polo")),
-    ("Pantalones", (
-        "pantalon", "pantalones", "jeans", "jogger", "joggers", "legging",
-        "leggings", "calza", "calzas", "short", "shorts", "bermuda",
-    )),
+    (
+        "Pantalones",
+        (
+            "pantalon",
+            "pantalones",
+            "jeans",
+            "jogger",
+            "joggers",
+            "legging",
+            "leggings",
+            "calza",
+            "calzas",
+            "short",
+            "shorts",
+            "bermuda",
+        ),
+    ),
     ("Chaquetas", ("chaqueta", "jacket", "parka", "abrigo", "blazer", "cortaviento", "chaleco")),
     ("Vestidos", ("vestido", "vestidos", "falda", "faldas", "enterito")),
     ("Pijamas", ("pijama", "pijamas")),
     ("Ropa interior", ("boxer", "boxers", "calzoncillo", "sosten", "corpiño")),
     ("Medias", ("calcetin", "calcetines", "media", "medias")),
+    ("Trajes de baño", ("bikini", "bikinis", "banador", "trikini")),
+    (
+        "Accesorios",
+        (
+            "bufanda",
+            "bufandas",
+            "cinturon",
+            "cinturones",
+            "corbata",
+            "corbatas",
+            "gorro",
+            "gorros",
+            "guante",
+            "guantes",
+            "jockey",
+            "sombrero",
+            "sombreros",
+        ),
+    ),
 ]
 
 

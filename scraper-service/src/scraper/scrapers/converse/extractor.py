@@ -1,1 +1,1 @@
-# Extrae el nombre, precio y imagen 
+# Extrae el nombre, precio y imagen
