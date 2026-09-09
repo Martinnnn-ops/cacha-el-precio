@@ -279,6 +279,25 @@ try {
   const st = (() => { setActivePinia(createPinia()); return useComparadorStore() })()
   await st.cargarProductos()
 
+  // ——— cómo se pide la ficha de un producto en las pruebas ———
+  //
+  // Desde el commit 07872b8 la URL del detalle es el slug del nombre y ya no
+  // el id: /producto/polera-basica-de-algodon. Las pruebas siguen razonando
+  // por id, que es lo que identifica al producto en los datos de ejemplo, así
+  // que la traducción vive acá y en un solo sitio.
+  const { slugProducto } = await load('/src/shared/utils/slug.js')
+  const rutaProducto = (id) => `/producto/${slugProducto(st.productoById(id))}`
+
+  // La vista resuelve slug -> id contra el catálogo del store y con ese id
+  // llama a `cargarProducto`. Sustituirlo por un no-op deja la ficha vacía:
+  // el doble tiene que dejar el producto puesto. Lee del catálogo ya cargado,
+  // así que no toca la red y da siempre lo mismo.
+  const sinRed = (store) => {
+    store.cargarProducto = async (id) => {
+      store.producto = store.productoById(id)
+    }
+  }
+
   check('lo más reciente ordena por antigüedad', st.masRecientes[0].id === '3', `${st.masRecientes[0].nombre} (${st.masRecientes[0].agregadoHace}d)`)
   check('lo más visto ordena por visitas', st.masVistos[0].id === '5', `${st.masVistos[0].vistas} visitas`)
   check('ofertas del día ordena por ahorro', st.ofertasDelDia[0].ahorro >= st.ofertasDelDia[1].ahorro, `top ${st.ofertasDelDia[0].ahorro}`)
@@ -424,8 +443,13 @@ try {
     // Se mira el ELEMENTO, no el archivo entero: la primera versión buscaba la
     // cadena «Recién agregado» en todo el fichero y la encontraba… en el
     // comentario que explica por qué se quitó.
+    // El patrón admite otros atributos antes de `class` —hoy hay un v-if que
+    // evita pintar el epígrafe vacío— porque lo que se comprueba es que el
+    // elemento lleve `truncar` y contenga solo la antigüedad, no en qué orden
+    // están escritos sus atributos. Exigir `class` primero hacía fallar la
+    // prueba por una mejora del componente.
     check('el epígrafe de la tarjeta cabe en una línea',
-      /<p class="mono banner__eyebrow truncar">\{\{ antiguedad \}\}<\/p>/.test(banner))
+      /<p [^>]*class="mono banner__eyebrow truncar"[^>]*>\{\{ antiguedad \}\}<\/p>/.test(banner))
     check('  la tarjeta no recorta en silencio lo que crezca',
       /min-height: 168px/.test(banner) && !/^\s*height: 168px/m.test(banner))
     check('  el botón queda al fondo, alineado con el de al lado',
@@ -575,12 +599,13 @@ try {
   check('  y marca esa fila como la mejor', /tarjeta__oferta--mejor[\s\S]{0,220}?tarjeta__tienda[^>]*>H&amp;M/.test(home))
   check('  con el precio correcto', home.includes('$8.990'))
 
-  const detalle = await render('/producto/1', async (s) => {
-    await s.cargarProducto('1')
-    // El watch inmediato de la vista volvería a pedir el producto y a dejarlo
-    // en null; SSR no puede esperar esa promesa. En el navegador sí ocurre y
-    // por eso la vista tiene su estado de carga.
-    s.cargarProducto = async () => {}
+  const detalle = await render(rutaProducto('1'), async (s) => {
+    // El watch inmediato de la vista pide el producto por su cuenta y SSR no
+    // puede esperar esa promesa, así que el catálogo tiene que estar cargado
+    // antes y `cargarProducto` tiene que responder sin red. En el navegador la
+    // espera sí ocurre, y por eso la vista tiene su estado de carga.
+    await s.cargarProductos()
+    sinRed(s)
   })
   check('ProductoDetailView renderiza', detalle.length > 400, `${detalle.length} bytes`)
   check('  muestra dónde comprarla',
@@ -825,14 +850,18 @@ try {
     const p = createPinia()
     setActivePinia(p)
     const st = useComparadorStore()
+    // El producto va también en el catálogo: la vista resuelve el slug de la
+    // URL contra `productos`, no contra `producto`. Si solo estuviera en el
+    // segundo, no lo encontraría y pintaría la ficha como "ya no está".
+    st.productos = [real]
     st.producto = real
     st.tiendas = [{ id: 'catalogo', nombre: 'Precio publicado', color: '#0b5cad' }]
-    st.cargarProducto = async () => {}
+    st.cargarProducto = async () => { st.producto = real }
 
     const router = createRouter({ history: createMemoryHistory(), routes })
     const app = createSSRApp(App)
     app.use(p).use(router)
-    await router.push('/producto/2')
+    await router.push(`/producto/${slugProducto(real)}`)
     await router.isReady()
     const html = await renderToString(app)
 
@@ -1167,10 +1196,9 @@ try {
   console.log('\n=== ficha de producto ===')
   {
     const ver = (id) =>
-      render(`/producto/${id}`, async (st) => {
+      render(rutaProducto(id), async (st) => {
         await st.cargarProductos()
-        st.producto = st.productoById(id)
-        st.cargarProducto = async () => {}
+        sinRed(st)
       })
 
     const completa = await ver('1')
@@ -1234,12 +1262,16 @@ try {
     // buscar un producto pelado en el catálogo: ahora todos tienen ficha, y una
     // prueba que depende de eso deja de comprobar nada en cuanto cambian los
     // datos.
-    const pelada = await render('/producto/1', async (st) => {
+    const pelada = await render(rutaProducto('1'), async (st) => {
       await st.cargarProductos()
       const base = st.productoById('1')
 
-      st.producto = { ...base, specs: [], pros: [], contras: [], destacadas: [] }
-      st.cargarProducto = async () => {}
+      // Aquí no vale `sinRed`: lo que se quiere pintar no es el producto del
+      // catálogo sino esta versión sin ficha, y el watch de la vista pisaría
+      // cualquier cosa que se dejara puesta a mano.
+      st.cargarProducto = async () => {
+        st.producto = { ...base, specs: [], pros: [], contras: [], destacadas: [] }
+      }
     })
 
     check('un producto sin características no deja huecos',
@@ -1306,10 +1338,9 @@ try {
 
   console.log('\n=== gráfico de precios ===')
   {
-    const conHistorial = await render('/producto/1', async (st) => {
+    const conHistorial = await render(rutaProducto('1'), async (st) => {
       await st.cargarProductos()
-      st.producto = st.productoById('1')
-      st.cargarProducto = async () => {}
+      sinRed(st)
     })
 
     const trozo = conHistorial.slice(conHistorial.indexOf('Historial de precios'))
@@ -1391,10 +1422,9 @@ try {
 
   console.log('\n=== enlaces a la tienda ===')
   {
-    const detalle = await render('/producto/1', async (st) => {
+    const detalle = await render(rutaProducto('1'), async (st) => {
       await st.cargarProductos()
-      st.producto = st.productoById('1')
-      st.cargarProducto = async () => {}
+      sinRed(st)
     })
 
     check('la ficha ofrece ir a la tienda', detalle.includes('Ver en'))
@@ -1553,8 +1583,13 @@ try {
         await st.cargarProductos()
 
         if (ruta.startsWith('/producto/')) {
-          st.producto = st.productoById(ruta.split('/').pop())
-          st.cargarProducto = async () => {}
+          // La ruta trae el slug; la vista lo resuelve contra el catálogo y
+          // pide el producto por id. Sin este doble la ficha se pinta como
+          // "ya no está" y el bloque de anuncio pasaría la comprobación sobre
+          // una página de error, que es justo lo que AdSense prohíbe.
+          st.cargarProducto = async (id) => {
+            st.producto = st.productoById(id)
+          }
         }
 
         const router = createRouter({ history: createMemoryHistory(), routes: rutasAnuncio })
@@ -1569,7 +1604,7 @@ try {
       for (const ruta of [
         '/',
         '/comparador',
-        '/producto/1',
+        rutaProducto('1'),
         '/outfits',
         '/armar',
         '/terminos',
