@@ -16,21 +16,21 @@ dist-ssr
 # plantilla, no este.
 .env
 
-# Respaldos y pruebas de una sola máquina: esos sí se quedan fuera.
+# Respaldos de una sola máquina: esos sí se quedan fuera.
 .env.bak*
-.env.humo
 
-# ⚠️ .env.anuncios y .env.fallo NO van aquí, aunque estuvieron hasta el 09-09.
+# ⚠️ .env.anuncios, .env.fallo y .env.humo NO van aquí, aunque estuvieron
+# hasta el 09-09.
 #
-# Los usa `npm run humo` con `mode: 'anuncios'` y `mode: 'fallo'`. Ignorados,
+# Los usa `npm run humo` con mode 'anuncios', 'fallo' y 'humo'. Ignorados,
 # Vite no encontraba nada que cargar y las pruebas no fallaban: pasaban a
 # probar otra cosa. La de «el store no borra lo que ya tenías» terminaba
 # cargando los datos de ejemplo con éxito en vez de provocar el error de red
 # que quería comprobar.
 #
 # Una prueba que solo funciona en la máquina donde alguien creó el archivo a
-# mano no protege a nadie. Ninguno de los dos tiene secretos: son ids públicos
-# y una URL a un puerto que no escucha nadie.
+# mano no protege a nadie. Ninguno tiene secretos: son ids públicos y URLs a
+# localhost.
 
 # Generado en build
 public/sitemap.xml

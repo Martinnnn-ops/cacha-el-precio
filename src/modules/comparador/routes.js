@@ -33,6 +33,17 @@ async function elSlugExiste(slug) {
   return store.productos.some((producto) => slugProducto(producto) === slug)
 }
 
+// Destino del 404 conservando la URL que se pidió. La ruta se llama
+// `no-encontrado` pero su path es el comodín `/:pathMatch(.*)*`: hay que
+// pasarle el camino troceado o Vue Router compone la raíz.
+export function rutaNoEncontrada(ruta) {
+  return {
+    name: 'no-encontrado',
+    params: { pathMatch: ruta.replace(/^\//, '').split('/') },
+    replace: true,
+  }
+}
+
 export default [
   {
     path: '/',
@@ -75,7 +86,12 @@ export default [
     // conserva su propio redirect para ese caso. Aquí se cubre el que importa
     // para lo de arriba: la entrada directa, que es como llegan los enlaces
     // compartidos y los rastreadores.
+    // Se conserva la URL que falló en vez de mandar a `/`. La ruta del 404 es
+    // el comodín `/:pathMatch(.*)*`, así que nombrarla sin parámetros compone
+    // la raíz: se veía el 404 con «localhost:5173/» en la barra, y al recargar
+    // aparecía la portada. Quien se equivoca al escribir necesita ver QUÉ URL
+    // no existe para poder corregirla.
     beforeEnter: async (to) =>
-      (await elSlugExiste(to.params.slug)) || { name: 'no-encontrado' },
+      (await elSlugExiste(to.params.slug)) || rutaNoEncontrada(to.path),
   },
 ]
