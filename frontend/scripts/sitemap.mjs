@@ -18,7 +18,7 @@ const SITIO = (process.env.VITE_SITE_URL ?? 'https://cacha-el-precio.com').repla
 // productos sin duplicar el valor a mano (en .env.production está VITE_API_BASE_URL).
 const env = loadEnv('production', process.cwd(), '')
 
-const API = (env.VITE_API_BASE_URL ?? 'https://api.cacha-el-precio.com/api').replace(
+const API = (env.VITE_API_BASE_URL ?? 'https://api.cacha-el-precio.com').replace(
   /\/+$/,
   '',
 )
@@ -59,7 +59,7 @@ try {
   // el sitemap no debe tumbar la compilación.
   let productos = []
   try {
-    const respuesta = await fetch(`${API}/products`, {
+    const respuesta = await fetch(`${API}/productos`, {
       headers: {
         Accept: 'application/json',
         Version: VERSION,
@@ -67,12 +67,12 @@ try {
     })
 
     if (!respuesta.ok) {
-      console.warn(`sitemap · GET /api/products → ${respuesta.status}: sin productos`)
+      console.warn(`sitemap · GET /productos → ${respuesta.status}: sin productos`)
     } else {
       productos = await respuesta.json()
     }
   } catch (error) {
-    console.warn(`sitemap · GET /api/products no disponible: ${error.message}`)
+    console.warn(`sitemap · GET /productos no disponible: ${error.message}`)
   }
 
   const paginas = routes.filter(

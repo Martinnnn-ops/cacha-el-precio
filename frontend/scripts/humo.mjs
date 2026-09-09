@@ -1968,14 +1968,14 @@ try {
   const salud = await pedir('/health')
   check(`el servicio responde en ${API}`, salud.estado === 200, `/health ${salud.estado}`)
 
-  const sinVersion = await pedir('/api/products')
+  const sinVersion = await pedir('/productos')
   check(
     'el gateway responde aunque el navegador no envíe la versión',
     sinVersion.estado === 200,
     `HTTP ${sinVersion.estado}`,
   )
 
-  const conVersion = await pedir('/api/products', { Version: VERSION })
+  const conVersion = await pedir('/productos', { Version: VERSION })
   check(
     `con Version: ${VERSION} responde 200`,
     conVersion.estado === 200,
@@ -2016,7 +2016,7 @@ try {
       categorias.every((c) => c.nombre !== ''))
   }
 
-  const cors = await fetch(`${API}/api/products`, {
+  const cors = await fetch(`${API}/productos`, {
     headers: { Version: VERSION, Origin: 'http://localhost:5173' },
   })
   const permite = cors.headers.get('access-control-allow-origin')

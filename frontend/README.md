@@ -15,23 +15,54 @@ Sin `VITE_API_BASE_URL` definida la capa de servicios responde con los datos de
 `src/modules/comparador/data/`, así que la aplicación funciona entera sin
 backend. Copia `.env.example` a `.env` para apuntar a uno real.
 
-## Conexión con el Product Service
+## Conexión con el backend
 
 ```bash
 cp .env.example .env     # ya viene apuntando al proxy
 npm run dev
 ```
 
-En desarrollo el frontend habla con el gateway ASP.NET Core de
-`cacha-el-precio` en `localhost:8080`. El navegador pide `/api` al servidor de
-Vite y el proxy conserva ese prefijo al reenviar.
+El frontend habla **solo con el gateway (el BFF)**, nunca con un servicio
+interno. El gateway publica su propio contrato en español —`/productos`,
+`/catalogos`, `/seguimiento`— y traduce hacia `product-service`, que por dentro
+usa otros nombres. El porqué está en el
+[ADR-021](../docs/adr/021-contrato-publico-en-el-bff.md): si el navegador
+pidiera el mismo path que publica el servicio interno, el gateway sería un
+intermediario transparente y ese nombre viajaría hasta el navegador de cada
+usuario.
 
 | Qué pasa | Dónde se resuelve |
 |---|---|
 | El contrato vigente es `1.0` | `core/api/http.js` manda `Version: 1.0` en cada petición |
-| Las rutas públicas son `GET /api/products` y `GET /api/products/{id}` | `VITE_API_BASE_URL=/api` y el servicio llama a `/products` |
-| El frontend y el gateway ocupan puertos distintos en desarrollo | el proxy de Vite reenvía `/api` a `BACKEND_URL=http://localhost:8080` |
-| ASP.NET y el gateway pueden devolver Problem Details o `{ error, mensaje }` | el interceptor traduce ambos formatos a mensajes mostrables |
+| Las rutas públicas son `GET /productos` y `GET /productos/{id}` | el servicio del módulo las llama tal cual |
+| El frontend y el gateway ocupan puertos distintos en desarrollo | el proxy de Vite intercepta `/api`, **le quita el prefijo** y reenvía a `BACKEND_URL=http://localhost:8080` |
+| El gateway puede devolver Problem Details o `{ estado, error, mensaje }` | el interceptor traduce ambos formatos a mensajes mostrables |
+
+El prefijo `/api` existe **solo** para que el proxy sepa qué interceptar en
+desarrollo: con una sola regla quedan cubiertas todas las rutas del backend,
+las de hoy y las que vengan. Sin él habría que enumerarlas una por una, y cada
+ruta nueva se olvidaría fallando solo en desarrollo. En producción
+`VITE_API_BASE_URL` es la URL del gateway sin ningún sufijo.
+
+### Levantar el backend para trabajar contra él
+
+Desde la raíz del monorepo:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml \
+  --env-file .env --env-file cognito.env up -d product-service gateway caddy
+```
+
+⚠️ **Los dos `-f` no son opcionales.** El compose principal es el que corre en
+la EC2 y su Caddy pide certificado a Let's Encrypt para el dominio real; en una
+máquina de desarrollo ese intento falla y consume la cuota **del dominio de
+producción**. El override local no declara dominio y sirve HTTP plano.
+
+Con el backend arriba, las pruebas de humo comprueban además la conexión real:
+
+```bash
+BACKEND_URL=http://127.0.0.1:8080 npm run humo
+```
 
 > **Para producción el proxy no sirve.** O el front y la API van bajo el mismo
 > dominio, o hay que habilitar CORS en el gateway ASP.NET Core.
@@ -237,15 +268,24 @@ Dos piezas que sostienen el aspecto:
 
 ### Contrato consumido
 
-| Endpoint | Acceso | Versión |
-|---|---|---|
-| `GET /api/products` | público | `Version: 1.0` |
-| `GET /api/products/{id}` | público | `Version: 1.0` |
-| `POST/PUT/DELETE /api/products` | requiere token y scope de escritura | `Version: 1.0` |
+Contrato del BFF, verificado con `curl` contra el sistema corriendo:
 
-El frontend sólo consume las operaciones públicas. Las categorías y tiendas
-se derivan de la respuesta del listado; no se consulta el alias legado
-`/catalogos`.
+| Endpoint | Acceso | Sin token |
+|---|---|---|
+| `GET /productos` | público | 200 |
+| `GET /productos/{id}` | público | 200 · 404 si no existe |
+| `GET /catalogos` | público | 200 |
+| `POST/PUT/DELETE /productos` | token con scope de escritura | **401** |
+| `GET /api/yo` | autenticado | **401** |
+| `GET /seguimiento` · `POST/DELETE /seguimiento/{id}` | autenticado | **401** |
+| `GET /health` | público | 200 |
+
+Todas con `Version: 1.0`.
+
+El frontend sólo consume las operaciones públicas. Las categorías y tiendas se
+derivan de la respuesta del listado y no de `/catalogos`, que hoy devuelve una
+lista fija escrita en el código del gateway y cuyos ids no corresponden a
+ningún campo del producto.
 
 ---
 
