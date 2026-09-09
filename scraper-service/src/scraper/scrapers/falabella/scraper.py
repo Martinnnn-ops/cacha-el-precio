@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from scraper.scrapers.base.scraper_http import ClienteHttp, ScraperHttp
+from scraper.domain.product import Product
+from scraper.scrapers.base.scraper_http import ClienteHttp, DescargaFallida, ScraperHttp
 from scraper.scrapers.falabella.parser import FalabellaParser
 
 
@@ -20,4 +21,18 @@ class FalabellaScraper(ScraperHttp):
         delay: float = 1.0,
         reintentos: int = 3,
     ) -> None:
-        super().__init__(http, parser or FalabellaParser(), delay=delay, reintentos=reintentos)
+        self._falabella_parser = parser or FalabellaParser()
+        super().__init__(http, self._falabella_parser, delay=delay, reintentos=reintentos)
+
+    def scrape(self, url: str) -> list[Product]:
+        """Acepta tanto una ficha individual como un listado de categoria."""
+        html = self._descargar(url)
+        if html is None:
+            raise DescargaFallida(url)
+
+        productos = self._falabella_parser.parse_listing(html)
+        if productos:
+            return productos
+
+        producto = self._falabella_parser.parse_product(html, url=url)
+        return [producto] if producto is not None else []

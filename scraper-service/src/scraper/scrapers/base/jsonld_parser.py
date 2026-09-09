@@ -17,6 +17,7 @@ detalles por tienda.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -58,6 +59,7 @@ class ParserJsonLd:
             currency=self._moneda(oferta, og),
             source_image_url=self._imagen(datos) or og.get("og:image"),
             available=self._disponible(oferta),
+            sizes=self._tallas(datos, oferta),
         )
 
     def _completar(self, sopa: BeautifulSoup, html: str) -> dict[str, Any]:
@@ -90,7 +92,7 @@ class ParserJsonLd:
         for etiqueta in sopa.find_all("script", type="application/ld+json"):
             try:
                 cargado = json.loads(etiqueta.string or "")
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 continue  # un JSON-LD roto no debe tumbar el scrapeo
             for item in cargado if isinstance(cargado, list) else [cargado]:
                 candidatos.extend(self._buscar_productos(item))
@@ -101,15 +103,17 @@ class ParserJsonLd:
         return max(candidatos, key=self._utilidad)
 
     def _buscar_productos(self, nodo: Any) -> list[dict[str, Any]]:
-        """Recoge los nodos Product, mirando tambien dentro de @graph."""
+        """Recoge Product/ProductGroup aunque estén anidados fuera de @graph."""
+        if isinstance(nodo, list):
+            return [producto for hijo in nodo for producto in self._buscar_productos(hijo)]
         if not isinstance(nodo, dict):
             return []
         encontrados: list[dict[str, Any]] = []
         tipo = nodo.get("@type")
         tipos = tipo if isinstance(tipo, list) else [tipo]
-        if "Product" in tipos:
+        if "Product" in tipos or "ProductGroup" in tipos:
             encontrados.append(nodo)
-        for hijo in nodo.get("@graph", []):
+        for hijo in nodo.values():
             encontrados.extend(self._buscar_productos(hijo))
         return encontrados
 
@@ -141,6 +145,15 @@ class ParserJsonLd:
             for o in ofertas:
                 if isinstance(o, dict):
                     return o
+        variantes = datos.get("hasVariant", [])
+        if isinstance(variantes, dict):
+            variantes = [variantes]
+        if isinstance(variantes, list):
+            for variante in variantes:
+                if isinstance(variante, dict):
+                    oferta = self._primera_oferta(variante)
+                    if oferta:
+                        return oferta
         return {}
 
     # ---------- normalizacion ----------
@@ -156,13 +169,26 @@ class ParserJsonLd:
         Llega como "79990.00" o "11990" segun la tienda. Se devuelve en
         entero porque el peso chileno no tiene decimales.
         """
-        crudo: Any = oferta.get("price")
+        crudo: Any = oferta.get("price") or oferta.get("lowPrice")
         if crudo is None:
             crudo = og.get("product:price:amount")
         if crudo is None:
             return None
+        texto = re.sub(r"[^0-9,.-]", "", str(crudo)).strip()
+        if not texto:
+            return None
+
+        # En Chile 79.990 y 79,990 suelen ser separadores de miles. En
+        # cambio 79990.50 es un decimal real. CLP se redondea a entero.
+        if re.fullmatch(r"\d{1,3}(?:[.,]\d{3})+", texto):
+            texto = texto.replace(".", "").replace(",", "")
+        elif "," in texto and "." not in texto:
+            texto = texto.replace(",", ".")
+        elif "," in texto and "." in texto:
+            texto = texto.replace(".", "").replace(",", ".")
+
         try:
-            precio = round(float(str(crudo).replace(",", "")))
+            precio = round(float(texto))
         except ValueError:
             return None
         # Un 0 en un catalogo de tienda no significa "gratis": significa
@@ -172,11 +198,7 @@ class ParserJsonLd:
         return precio if precio > 0 else None
 
     def _moneda(self, oferta: dict[str, Any], og: dict[str, str]) -> str:
-        return (
-            self._texto(oferta.get("priceCurrency"))
-            or og.get("product:price:currency")
-            or "CLP"
-        )
+        return self._texto(oferta.get("priceCurrency")) or og.get("product:price:currency") or "CLP"
 
     def _disponible(self, oferta: dict[str, Any]) -> bool:
         """
@@ -203,6 +225,35 @@ class ParserJsonLd:
         if isinstance(imagen, list):
             return self._texto(imagen[0]) if imagen else None
         return self._texto(imagen)
+
+    def _tallas(self, datos: dict[str, Any], oferta: dict[str, Any]) -> list[str]:
+        """Lee tallas schema.org, incluidas variantes y números decimales."""
+        valores: list[Any] = [datos.get("size"), oferta.get("size")]
+        variantes = datos.get("hasVariant", [])
+
+        if isinstance(variantes, dict):
+            variantes = [variantes]
+        if isinstance(variantes, list):
+            for variante in variantes:
+                if not isinstance(variante, dict):
+                    continue
+                valores.append(variante.get("size"))
+                oferta_variante = self._primera_oferta(variante)
+                valores.append(oferta_variante.get("size"))
+
+        tallas: list[str] = []
+        for valor in valores:
+            items = valor if isinstance(valor, list) else [valor]
+            for item in items:
+                if not isinstance(item, (str, int, float)):
+                    continue
+                # La coma sin espacio puede ser decimal (42,5); con espacio
+                # se interpreta como una lista ("38, 39").
+                for parte in re.split(r"\s*[/;|]\s*|,\s+", str(item)):
+                    normalizada = parte.strip().upper().replace(",", ".")
+                    if normalizada and normalizada not in tallas:
+                        tallas.append(normalizada)
+        return tallas
 
     def _id_externo(self, datos: dict[str, Any], oferta: dict[str, Any], enlace: str) -> str:
         """SKU de la tienda; si no lo publica, el ultimo tramo de la URL."""

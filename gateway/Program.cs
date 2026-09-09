@@ -230,4 +230,3 @@ static bool HasScope(ClaimsPrincipal user, string expectedScope)
         .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         .Contains(expectedScope, StringComparer.Ordinal);
 }
-

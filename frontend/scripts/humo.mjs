@@ -125,14 +125,23 @@ try {
       '/src/modules/comparador/services/producto.adapter.js',
     )
 
-    // Forma exacta que devuelve ProductResponse en el backend ASP.NET Core.
+    // Forma exacta que devuelve ProductResponse en el backend ASP.NET Core,
+    // más una fila plana para cubrir el despliegue gradual desde el contrato
+    // anterior.
     const FILAS = [
-      { id: 2, externalId: 'rip-2', store: 'Ripley', name: 'Polera básica', brand: 'Basement', category: 'Poleras', price: 9990, sizes: { xs: true, s: true }, description: 'Algodón', url: 'https://example.com/2', image: null, active: true },
-      { id: 4, store: 'Ripley', name: 'Polera manga larga', brand: 'Basement', category: 'Poleras', price: 15990, sizes: { m: true }, active: false },
-      { id: 5, store: 'Zara', name: 'Jeans slim', brand: 'Zara', category: ' Pantalones ', price: 29990, sizes: { l: true, xl: true }, active: true },
+      { id: 2, canonicalKey: 'polera-basica', name: 'Polera básica', brand: 'Basement', category: 'Poleras', description: 'Algodón', image: null, visits: 17, createdAt: '2026-09-01T00:00:00Z', offers: [
+        { externalId: 'rip-2', store: 'Ripley', price: 9990, sizes: ['XS', 'S'], url: 'https://example.com/2', image: 'https://example.com/2.jpg', active: true, updatedAt: '2026-09-08T00:00:00Z' },
+        { externalId: 'par-2', store: 'Paris', price: 10990, sizes: ['36', '37.5'], url: 'https://example.com/par-2', image: null, active: true, updatedAt: '2026-09-09T00:00:00Z' },
+      ] },
+      { id: 4, canonicalKey: 'polera-manga-larga', name: 'Polera manga larga', brand: 'Basement', category: 'Poleras', offers: [
+        { externalId: 'rip-4', store: 'Ripley', price: 15990, sizes: ['M'], active: false },
+      ] },
+      { id: 5, canonicalKey: 'jeans-slim', name: 'Jeans slim', brand: 'Zara', category: ' Pantalones ', offers: [
+        { externalId: 'zar-5', store: 'Zara', price: 29990, sizes: ['L', 'XL'], active: true },
+      ] },
       { id: 8, store: null, name: 'Sin tienda', brand: '', category: '', price: 100, sizes: {}, active: true },
-      { id: 9, store: 'Paris', name: '', brand: 'X', category: 'Poleras', price: 100, sizes: {}, active: true },
-      { id: 10, store: 'Paris', name: 'Rota', brand: 'X', category: 'Poleras', price: 'x', sizes: {}, active: true },
+      { id: 9, name: '', brand: 'X', category: 'Poleras', offers: [{ store: 'Paris', price: 100 }] },
+      { id: 10, name: 'Rota', brand: 'X', category: 'Poleras', offers: [{ store: 'Paris', price: 'x' }] },
     ]
 
     const adaptados = adaptarProductos(FILAS)
@@ -146,11 +155,17 @@ try {
       adaptados.find((p) => p.id === '8').categoria === '')
     check('  active=false se traduce a sin stock',
       adaptados.find((p) => p.id === '4').precios[0].stock === false)
-    check('  adapta marca y externalId',
+    check('  adapta marca y canonicalKey',
       adaptados.find((p) => p.id === '2').marca === 'Basement' &&
-      adaptados.find((p) => p.id === '2').codigo === 'rip-2')
-    check('  convierte el objeto sizes en tallas disponibles',
+      adaptados.find((p) => p.id === '2').codigo === 'polera-basica')
+    check('  conserva tallas de ropa y numéricas',
       adaptados.find((p) => p.id === '2').precios[0].tallas.join(',') === 'XS,S')
+    check('  conserva tallas numéricas con decimal',
+      adaptados.find((p) => p.id === '2').precios[1].tallas.join(',') === '36,37.5')
+    check('  usa la imagen de una oferta cuando falta en el producto',
+      adaptados.find((p) => p.id === '2').imagen === 'https://example.com/2.jpg')
+    check('  conserva las visitas del producto',
+      adaptados.find((p) => p.id === '2').vistas === 17)
     check('  sin precio de lista no inventa descuento',
       adaptados.every((p) => p.precios[0].precioLista === null))
     check('  historial vacío, no undefined',
@@ -159,7 +174,9 @@ try {
     check('descarta filas sin nombre', !adaptados.some((p) => p.nombre === ''))
     check('descarta precios que no son números', !adaptados.some((p) => p.nombre === 'Rota'))
 
-    check('cada precio queda asociado a su tienda',
+    check('un mismo producto conserva varias ofertas',
+      adaptados.find((p) => p.id === '2').precios.length === 2)
+    check('cada oferta queda asociada a su tienda',
       adaptados.find((p) => p.id === '2').precios[0].tienda === 'ripley' &&
       adaptados.find((p) => p.id === '5').precios[0].tienda === 'zara')
     check('sin tienda usa una fuente neutra',
@@ -174,9 +191,9 @@ try {
 
     const { precioMasBajo: pmb, ahorroMaximo: am } = await load('/src/shared/utils/precios.js')
     const polera = adaptados.find((p) => p.id === '2')
-    check('el cálculo de precio sigue funcionando con una sola oferta',
+    check('el cálculo elige la oferta más barata',
       pmb(polera).precio === 9990)
-    check('  y el ahorro es cero: no hay nada que comparar', am(polera) === 0)
+    check('  y calcula el ahorro entre tiendas', am(polera) === 1000)
     check('  un producto sin stock no tiene precio más bajo',
       pmb(adaptados.find((p) => p.id === '4')) === null)
   }
@@ -2627,11 +2644,22 @@ console.log('\n=== listo para publicar ===')
       ?.map((m) => m.slice(7, -1)) ?? [],
   )
 
-  const rutasReales = rutasDelRouter
+  const coincideConRuta = (pathname) => [...rutasDelRouter].some((patron) => {
+    if (patron.includes('pathMatch')) return false
+    if (!patron.includes(':')) return patron === pathname
+
+    const expresion = patron
+      .split('/')
+      .map((segmento) => (segmento.startsWith(':') ? '[^/]+' : segmento))
+      .join('/')
+
+    return new RegExp(`^${expresion}$`).test(pathname)
+  })
 
   check('  todas sus URLs son rutas reales del router',
-    urls.every((u) => rutasReales.has(new URL(u).pathname)),
-    urls.map((u) => new URL(u).pathname).join(' '))
+    urls.every((u) => coincideConRuta(new URL(u).pathname)),
+    urls.filter((u) => !coincideConRuta(new URL(u).pathname))
+      .map((u) => new URL(u).pathname).join(' ') || `${urls.length} rutas válidas`)
 
   // El script de despliegue tiene que existir y ser ejecutable.
   check('existe el script de despliegue', leer('scripts/desplegar.sh') !== null)

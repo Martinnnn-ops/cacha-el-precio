@@ -432,6 +432,32 @@ PYTHONPATH=scraper-service/src uv run --no-project --with pytest --with pydantic
   pytest -q scraper-service/tests/unit/services/test_product_service_sync.py
 ```
 
+(08-09 · catálogo multi-oferta) Product Service pasó de SQLite al esquema PostgreSQL `product`
+y separó producto canónico de oferta. `canonicalKey` agrupa el mismo modelo entre tiendas y
+`(store, externalId)` hace el POST idempotente; la respuesta entrega `offers[]`, imágenes por
+oferta y tallas abiertas como `S`, `38` o `42.5`. La decisión y el riesgo del matching heurístico
+quedaron en el ADR-021.
+
+El scraper amplió las categorías de ropa, accesorios y baño, lee JSON-LD anidado,
+`ProductGroup`, `AggregateOffer`, precios chilenos y tallas de variantes. El frontend ya traduce
+varias ofertas a una sola ficha. Docker Engine rootless quedó instalado para ejecutar Postgres,
+scraper y Product Service sin depender de privilegios del sistema.
+
+(08-09 · catálogo visible) Se reemplazó en Falabella el barrido de fichas —bloqueado con `403`—
+por la lectura de `__NEXT_DATA__` en listados públicos de Poleras y Zapatillas. Un barrido de
+seis páginas guardó y sincronizó 357 observaciones sin fallos; después del agrupamiento canónico,
+el API entregó 221 productos reales, todos con imagen. También se retiró de la base el producto
+manual de prueba que apuntaba a `images.example`.
+
+Comandos de verificación nuevos:
+
+```bash
+dotnet build CachaElPrecio.slnx --configuration Release
+dotnet format CachaElPrecio.slnx --verify-no-changes
+cd scraper-service && uv run pytest -m "not red"
+docker compose up --build -d postgres product-service scraper-api
+```
+
 **Panditax —**
 
 **Del equipo:**

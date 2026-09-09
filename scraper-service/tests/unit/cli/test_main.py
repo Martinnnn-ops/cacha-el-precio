@@ -36,8 +36,8 @@ def test_tiendas_dice_cual_tiene_sitemap(sin_base, capsys):
         for linea in capsys.readouterr().out.splitlines()
         if "\t" in linea
     }
-    assert "sitemap disponible" in lineas["falabella"]
-    assert "hay que dar las URLs" in lineas["converse"]
+    assert "fuente automatica disponible" in lineas["falabella"]
+    assert "URLs autorizadas" in lineas["converse"]
 
 
 def test_barrer_sin_base_sale_con_codigo_3(sin_base, caplog):
@@ -50,9 +50,17 @@ def test_barrer_sin_base_sale_con_codigo_3(sin_base, caplog):
     assert e.value.code == 3
     mensajes = " ".join(r.getMessage() for r in caplog.records)
     assert "no se pudo conectar" in mensajes
-    assert "docker compose up -d db" in mensajes   # dice como arreglarlo
+    assert "docker compose up -d db" in mensajes  # dice como arreglarlo
 
 
 def test_tienda_sin_sitemap_no_revienta(sin_base):
     """Converse no tiene sitemap: debe avisar, no lanzar excepcion."""
     assert main(["descubrir", "converse"]) == 2
+
+
+def test_falabella_descubre_listados_en_lugar_de_fichas(sin_base, capsys):
+    assert main(["descubrir", "falabella", "--limite", "2"]) == 0
+    urls = capsys.readouterr().out.splitlines()
+    assert len(urls) == 2
+    assert all("/category/" in url for url in urls)
+    assert urls[1].endswith("?page=2")

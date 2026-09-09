@@ -6,46 +6,36 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Product_Service.Migrations
 {
     /// <inheritdoc />
-    public partial class AddVisitsAndCreatedAt : Migration
+    public partial class AddVisitsAndCreatedAtPostgreSql : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTime>(
+            migrationBuilder.AddColumn<DateTimeOffset>(
                 name: "CreatedAt",
+                schema: "product",
                 table: "Products",
-                type: "TEXT",
+                type: "timestamp with time zone",
                 nullable: false,
-                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+                defaultValueSql: "CURRENT_TIMESTAMP");
 
             migrationBuilder.AddColumn<int>(
                 name: "Visits",
+                schema: "product",
                 table: "Products",
-                type: "INTEGER",
+                type: "integer",
                 nullable: false,
                 defaultValue: 0);
 
-            // Los productos que ya estaban no tienen fecha de alta, porque hasta
-            // ahora nadie la guardaba. EF rellena la columna nueva con el valor
-            // por defecto del tipo —el año 1—, y la ficha traduciría eso a
-            // «agregado hace 739.000 días».
-            //
-            // Se les pone la fecha de esta migración: no es cuándo entraron de
-            // verdad, pero sí lo único que consta —existían para entonces— y
-            // deja «Lo más reciente» ordenando de forma utilizable desde el
-            // primer día. La comparación va contra 1900 y no contra la fecha
-            // exacta para no depender de cómo SQLite haya escrito el texto.
-            migrationBuilder.Sql(
-                "UPDATE \"Products\" SET \"CreatedAt\" = CURRENT_TIMESTAMP " +
-                "WHERE \"CreatedAt\" < '1900-01-01';");
-
             migrationBuilder.CreateIndex(
                 name: "IX_Products_CreatedAt",
+                schema: "product",
                 table: "Products",
                 column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Products_Visits",
+                schema: "product",
                 table: "Products",
                 column: "Visits");
         }
@@ -55,18 +45,22 @@ namespace Product_Service.Migrations
         {
             migrationBuilder.DropIndex(
                 name: "IX_Products_CreatedAt",
+                schema: "product",
                 table: "Products");
 
             migrationBuilder.DropIndex(
                 name: "IX_Products_Visits",
+                schema: "product",
                 table: "Products");
 
             migrationBuilder.DropColumn(
                 name: "CreatedAt",
+                schema: "product",
                 table: "Products");
 
             migrationBuilder.DropColumn(
                 name: "Visits",
+                schema: "product",
                 table: "Products");
         }
     }

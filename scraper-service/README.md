@@ -42,9 +42,9 @@ scrapper esquema              # crea las tablas
 
 ```bash
 scrapper tiendas                                   # que se puede scrapear
-scrapper descubrir falabella --limite 20           # URLs desde el sitemap
-scrapper barrer falabella --sitemap --limite 200   # barrido completo
-scrapper barrer converse --url https://...         # una URL suelta
+scrapper descubrir falabella --limite 6            # listados públicos configurados
+scrapper barrer falabella --sitemap --limite 6      # hasta 360 productos
+scrapper barrer converse --url https://...          # solo con permiso de la tienda
 
 uvicorn scraper.api.app:app --reload               # API en :8000
 ```
@@ -91,7 +91,7 @@ Comprobado en su `robots.txt` el 03/09/2026.
 
 | Tienda | robots.txt | Como extrae | Estado |
 |---|---|---|---|
-| **falabella.com** | permite todo | JSON-LD + availability | funcionando |
+| **falabella.com** | permite categorías; su WAF bloquea las fichas al bot | `__NEXT_DATA__` del listado | funcionando |
 | **paris.cl** | permite todo | JSON-LD | funcionando |
 | **simple.ripley.cl** | permite, excluye reviews y APIs | JSON-LD dentro de `@graph` | funcionando |
 | **hites.com** | permite (35 disallow) | JSON-LD + availability | funcionando |
@@ -99,7 +99,20 @@ Comprobado en su `robots.txt` el 03/09/2026.
 | converse.cl | **bloquea todos los bots** salvo Google, Bing, WhatsApp y Facebook | JSON-LD | parser hecho, no se puede barrer |
 | nike.cl | devuelve 403 hasta en robots.txt | — | inviable |
 
-Barrido real del 03/09/2026, 8 URLs por tienda:
+Barrido real de Falabella del 08/09/2026, usando seis listados públicos:
+
+```text
+[falabella] 6/6 URLs, 357 guardados, 5 fuera de vestimenta,
+             357 sincronizados, 0 fallos de descarga, 0 fallos de sync
+```
+
+Cada listado aporta hasta 60 artículos e incluye SKU, precio vigente,
+marca, tallas e imagen. Esto evita descargar cientos de fichas individuales
+que actualmente responden `403`, y reduce de forma importante la carga sobre
+la tienda. Las categorías y cantidad de páginas se configuran con
+`FALABELLA_LISTING_CATEGORIES` y `FALABELLA_LISTING_PAGES`.
+
+Barrido histórico del 03/09/2026, 8 URLs por tienda:
 
 ```
 [falabella] 8/8 URLs, 4 guardados, 4 sin producto, 0 fallos
@@ -134,11 +147,11 @@ cuentan aparte.
 y el sitio devuelve **403** a cualquier User-Agent que no sea de
 navegador. El parser funciona (probado contra HTML guardado), pero
 barrer la tienda en vivo significa saltarse una restriccion explicita.
-Falabella, Paris y Ripley lo permiten y ademas publican sus URLs en
-sitemaps, asi que son el camino recomendado.
+Falabella puede poblarse desde sus listados públicos; Paris y Ripley
+publican sus URLs en sitemaps, así que son el camino recomendado.
 
-El User-Agent por defecto se identifica (`CachaElPrecioBot/1.0`) y las
-tres tiendas permitidas lo aceptan sin problema.
+El User-Agent por defecto se identifica (`CachaElPrecioBot/1.0`). No se
+suplanta un navegador para saltarse bloqueos de los sitios.
 
 ## Desarrollo
 

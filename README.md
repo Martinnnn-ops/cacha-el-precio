@@ -20,10 +20,11 @@ tiendas, conserva sus observaciones de precio y permite comprobar si un descuent
 Frontend Vue ──▶ API Gateway ──▶ Caddy ──▶ Gateway ASP.NET Core
                                               │
                                               ▼
-                                      Product Service C# ──▶ SQLite
+                                      Product Service C# ──┐
                                               ▲
                                               │ HTTP / API v1
-Scraper Python ──▶ PostgreSQL + S3 ────────────┘
+Scraper Python ──▶ PostgreSQL + S3 ◀───────────┘
+                   schemas scraper/product
 ```
 
 Los servicios de aplicación se estandarizaron en **C# y ASP.NET Core 10**. El scraper permanece
@@ -42,21 +43,21 @@ real y se necesiten reintentos o backpressure. La decisión completa y sus costo
 | Pieza | Tecnología | Persistencia |
 |---|---|---|
 | Gateway/BFF | ASP.NET Core 10 | seguimiento temporal en memoria |
-| Product Service | ASP.NET Core 10 + EF Core | SQLite, propiedad del servicio |
+| Product Service | ASP.NET Core 10 + EF Core | PostgreSQL, esquema `product` |
 | Scraper | Python 3.14 + FastAPI | PostgreSQL; imágenes en S3 |
 | Identidad | AWS Cognito | administrada por AWS |
 | Entrada pública | API Gateway + Caddy | — |
 | Frontend | Vue 3 + Pinia + Vite | en `frontend/`, incorporado con `git subtree` |
 
-PostgreSQL no se eliminó porque el scraper sí lo usa para historial y datos de extracción. SQLite
-evita infraestructura compartida para Product Service, pero sus límites de escritura concurrente
-se deben reevaluar antes de escalar horizontalmente.
+PostgreSQL aloja ambos servicios sin mezclar su propiedad: el scraper usa el esquema `scraper` y
+Product Service usa `product`. Esto permite varias réplicas del catálogo y respaldo coherente sin
+que un servicio consulte las tablas internas del otro.
 
 ## Contrato entre scraper y Product Service
 
-El scraper sincroniza por HTTP usando `Version: 1.0`. La identidad idempotente es el par
-`(store, externalId)`, con un índice único en SQLite. Crea con `POST /api/products` y actualiza con
-`PUT /api/products/{id}`; también envía marca, categoría, URL, imagen, descripción y estado.
+El scraper sincroniza por HTTP usando `Version: 1.0`. `canonicalKey` agrupa el mismo modelo entre
+tiendas y `(store, externalId)` identifica cada oferta. `POST /api/products` es un upsert que
+agrega o actualiza una oferta con precio, tallas alfabéticas/numéricas, URL, imagen y estado.
 
 ## Requisitos
 
@@ -140,6 +141,7 @@ BACKEND_URL=http://127.0.0.1:8080 npm run humo
 |---|---|
 | [ARQUITECTURA](docs/ARQUITECTURA.md) | vista técnica y límites de servicios |
 | [ADR-020](docs/adr/020-csharp-y-simplificacion-de-servicios.md) | migración a C# y simplificación |
+| [ADR-021](docs/adr/021-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta en PostgreSQL |
 | [TAREAS](docs/TAREAS.md) | estado, prioridades y flujo de trabajo |
 | [BITÁCORA](docs/BITACORA.md) | avances y evidencia cronológica |
 | [INTEGRACIÓN](docs/INTEGRACION.md) | deuda descubierta al integrar ramas anteriores |
