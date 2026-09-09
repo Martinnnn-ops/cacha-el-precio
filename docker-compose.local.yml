@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Cacha el Precio · lo que cambia SOLO en tu máquina
+# ─────────────────────────────────────────────────────────────────────────────
+#
+#  Se usa junto al compose principal, nunca solo:
+#
+#      docker compose -f docker-compose.yml -f docker-compose.local.yml \
+#        --env-file .env --env-file cognito.env up -d
+#
+#  El compose principal es el que corre en la EC2 (ADR-008), así que no puede
+#  llevar nada que solo sirva para desarrollo. Todo eso vive acá.
+#
+#  ⚠️ Se llama .local.yml y no .override.yml A PROPÓSITO. Docker Compose carga
+#  docker-compose.override.yml solo, sin que nadie lo pida: bastaría con tener
+#  el archivo para que un `docker compose up` en la EC2 arrancara con la
+#  configuración de desarrollo sin avisar. Este hay que nombrarlo con -f, y eso
+#  lo hace imposible por accidente.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: cachaelprecio
+
+services:
+  caddy:
+    volumes:
+      # El Caddyfile de producción declara el sitio api.cacha-el-precio.com, y
+      # Caddy intenta sacarle certificado a Let's Encrypt al arrancar. En local
+      # ese desafío no lo puede resolver nadie, y los intentos fallidos
+      # consumen la cuota DEL DOMINIO REAL: la EC2 se quedaría sin poder
+      # renovar por culpa de una prueba en el portátil de alguien.
+      - ./caddy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+    # !override REEMPLAZA la lista del compose principal en vez de sumarse a
+    # ella: Compose fusiona las listas, así que sin esto el 80 y el 443
+    # seguirían publicados. Queda solo el puerto plano, y atado a 127.0.0.1:
+    # un backend de pruebas no tiene por qué quedar accesible desde el wifi de
+    # la universidad.
+    ports: !override
+      - "127.0.0.1:8080:8080"
+
+  # El scraper y su base no hacen falta para trabajar en el frontend ni en el
+  # contrato, y postgres tarda en arrancar. Se levantan a mano cuando toque:
+  #     docker compose ... up -d postgres scraper-api

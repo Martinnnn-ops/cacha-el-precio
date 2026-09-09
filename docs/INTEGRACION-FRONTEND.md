@@ -619,3 +619,105 @@ ni el de Orion. Se acumularon commit a commit, cada uno por un motivo razonable 
 legible, un `v-if` para no pintar un elemento vacío—, y ninguno de esos cambios avisó de que había
 roto una prueba, porque ya había otras en rojo. Es exactamente cómo un conjunto de pruebas deja de
 servir: no de golpe, sino de a poco.
+
+---
+
+## 13. Fase 2 · El backend, ejecutado por primera vez · 09-09
+
+### Sí compila, y sí arranca
+
+Era la incógnita de §0: el PR #18 se mergeó sin que nadie hubiera ejecutado nunca ese código.
+
+```bash
+docker compose --env-file .env --env-file cognito.env build product-service gateway
+```
+
+Las dos imágenes compilan sin un solo error. Product Service **aplica sus migraciones de EF Core
+al arrancar** (`InitialCreate` e `IntegrateScraperContract`) y queda escuchando en el 8081; el
+gateway, en el 8080. La cadena `Caddy → gateway → product-service` responde de punta a punta.
+
+### 🔴 Levantar el proyecto en local peleaba con producción
+
+El `Caddyfile` del repositorio es **el de producción**: declara el sitio `api.cacha-el-precio.com`,
+así que Caddy, al arrancar, hace lo que se le pidió — pedirle a Let's Encrypt un certificado para
+ese dominio. En una máquina de desarrollo el desafío no lo puede resolver nadie, porque el dominio
+apunta a la EC2.
+
+**Y el daño no se queda en tu máquina.** Let's Encrypt limita los intentos fallidos por dominio y
+por hora. Si los tres levantamos el compose en local, se puede agotar la cuota **del dominio real**
+y dejar a la EC2 sin poder renovar su certificado. Cualquiera que clone el repositorio y haga
+`docker compose up` lo provoca sin enterarse.
+
+Resuelto con dos archivos nuevos:
+
+| Archivo | Qué hace |
+|---|---|
+| `caddy/Caddyfile.local` | Sin nombre de dominio y con `auto_https off`: Caddy no intenta sacar ningún certificado. Sirve HTTP plano en el 8080 y **sigue pasando por el gateway**, nunca directo a product-service |
+| `docker-compose.local.yml` | Monta ese Caddyfile y **reemplaza** los puertos (`!override`) para que el 80 y el 443 dejen de publicarse. El 8080 queda atado a `127.0.0.1` |
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml \
+  --env-file .env --env-file cognito.env up -d
+```
+
+> **Se llama `.local.yml` y no `.override.yml` a propósito.** Compose carga
+> `docker-compose.override.yml` solo, sin que nadie lo pida: bastaría con que el archivo existiera
+> para que un `docker compose up` en la EC2 arrancara con la configuración de desarrollo sin
+> avisar. Este hay que nombrarlo con `-f`, y eso lo hace imposible por accidente.
+
+Nota sobre las variables: el `.env` local es de agosto y no tiene `COGNITO_CLIENT_IDS_VALIDOS`,
+que vive en `cognito.env`. En vez de fusionar los archivos a mano se le pasan los dos a Compose con
+`--env-file` repetido, que es más difícil de romper y no toca la configuración de nadie.
+
+### El contrato, medido a través de la cadena completa
+
+No copiado del código: pedido con `curl` al sistema corriendo.
+
+| | Ruta | Código |
+|---|---|---|
+| **Anónimas** | `GET /health` · `/productos` · `/catalogos` · `/api/products` | **200** |
+| | `GET /productos/{id}` con id inexistente | **404** |
+| **Escritura sin token** | `POST` · `PUT` · `DELETE` en `/productos` y `/api/products` | **401** |
+| **Identidad sin token** | `GET /api/yo` · `/api/admin/diagnostico` | **401** |
+| **Seguimiento sin token** | `GET` · `POST` · `DELETE /seguimiento` | **401** |
+| **Ruta inexistente** | `GET /no-existe-esta-ruta` | **404** |
+
+**Los 401 son la evidencia del 40% del EP1**, y ahora están medidos sobre el sistema corriendo, no
+argumentados desde el código. El 403 necesita un token real y queda para la Fase 5.
+
+> ⚠️ `product-service` **no valida nada por su cuenta**: en el 8081 acepta escrituras sin
+> credenciales. Lo protege la red, no la aplicación — el compose lo publica solo en `127.0.0.1`
+> y en la EC2 igual. Es una decisión razonable para un servicio interno, pero conviene saber que
+> es la única barrera: quien tenga una consola en esa máquina escribe en el catálogo.
+
+### 🔴 Hallazgo: dos tiendas con la misma prenda, y una desaparece
+
+Se cargaron tres productos de prueba, dos de ellos **la misma prenda en dos tiendas distintas** —
+que es exactamente el dato que el scraper existe para producir. El frontend, con su capa de
+servicios de verdad, hace esto:
+
+```
+  id=1  hym     $  8990  slug=polera-basica-de-algodon
+  id=2  zara    $ 12990  slug=polera-basica-de-algodon     ← el mismo slug
+  id=3  ripley  $ 39990  slug=jeans-corte-recto-azul
+
+  --- resolución de slug, como la hace la ficha ---
+  ✅ /producto/polera-basica-de-algodon  → llega a id=1 (se pedía id=1)
+  ❌ /producto/polera-basica-de-algodon  → llega a id=2... no: llega a id=1
+  ✅ /producto/jeans-corte-recto-azul    → llega a id=3 (se pedía id=3)
+```
+
+El slug se genera del **nombre**, y dos ofertas de la misma prenda tienen el mismo nombre. La
+ficha resuelve con `productos.find(...)`, que devuelve **la primera**. La oferta de Zara no tiene
+ninguna URL que lleve a ella: existe en el listado, y al hacer clic te lleva a la de H&M.
+
+Esto cambia la naturaleza del problema que §7 tenía como 🟡 *«¿se agrupa por externalId?»*. No es
+una funcionalidad pendiente: **es un defecto de corrección que aparece en cuanto hay datos reales**,
+y encima aparece en silencio. También ensucia el `sitemap.xml`, que emitiría dos URLs idénticas.
+
+Y refuerza lo que el [ADR-021](adr/021-contrato-publico-en-el-bff.md) dejó abierto: agrupar las
+ofertas por `(store, externalId)` **es trabajo del BFF**, no del navegador. Un BFF que devuelve un
+producto con sus ofertas dentro resuelve de una vez la comparación de precios, el slug único y el
+sitemap. Hacerlo en el cliente obliga además a bajarse el catálogo entero.
+
+**Decisión para la Fase 3/4**, y hay que tomarla antes de tocar el adaptador.

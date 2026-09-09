@@ -59,7 +59,13 @@ node_modules/
 dist/
 dist-ssr/
 .vite/
+# Viene de la plantilla de Vite: ahí `*.local` significa "archivos de esta
+# máquina" (.env.local y compañía). En la raíz del monorepo la regla es
+# demasiado ancha y se llevó por delante caddy/Caddyfile.local, que sí es
+# configuración compartida: la que permite levantar el proyecto sin que Caddy
+# le pida certificados a Let's Encrypt para el dominio de producción.
 *.local
+!caddy/Caddyfile.local
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
