@@ -435,3 +435,59 @@ PYTHONPATH=scraper-service/src uv run --no-project --with pytest --with pydantic
 **Panditax —**
 
 **Del equipo:**
+
+---
+
+### 09-09 · El frontend entra al monorepo, y el arnés de pruebas vuelve a servir
+
+**Martín —** sesión larga, en la rama `feature/frontend-en-monorepo`. Diecisiete commits.
+
+**Qué se hizo, en orden:**
+
+1. **Decisión de contrato** ([ADR-021](adr/021-contrato-publico-en-el-bff.md)). El PR #1 del
+   frontend lo dejó pidiendo `/api/products`, el mismo path que publica `product-service`. Eso
+   convierte al gateway en intermediario transparente y manda el nombre del servicio interno al
+   navegador de cada usuario. El contrato público pasa a ser el del BFF, en español.
+2. **El frontend entró con `git subtree`**, sin `--squash`: los 18 commits conservan su autor
+   (15 de Panditax). En un trabajo evaluado en parte por el aporte individual, `git log` es la
+   evidencia de quién hizo qué.
+3. **`npm run humo` pasó de 55 fallos a 0.** Ya fallaba antes —el mismo número en el repositorio
+   original y en el commit anterior al PR #1—, así que llevaba tiempo sin avisar de nada.
+4. **El backend C# se ejecutó por primera vez.** Compila, arranca y aplica sus migraciones solo.
+   Nadie lo había corrido nunca: el PR #18 decía que Docker no estaba instalado donde se preparó.
+5. **Fase 3:** el frontend conectado al backend, commit a commit, cada uno probado contra el
+   sistema corriendo.
+6. **Revisión de la rama entera**, que encontró ocho defectos —tres graves, los tres introducidos
+   esa misma sesión— y se arreglaron todos.
+7. **Fase 4:** vuelven el contador de visitas y la fecha de alta que había borrado el PR #18.
+
+**Lo que costó, que es lo que conviene recordar:**
+
+- **Cuatro archivos que el `.gitignore` desaparecía en silencio** (`.env.fallo`, `.env.anuncios`,
+  `.env.humo` y `caddy/Caddyfile.local`). Reglas heredadas de plantillas —el `*.local` de Vite, el
+  `.env.*` genérico— que en un monorepo salen más anchas de lo que quien las escribió pensaba. Una
+  de esas ausencias tenía una prueba **en verde sin probar nada**: corría con los datos de ejemplo
+  creyendo que hablaba con el backend.
+- **SQLite no acepta `DEFAULT CURRENT_TIMESTAMP` al añadir una columna.** La migración de
+  `CreatedAt` falló con «Cannot add a column with non-constant default» y el contenedor entró en
+  bucle. Es el ejemplo concreto que le faltaba a la deuda «SQLite vs PostgreSQL»: allí habría
+  funcionado tal cual.
+- **Una fecha sin zona horaria vale menos que ninguna.** `createdAt` llegaba sin la `Z`, y un
+  navegador lee una marca ISO sin zona como hora local: en Chile un producto creado hace un minuto
+  parecía creado tres horas en el futuro.
+- **Levantar el proyecto en local peleaba con producción.** El `Caddyfile` del repositorio es el de
+  la EC2, así que Caddy pedía certificado a Let's Encrypt para el dominio real desde el portátil.
+  Los intentos fallidos consumen la cuota **del dominio de verdad**.
+
+**Lo que queda pendiente y no depende de una sola persona:**
+
+- 🗣️ **La identidad de producto compartida entre tiendas.** Hoy la aplicación lista ofertas
+  sueltas y no compara precios, que es su razón de ser. El `externalId` es el código interno de
+  cada tienda, así que agrupar por él no junta nada. Es tema de equipo.
+- 🗣️ **Retirar las rutas `/api/products*` del gateway.** El ADR-021 dice que no son contrato
+  público y el frontend ya no las usa, pero siguen mapeadas: quitarlas toca el carril de Orion.
+- 🗣️ **Reconciliar los dos User Pools de Cognito**, y conseguir el *client secret* de Google.
+
+**Panditax —**
+
+**Del equipo:**

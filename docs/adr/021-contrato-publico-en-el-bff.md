@@ -48,12 +48,18 @@ la forma de su respuesta, ese cambio llega hasta el navegador de gente que tiene
 
 ```
 GET    /productos              GET /productos/{id}         GET /catalogos
+POST   /productos/{id}/visitas
 GET    /seguimiento            POST /seguimiento/{id}      DELETE /seguimiento/{id}
 GET    /api/yo                 GET /health
 ```
 
-Las rutas `/api/products*` del gateway **dejan de ser parte del contrato público** y se retiran del
-borde. `product-service` las conserva: son su interfaz interna, y el gateway es su único cliente.
+Las rutas `/api/products*` del gateway **dejan de ser parte del contrato público**.
+`product-service` las conserva: son su interfaz interna, y el gateway es su único cliente.
+
+> ⚠️ **Siguen mapeadas en el gateway al 09-09.** La decisión es que no son contrato público y que
+> el frontend no las consume —eso ya está hecho—, pero retirarlas del código toca el carril de
+> Orion, y `AGENTS.md` pide avisar antes. Se retiran cuando el equipo lo hable. Mientras tanto,
+> este documento dice lo que hay: dos familias mapeadas, una sola pública.
 
 Se elige el español y no el inglés porque el resto del sistema ya está en español —los documentos,
 los commits, los mensajes de error del propio gateway (`{estado, error, mensaje}`)— y porque un
@@ -75,6 +81,23 @@ artículo entre tiendas: **hoy eso no lo hace nadie**, y hacerlo en el navegador
 el catálogo entero para agrupar en el cliente. Ese es el trabajo que convierte al gateway en un
 BFF de verdad, y se decide aparte.
 
+## Actualización · 09-09
+
+Dos puntos de esta decisión dejaron de estar abiertos al implementarla:
+
+- **`/catalogos` ya no miente.** Devolvía seis categorías fijas escritas en `Program.cs`, con ids
+  del 1 al 6 que no correspondían a ningún campo del producto. Ahora deriva las categorías del
+  catálogo real, con su conteo.
+- **El BFF transforma datos, no solo nombres.** Ese `/catalogos` derivado es la primera ruta que
+  hace algo con la respuesta en vez de reenviarla. Sigue siendo una sola: el resto continúa
+  aislando el nombre y no la carga útil, y el trabajo grande —agrupar ofertas por producto— sigue
+  pendiente de que exista una identidad compartida entre tiendas.
+
+Se añadió además `POST /productos/{id}/visitas`, **público**. Es una excepción deliberada a que
+toda escritura exija token: no escribe nada que el usuario controle —suma uno a un contador, sin
+cuerpo y sin respuesta con datos— y pedir sesión para contar una vista dejaría «Lo más visto»
+midiendo solo a quien inicia sesión.
+
 ## Consecuencias
 
 ### Positivas
@@ -92,10 +115,13 @@ BFF de verdad, y se decide aparte.
   avisa antes de retirarlas, según la regla de `AGENTS.md`;
 - mientras el passthrough siga siendo passthrough, el argumento del aislamiento es parcial y hay
   que presentarlo como tal;
-- `/catalogos` sigue devolviendo una lista fija escrita en `Program.cs`, con ids que no
-  corresponden a ningún campo del producto. Es contrato público y hoy miente;
-- las rutas `by-category`, `by-price` y `by-size` del gateway desaparecen del borde sin
-  reemplazo: nadie las consumía, pero conviene registrarlo por si alguien contaba con ellas.
+- ~~`/catalogos` devuelve una lista fija~~ — resuelto el 09-09, ver la actualización de arriba;
+- las rutas `by-category`, `by-price` y `by-size` salen del contrato público sin reemplazo: nadie
+  las consumía, pero conviene registrarlo por si alguien contaba con ellas;
+- `POST /productos/{id}/visitas` es una escritura sin autenticar, y eso hay que poder defenderlo:
+  no acepta cuerpo, no devuelve datos y solo puede sumar uno a un contador, así que el peor abuso
+  posible es inflar un ranking. Si algún día ese número decidiera algo más que el orden de una
+  sección, habría que limitarlo por IP o exigir sesión.
 
 ## Condiciones para revisar la decisión
 

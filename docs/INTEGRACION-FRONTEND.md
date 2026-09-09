@@ -824,3 +824,95 @@ las escribió tenía en mente. Conviene mirar con esa lupa cualquier `.gitignore
 - 🗣️ **La identidad de producto compartida entre tiendas** — tema del equipo, no decisión de una
   persona. Sin ella la aplicación lista ofertas sueltas y no compara precios, que es su razón de
   ser. El slug con la tienda arregla el defecto de alcanzabilidad, no el fondo.
+
+---
+
+## 15. Revisión de la rama y Fase 4 · 09-09
+
+### La revisión, antes de seguir
+
+Se pasó una revisión a los 13 commits de la rama. Encontró **8 defectos, y tenía razón en los
+ocho**; cada uno se comprobó ejecutando, no leyendo. Tres eran graves, y **los tres los había
+introducido el trabajo de esta sesión**:
+
+| | Qué pasaba | Cómo se comprobó |
+|---|---|---|
+| 🔴 | Con la API caída, **todo enlace válido acababa en 404**. `cargarProductos` nunca lanza —captura el fallo y lo deja en `error`—, así que el `try/catch` del guard era código muerto, el catálogo llegaba vacío y ningún slug coincidía | Apagando el gateway: antes 404, ahora «Estamos con problemas · Reintentar», y al levantarlo el botón recupera la ficha sin recargar |
+| 🔴 | **Página en blanco** al abrir un enlace compartido: el guard pedía el catálogo y eso bloquea el enrutado, así que no se montaba ni el layout ni el esqueleto | En el navegador, entrada en frío |
+| 🔴 | El **sitemap emitía N veces la misma URL inexistente**: `slugProducto` recibía filas crudas de la API, con `name` y no `nombre`, y devolvía la cadena literal `producto` | Generándolo contra el backend: 3 productos, 3 entradas `/producto/producto` |
+
+El guard pasó a ser **síncrono**: decide solo con el catálogo que ya está en memoria —la
+navegación dentro de la aplicación, de donde sale casi todo el tráfico— y en frío deja pasar para
+que la vista lo resuelva con su esqueleto y su estado de error. Cubre el caso que importa sin
+pagar el precio en la ruta común.
+
+Los otros cinco: el recorte a 60 caracteres se aplicaba antes de añadir la tienda; el manejador de
+rechazo de la caché la borraba sin comprobar que siguiera siendo la suya; `rutaNoEncontrada`
+recibía una ruta ya codificada y Vue Router la codificaba otra vez (`%2520`); y dos comprobaciones
+renderizaban con el store vacío, que es justo el caso en que el guard ya no afirma nada.
+
+> **Lo que hay que quedarse de esto:** ninguno de los tres graves se veía leyendo el código. Los
+> tres aparecieron al ejecutar el sistema en condiciones que no son la feliz — la API caída, la
+> entrada en frío, el sitemap contra datos reales.
+
+### Fase 4 · vuelve lo que el PR #18 borró
+
+| | |
+|---|---|
+| **Visitas** | `Visits` en la entidad, migración de EF Core, `POST /productos/{id}/visitas` **anónimo**, y las 31 líneas del frontend restauradas tal como estaban |
+| **Fecha de alta** | `CreatedAt` en UTC, puesta por el servicio |
+| **`/catalogos`** | derivado del catálogo real en vez de una lista fija |
+
+**El incremento lo hace la base de datos**, con `ExecuteUpdateAsync`:
+
+```sql
+UPDATE Products SET Visits = Visits + 1 WHERE ProductId = @id
+```
+
+Leer el valor, sumarle uno en C# y volver a guardarlo haría que dos visitas simultáneas leyeran el
+mismo número y una se perdiera. Aquí no puede pasar, porque el que suma es el motor.
+
+**Ninguno de los dos campos está en `ProductRequest`, a propósito.** Si `visits` viniera en el
+cuerpo, cualquiera con el scope de escritura pondría el número que quisiera; si viniera
+`createdAt`, el scraper podría fechar un producto en el futuro y quedarse para siempre el primer
+puesto de «Lo más reciente».
+
+#### 🔴 SQLite no deja añadir una columna con default no constante
+
+Lo natural para `CreatedAt` era `DEFAULT CURRENT_TIMESTAMP`. SQLite lo rechaza:
+
+```
+SQLite Error 1: 'Cannot add a column with non-constant default'
+```
+
+La migración no corría y el contenedor entraba en bucle de reinicio. Se resolvió poniendo la fecha
+en la aplicación. **Es el ejemplo concreto que le faltaba a la deuda «SQLite vs PostgreSQL»** del
+[ADR-016](adr/016-product-service-y-modelos-sin-dto.md) y del punto 8 de
+[`INTEGRACION.md`](INTEGRACION.md): en PostgreSQL esto habría funcionado tal cual. Conviene tenerlo
+a mano para la defensa, porque es una limitación real y verificable, no una opinión.
+
+La migración además **rellena los productos que ya existían** con su propia fecha. EF los habría
+dejado en el año 1 y la ficha diría «agregado hace 739.000 días».
+
+#### 🔴 Una fecha sin zona horaria vale menos que ninguna
+
+La prueba nueva falló nada más añadirla: `createdAt` llegaba como `2026-09-09T03:49:04`, **sin la
+`Z`**. SQLite devuelve el `DateTime` con `Kind = Unspecified` y System.Text.Json no escribe la
+zona. Un navegador interpreta una marca ISO sin zona como **hora local**, así que en Chile (UTC−3)
+un producto creado hace un minuto parecía creado tres horas en el futuro, y la antigüedad salía
+negativa.
+
+El frontend lo detectaba y mostraba «sin dato» en vez de mentir —correcto de su parte—, pero el
+dato estaba mal en el backend. Se serializa marcado como UTC con `DateTime.SpecifyKind`.
+
+### Verificado end-to-end
+
+| Qué | Resultado |
+|---|---|
+| Abrir la ficha de Ripley | visitas 0 → 1 |
+| Recargar la misma ficha | sigue en 1 — una visita por día y por navegador |
+| `POST /productos/999999/visitas` | 404 |
+| Portada, «Lo más visto» | ordena por visitas reales: 3, 1, 1 |
+| Copy | «1 visita», no «1 visitas» |
+| `GET /catalogos` | `[{Pantalones: 1}, {Poleras: 2}]`, derivado del catálogo |
+| `npm run humo` | **0 fallos** |

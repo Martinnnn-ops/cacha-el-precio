@@ -37,6 +37,7 @@ Todas las llamadas utilizan el encabezado `Version: 1.0`.
 | POST | `/api/products` | crea y devuelve `201` |
 | PUT | `/api/products/{id}` | reemplaza y devuelve `204` |
 | DELETE | `/api/products/{id}` | elimina el producto |
+| POST | `/api/products/{id}/visits` | suma una visita; `204`, o `404` si no existe |
 
 Ejemplo de escritura:
 
@@ -65,6 +66,23 @@ Ejemplo de escritura:
 
 `(store, externalId)` tiene un índice único filtrado. Los productos creados manualmente pueden
 omitir ambos valores, pero la sincronización del scraper siempre los envía.
+
+### Dos campos que la respuesta trae y la petición no acepta
+
+`ProductResponse` incluye `visits` y `createdAt`, y **`ProductRequest` no los tiene**. No es un
+olvido:
+
+- **`visits`** solo cambia por `POST /api/products/{id}/visits`, que suma uno con una única
+  sentencia `UPDATE ... SET Visits = Visits + 1`. Si se pudiera mandar en el cuerpo, cualquiera con
+  el scope de escritura podría poner el número que quisiera; y si se hiciera leyendo, sumando y
+  guardando, dos visitas simultáneas leerían el mismo valor y una se perdería.
+- **`createdAt`** la pone el servicio en UTC al crear. Si viniera del cliente, el scraper podría
+  fechar un producto en el futuro y quedarse para siempre el primer puesto de «Lo más reciente».
+
+Se serializa marcada como UTC (`DateTime.SpecifyKind`), con la `Z` final. Sin eso SQLite la
+devuelve con `Kind = Unspecified`, System.Text.Json la escribe sin zona, y un navegador interpreta
+una marca ISO sin zona como **hora local**: en Chile un producto recién creado parecía creado tres
+horas en el futuro.
 
 ## Migraciones
 

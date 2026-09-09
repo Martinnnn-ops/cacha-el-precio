@@ -27,30 +27,30 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 386 líneas |
-| **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 826 líneas |
-| La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 407 líneas |
+| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 398 líneas |
+| **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 918 líneas |
+| La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 408 líneas |
 | Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
 | Límites de servicios, BFF, persistencia, escalado y ADR | `docs/ARQUITECTURA.md` y `docs/adr/020-*.md` | — |
-| Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 399 líneas |
+| Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 401 líneas |
 | **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 241 líneas |
-| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 201 líneas |
-| Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 225 líneas |
+| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 202 líneas |
+| Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 409 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 493 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
-| Presentar el proyecto a alguien de afuera | `README.md` | 177 líneas |
+| Presentar el proyecto a alguien de afuera | `README.md` | 155 líneas |
 
 Y el README de cada módulo, que es el más corto y el que más rinde cuando la tarea es sobre ese
 módulo en concreto:
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| Qué valida el BFF en el código, y cómo se prueba | `gateway/README.md` | 113 líneas |
-| **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 492 líneas |
-| Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 108 líneas |
-| El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 168 líneas |
-| El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 120 líneas |
+| Qué valida el BFF en el código, y cómo se prueba | `gateway/README.md` | 77 líneas |
+| **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 543 líneas |
+| Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 120 líneas |
+| El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 167 líneas |
+| El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 119 líneas |
 | El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |
 
 **No cargues todos los documentos.** Casi ninguna tarea necesita más de dos.

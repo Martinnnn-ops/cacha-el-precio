@@ -71,13 +71,19 @@ BACKEND_URL=http://127.0.0.1:8080 npm run humo
 
 ```
 API   Product { id, externalId, store, name, brand, category, price,
-                sizes, description, url, image, active }
-App   Producto { id, nombre, categoria, precios[], historial[] }
+                sizes, description, url, image, active,
+                visits, createdAt }
+App   Producto { id, nombre, categoria, precios[], historial[],
+                 vistas, agregadoHace }
 ```
 
 `services/producto.adapter.js` traduce una cosa en la otra. `category` alimenta
 los filtros, `store` identifica la fuente de precio y `sizes` se transforma en
-la lista de tallas disponibles.
+la lista de tallas disponibles. `visits` y `createdAt` son los dos campos por
+los que ordena la portada; si el adaptador dejara de producirlos con el nombre
+que el store espera, las secciones «Lo más visto» y «Lo más reciente»
+ordenarían por nada **sin dar ningún error** — ya pasó, y por eso `npm run
+humo` lo comprueba contra datos reales.
 
 #### Lo que falta para que esto sea un comparador
 
@@ -102,7 +108,7 @@ Mientras tanto la interfaz se degrada sola en vez de mentir:
 | precio de lista | no pinta el porcentaje de descuento |
 | stock por talla | usa `active` para la oferta y `sizes` para cada talla |
 | historial de precios | la ficha muestra «todavía no tenemos historial» |
-| contador de visitas | no se envía ninguna llamada porque el backend no ofrece ese endpoint |
+| ~~contador de visitas~~ | ✅ resuelto: la ficha registra una visita por día y por navegador, y «Lo más visto» ordena por el número real |
 
 ---
 
@@ -275,6 +281,7 @@ Contrato del BFF, verificado con `curl` contra el sistema corriendo:
 | `GET /productos` | público | 200 |
 | `GET /productos/{id}` | público | 200 · 404 si no existe |
 | `GET /catalogos` | público | 200 |
+| `POST /productos/{id}/visitas` | público | 204 |
 | `POST/PUT/DELETE /productos` | token con scope de escritura | **401** |
 | `GET /api/yo` | autenticado | **401** |
 | `GET /seguimiento` · `POST/DELETE /seguimiento/{id}` | autenticado | **401** |
@@ -283,9 +290,13 @@ Contrato del BFF, verificado con `curl` contra el sistema corriendo:
 Todas con `Version: 1.0`.
 
 El frontend sólo consume las operaciones públicas. Las categorías y tiendas se
-derivan de la respuesta del listado y no de `/catalogos`, que hoy devuelve una
-lista fija escrita en el código del gateway y cuyos ids no corresponden a
-ningún campo del producto.
+derivan de la respuesta del listado, no de `/catalogos`: ya no hace falta un
+viaje extra cuando el dato viene dentro de cada producto.
+
+`POST /productos/{id}/visitas` es la única escritura que el frontend hace sin
+sesión, y puede serlo porque no manda nada: el servidor solo suma uno a un
+contador. La ficha la registra **una vez por día y por navegador**, para que
+recargar la página no infle el número.
 
 ---
 
