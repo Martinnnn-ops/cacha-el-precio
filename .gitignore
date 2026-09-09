@@ -3,6 +3,23 @@
 .env
 .env.*
 !.env.example
+
+# Excepciones del frontend, con la ruta completa A PROPÓSITO.
+#
+# El front versiona su configuración de build porque NO son secretos: todo lo
+# que empieza con VITE_ Vite lo incrusta en el bundle, así que el client id
+# público de Cognito y el de AdSense ya son legibles para cualquiera que abra
+# el JavaScript del sitio. Son públicos por construcción, no por descuido.
+# El client secret de Google no está acá: vive solo dentro de Cognito.
+#
+# Van con `frontend/` delante y no como `!.env.production` suelto: así un
+# `.env.production` en la raíz del repo —que sí llevaría credenciales de AWS o
+# de la base— sigue ignorado. La regla de arriba falla cerrada, y estas cuatro
+# líneas son la única puerta: cada una nombra el archivo exacto que abre.
+!frontend/.env.example
+!frontend/.env.production
+!frontend/.env.live
+!frontend/.env.test
 *.pem
 *.p12
 *.key

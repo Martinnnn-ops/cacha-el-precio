@@ -23,7 +23,8 @@ Stack: **.NET 10 / ASP.NET Core / C#** para `gateway` (BFF) y `product-service` 
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 370 líneas |
+| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 386 líneas |
+| **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 454 líneas |
 | La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 407 líneas |
 | Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
 | Límites de servicios, BFF, persistencia, escalado y ADR | `docs/ARQUITECTURA.md` y `docs/adr/020-*.md` | — |
