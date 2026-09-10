@@ -141,9 +141,23 @@ Compartir el servidor no comparte la propiedad del dato: ningún servicio consul
 RabbitMQ se retiró porque no tenía productores ni consumidores. Hoy la sincronización directa
 representa el sistema con menos piezas y permite detectar el fallo en la misma ejecución.
 
-El costo es real: no hay amortiguación de ráfagas, entrega durable ni DLQ. Se reintroducirá una
-cola cuando exista más de un consumidor, cuando una caída de Product Service no pueda tolerar un
-catálogo atrasado o cuando las ráfagas superen su capacidad.
+El costo es real: no hay amortiguación de ráfagas, entrega durable ni DLQ.
+
+> 🟡 **DECISIÓN PENDIENTE — se revisa DESPUÉS del EP1.** Que RabbitMQ se haya retirado del
+> `docker-compose.yml` **no cierra la discusión**: la mensajería sigue siendo una decisión abierta
+> de la arquitectura, no un tema descartado. Se retiró porque no tenía productores ni consumidores
+> *todavía*, y sacar una pieza que nadie usa es distinto de decidir que nunca hará falta.
+>
+> **Las tres señales que reabren la decisión**, cualquiera de ellas basta:
+> 1. Aparece un **segundo consumidor** del mismo hecho (el primero será el aviso de reposición por talla).
+> 2. Una caída de Product Service **deja de poder tolerar** un catálogo atrasado — hoy la captura
+>    simplemente se pierde, y eso es exactamente lo que una cola resuelve.
+> 3. Las **ráfagas del scraper** superan la capacidad de la ingesta síncrona.
+>
+> Y va junto con la otra mitad de la pregunta: **cola de trabajo (RabbitMQ) frente a registro de
+> eventos (Kafka)**. No compiten — una reparte trabajo que se hace una vez, el otro guarda hechos
+> que se releen. Cuál entra primero, y si entran los dos, se decide con el proyecto avanzado.
+> Ver [Kafka en Cacha el Precio](https://claude.ai/code/artifact/91ce0327-725d-401d-9c91-a7179cf77293).
 
 ## Tecnología
 

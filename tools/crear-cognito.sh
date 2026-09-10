@@ -24,7 +24,8 @@ set -uo pipefail
 REGION="${REGION:-us-east-1}"
 NOMBRE_POOL="cacha-el-precio"
 IDENTIFICADOR_API="https://api.cachaelprecio.cl"   # identificador logico, no tiene que existir
-SALIDA="$(cd "$(dirname "$0")/.." && pwd)/cognito.env"
+RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+SALIDA="$RAIZ/cognito.env"
 
 verde()  { printf '\033[0;32m%s\033[0m\n' "$1"; }
 rojo()   { printf '\033[0;31m%s\033[0m\n' "$1"; }
@@ -163,14 +164,74 @@ SCOPE_INGESTA="$IDENTIFICADOR_API/ingesta"
 #    SIN secreto: un React corre en el navegador y no puede guardar secretos.
 #    Se protege con PKCE, que lo pone la libreria del frontend, no el pool.
 # --------------------------------------------------------------------------
-titulo "4. App client del frontend (SPA)"
-CLIENT_ID="$(aws_ cognito-idp list-user-pool-clients --user-pool-id "$POOL_ID" --max-results 60 \
-             --query "UserPoolClients[?ClientName=='frontend'].ClientId | [0]" --output text)"
-if [[ "$CLIENT_ID" != "None" && -n "$CLIENT_ID" ]]; then
-  verde "  ya existe: $CLIENT_ID"
+# ---------------------------------------------------------------------------
+# 4. Proveedor de Google
+#    Esto era el agujero: el script nunca creaba el IdP, asi que quien
+#    necesitaba "entrar con Google" levantaba un pool a mano y aparecia el
+#    segundo pool. Ahora lo crea aca, y por eso el paso va ANTES del app
+#    client: el cliente tiene que poder nombrarlo.
+#
+#    Las credenciales NO viven en el repo. Se leen de google.env (que esta en
+#    .gitignore) o del entorno. Si no estan, el script sigue sin Google en vez
+#    de fallar: todo lo demas se puede montar igual.
+# ---------------------------------------------------------------------------
+titulo "4. Proveedor de Google"
+
+[[ -f "$RAIZ/google.env" ]] && . "$RAIZ/google.env"
+GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}"
+GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
+
+# La direccion a la que Google devuelve al usuario. Es SIEMPRE esta forma, y
+# como el dominio lleva el id de la cuenta, se puede saber de antemano para
+# las tres cuentas y declararlas todas hoy en Google. Ese es el truco: el dia
+# de la migracion no se toca Google.
+URL_RETORNO_GOOGLE="$URL_LOGIN/oauth2/idpresponse"
+
+PROVEEDORES='"COGNITO"'
+if [[ -n "$GOOGLE_CLIENT_ID" && -n "$GOOGLE_CLIENT_SECRET" ]]; then
+  TMPG="$(mktemp -d)"
+  cat > "$TMPG/google.json" <<JSON
+{
+  "UserPoolId": "$POOL_ID",
+  "ProviderName": "Google",
+  "ProviderType": "Google",
+  "ProviderDetails": {
+    "client_id": "$GOOGLE_CLIENT_ID",
+    "client_secret": "$GOOGLE_CLIENT_SECRET",
+    "authorize_scopes": "openid email profile"
+  },
+  "AttributeMapping": { "email": "email", "username": "sub" }
+}
+JSON
+  if aws_ cognito-idp describe-identity-provider --user-pool-id "$POOL_ID"        --provider-name Google >/dev/null 2>&1; then
+    aws_ cognito-idp update-identity-provider --cli-input-json "file://$TMPG/google.json"       >/dev/null && verde "  actualizado" || rojo "  no se pudo actualizar"
+  else
+    aws_ cognito-idp create-identity-provider --cli-input-json "file://$TMPG/google.json"       >/dev/null && verde "  creado" || rojo "  no se pudo crear"
+  fi
+  rm -rf "$TMPG"
+  PROVEEDORES='"COGNITO","Google"'
 else
-  TMP="$(mktemp -d)"
-  cat > "$TMP/spa.json" <<JSON
+  gris "  sin GOOGLE_CLIENT_ID/SECRET: se omite (todo lo demas se monta igual)"
+  gris "  ponlos en google.env, en la raiz del repo, y vuelve a correr esto"
+fi
+gris  "  declara ESTA direccion en Google Cloud Console:"
+verde "  $URL_RETORNO_GOOGLE"
+
+titulo "5. App client del frontend (SPA)"
+
+# El sitio publico. Se declara con TODAS sus direcciones de retorno de una vez
+# —las locales y las de produccion— para no tener que volver aca al desplegar.
+# SIN secreto: el codigo del frontend lo ve cualquiera, y por eso el flujo es
+# code + PKCE.
+#
+# Ojo con update-user-pool-client: REEMPLAZA la configuracion entera, o sea que
+# todo campo que no se le pase vuelve a su valor por defecto. Por eso el JSON se
+# arma UNA sola vez y sirve igual para crear o para actualizar; de paso, si
+# alguien toco el cliente a mano, esto lo deja como dice el repo.
+SITIO="${SITIO_PUBLICO:-https://www.cacha-el-precio.com}"
+
+TMP="$(mktemp -d)"
+cat > "$TMP/spa.json" <<JSON
 {
   "UserPoolId": "$POOL_ID",
   "ClientName": "frontend",
@@ -180,30 +241,51 @@ else
   "AllowedOAuthScopes": ["openid","email","profile"],
   "CallbackURLs": [
     "http://localhost:5173/callback",
-    "http://localhost:3000/callback"
+    "http://localhost:5173/auth/google",
+    "http://localhost:3000/callback",
+    "$SITIO/callback",
+    "$SITIO/auth/google"
   ],
   "LogoutURLs": [
     "http://localhost:5173",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "$SITIO"
   ],
-  "SupportedIdentityProviders": ["COGNITO"],
+  "SupportedIdentityProviders": [$PROVEEDORES],
   "ExplicitAuthFlows": ["ALLOW_REFRESH_TOKEN_AUTH","ALLOW_USER_SRP_AUTH"],
   "PreventUserExistenceErrors": "ENABLED"
 }
 JSON
+
+CLIENT_ID="$(aws_ cognito-idp list-user-pool-clients --user-pool-id "$POOL_ID" --max-results 60 \
+             --query "UserPoolClients[?ClientName=='frontend'].ClientId | [0]" --output text)"
+
+if [[ "$CLIENT_ID" != "None" && -n "$CLIENT_ID" ]]; then
+  python3 - "$TMP/spa.json" "$CLIENT_ID" <<'PYJSON'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["ClientId"] = sys.argv[2]      # update pide ClientId...
+d.pop("ClientName", None)        # ...y no acepta que le cambien el nombre
+d.pop("GenerateSecret", None)    # ni el secreto
+json.dump(d, open(sys.argv[1], "w"))
+PYJSON
+  aws_ cognito-idp update-user-pool-client --cli-input-json "file://$TMP/spa.json" >/dev/null \
+    && verde "  actualizado: $CLIENT_ID" || rojo "  no se pudo actualizar"
+else
   CLIENT_ID="$(aws_ cognito-idp create-user-pool-client --cli-input-json "file://$TMP/spa.json" \
                --query 'UserPoolClient.ClientId' --output text)"
-  rm -rf "$TMP"
   verde "  creado: $CLIENT_ID"
-  gris  "  callbacks: localhost 5173 y 3000. Las de CloudFront se agregan en el paso 7 del despliegue."
 fi
+rm -rf "$TMP"
+gris "  retornos: localhost 5173/3000 y $SITIO"
+gris "  proveedores: $PROVEEDORES"
 
 # --------------------------------------------------------------------------
-# 5. App client del scraper (maquina, no persona)
+# 6. App client del scraper (maquina, no persona)
 #    client_credentials: no hay usuario detras, es un proceso pidiendo permiso.
 #    Este SI lleva secreto, porque corre en un servidor.
 # --------------------------------------------------------------------------
-titulo "5. App client del scraper (maquina)"
+titulo "6. App client del scraper (maquina)"
 CLIENT_SCRAPER="$(aws_ cognito-idp list-user-pool-clients --user-pool-id "$POOL_ID" --max-results 60 \
                   --query "UserPoolClients[?ClientName=='scraper'].ClientId | [0]" --output text)"
 if [[ "$CLIENT_SCRAPER" != "None" && -n "$CLIENT_SCRAPER" ]]; then
@@ -245,7 +327,7 @@ SECRETO_SCRAPER="$(aws_ cognito-idp describe-user-pool-client --user-pool-id "$P
 #    Este client NO tiene OAuth ni callbacks: no sirve para el flujo del
 #    navegador, solo para pedir un token con usuario y clave.
 # --------------------------------------------------------------------------
-titulo "6. App client de pruebas"
+titulo "7. App client de pruebas"
 CLIENT_PRUEBAS="$(aws_ cognito-idp list-user-pool-clients --user-pool-id "$POOL_ID" --max-results 60 \
                   --query "UserPoolClients[?ClientName=='pruebas'].ClientId | [0]" --output text)"
 if [[ "$CLIENT_PRUEBAS" != "None" && -n "$CLIENT_PRUEBAS" ]]; then
@@ -265,7 +347,7 @@ gris  "  sacar un token: aws cognito-idp admin-initiate-auth --auth-flow ADMIN_U
 #    El grupo viaja dentro del token como "cognito:groups". Es lo que el BFF
 #    mira para decidir 403. Sin grupos no se puede demostrar el caso 403.
 # --------------------------------------------------------------------------
-titulo "7. Grupos"
+titulo "8. Grupos"
 for g in admin usuario; do
   if aws_ cognito-idp get-group --group-name "$g" --user-pool-id "$POOL_ID" >/dev/null 2>&1; then
     verde "  ya existe: $g"
@@ -279,7 +361,7 @@ done
 # 8. Usuarios de prueba
 #    Uno por grupo, para poder mostrar 200 y 403 en la demo.
 # --------------------------------------------------------------------------
-titulo "8. Usuarios de prueba"
+titulo "9. Usuarios de prueba"
 if [[ -z "${CLAVE_PRUEBA:-}" ]]; then
   CLAVE_PRUEBA="Cacha$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 10)1"
   NUEVA_CLAVE=1
@@ -316,7 +398,7 @@ crear_usuario "usuario@cachaelprecio.cl" usuario
 # --------------------------------------------------------------------------
 # 9. Dejar los datos donde el frontend y el BFF los puedan leer
 # --------------------------------------------------------------------------
-titulo "9. Archivo de configuracion"
+titulo "10. Archivo de configuracion"
 EMISOR="https://cognito-idp.$REGION.amazonaws.com/$POOL_ID"
 cat > "$SALIDA" <<JSON
 # Generado por tools/crear-cognito.sh el $(date '+%d-%m-%Y %H:%M')
@@ -326,6 +408,7 @@ COGNITO_REGION=$REGION
 COGNITO_USER_POOL_ID=$POOL_ID
 COGNITO_DOMINIO=$DOMINIO
 COGNITO_URL_LOGIN=$URL_LOGIN
+COGNITO_URL_RETORNO_GOOGLE=$URL_RETORNO_GOOGLE
 
 # --- frontend (publico, va compilado en el bundle) ---
 VITE_COGNITO_CLIENT_ID=$CLIENT_ID

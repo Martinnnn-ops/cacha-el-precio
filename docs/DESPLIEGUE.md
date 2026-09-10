@@ -28,7 +28,7 @@ levantó siguiendo estos pasos: se hizo por otro camino, más corto.
 | **Dominio** | 🟢 Comprado por el equipo, con TLS |
 | **Cognito** | 🟡 Levantado, pero hay **dos user pools** — ver [`INTEGRACION.md` §0.2](INTEGRACION.md) |
 | **VPC propia, subredes privadas, NAT, ALB** | 🔴 No existen. La EC2 está en la VPC por defecto |
-| **RDS** | 🔴 No existe. `product-service` usa SQLite dentro de la EC2 |
+| **RDS** | 🔴 No existe (servicio gestionado). `product-service` usa el **PostgreSQL del compose**, esquema `product`, dentro de la EC2 ([ADR-025](adr/025-catalogo-multi-oferta-postgresql.md)) |
 | **API Gateway** | 🟢 Creado el 07-09 con `tools/crear-api-gateway.sh`, con JWT Authorizer y 200/401/403 probados ([ADR-019](adr/019-api-gateway-como-api-manager.md)). Caddy queda detrás, con el TLS |
 
 **O sea que los pasos 2 (la red) y 3 (RDS) de este documento no se ejecutaron.** El del API
