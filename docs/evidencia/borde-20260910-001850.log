@@ -1,0 +1,30 @@
+Evidencia medida A TRAVES DEL API GATEWAY (el borde), no contra la EC2.
+Fecha: 2026-09-10T00:18:50-03:00   API: https://qxaa9rl4dj.execute-api.us-east-1.amazonaws.com/prod
+Cuenta: 116813910999   API id: qxaa9rl4dj
+
+NOTA: el backend (EC2) estaba APAGADO durante esta medicion, y eso hace la
+prueba mas fuerte, no mas debil: el 401 solo puede venir del borde, porque
+detras no habia nadie que lo generara.
+
+== Autorizacion en el borde ==
+  /seguimiento     sin token -> HTTP 401
+  /api/yo          sin token -> HTTP 401
+  /productos       sin token -> HTTP 503
+  /health          sin token -> HTTP 503
+
+  401 en las privadas: el JWT Authorizer rechaza ANTES de gastar el backend.
+  503 en las publicas: la peticion PASO el borde y murio en el backend apagado.
+  Ese 503 es la prueba de que el catalogo es publico (ADR-007): si estuviera
+  cerrado, habria dado 401 igual que las otras.
+
+== CORS en el API Manager (ADR-024) ==
+-- origen permitido:
+  HTTP/2 204 
+  access-control-allow-origin: https://www.cacha-el-precio.com
+  access-control-allow-methods: DELETE,GET,OPTIONS,POST,PUT
+  access-control-allow-headers: authorization,content-type,version
+  access-control-max-age: 86400
+-- origen NO permitido:
+  HTTP/2 204 
+  Sin cabeceras CORS para el origen no permitido: el navegador lo bloquea.
+  Sin comodin, y sin allow-credentials (los tokens van en Authorization).

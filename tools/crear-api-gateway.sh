@@ -123,7 +123,7 @@ fi
 
 aws_ apigatewayv2 update-api --api-id "$API_ID" \
   --cors-configuration \
-    "AllowOrigins=$ORIGEN_WEB,$ORIGEN_LOCAL,AllowMethods=GET,POST,PUT,DELETE,OPTIONS,AllowHeaders=Content-Type,Authorization,Version,MaxAge=86400,AllowCredentials=true" \
+    "AllowOrigins=$ORIGEN_WEB,$ORIGEN_LOCAL,AllowMethods=GET,POST,PUT,DELETE,OPTIONS,AllowHeaders=Content-Type,Authorization,Version,MaxAge=86400,AllowCredentials=false" \
   >/dev/null && verde "  CORS: $ORIGEN_WEB y $ORIGEN_LOCAL (sin comodin)"
 
 # --------------------------------------------------------------------------
@@ -182,6 +182,7 @@ I_HEALTH="$(integracion /health)";                     gris "  /health          
 I_PRODUCTOS="$(integracion /productos)";               gris "  /productos       -> $I_PRODUCTOS"
 I_PRODUCTO="$(integracion '/productos/{id}')";         gris "  /productos/{id}  -> $I_PRODUCTO"
 I_CATALOGOS="$(integracion /catalogos)";               gris "  /catalogos       -> $I_CATALOGOS"
+I_VISITAS="$(integracion '/productos/{id}/visitas')";  gris "  /productos/{id}/visitas -> $I_VISITAS"
 I_SEGUIMIENTO="$(integracion /seguimiento)";           gris "  /seguimiento     -> $I_SEGUIMIENTO"
 I_SEGUIR="$(integracion '/seguimiento/{id}')";         gris "  /seguimiento/{id}-> $I_SEGUIR"
 I_YO="$(integracion /api/yo)";                         gris "  /api/yo          -> $I_YO"
@@ -272,6 +273,9 @@ ruta "GET /health"                     "$I_HEALTH"      publica
 ruta "GET /productos"                  "$I_PRODUCTOS"   publica
 ruta "GET /productos/{id}"             "$I_PRODUCTO"    publica
 ruta "GET /catalogos"                  "$I_CATALOGOS"   publica
+# Anonima a proposito: pedir sesion para contar una vista dejaria
+# «Lo mas visto» midiendo solo a quien inicia sesion (gateway/README.md).
+ruta "POST /productos/{id}/visitas"    "$I_VISITAS"     publica
 
 # Requieren sesion: son de cada persona. De aca sale el 401 de la demo.
 ruta "GET /seguimiento"                "$I_SEGUIMIENTO" jwt
