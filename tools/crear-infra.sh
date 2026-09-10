@@ -347,6 +347,34 @@ else
   verde "  creado: $BUCKET"
 fi
 
+# El del sitio se sirve como pagina web y de lectura publica.
+#
+# Por que. Quien no administre el dominio no puede ver el sitio por
+# www.cacha-el-precio.com, asi que esta URL es SU forma de enseñarlo. Va en el
+# script y no a mano porque si no, cada cuenta nueva se queda sin poder mirar lo
+# que acaba de desplegar.
+#
+# El documento de error tambien es index.html: las rutas del router de Vue no
+# existen como archivos en el bucket, asi que sin esto /comparador daria un 404
+# de S3 en vez de cargar la aplicacion.
+#
+# Es http://, sin cifrar, y esta bien asi: aqui solo se MIRA el catalogo, que es
+# publico de todos modos. Los datos viajan por el API Gateway, que si es https.
+# El inicio de sesion no funciona en esta URL (Cognito solo admite retornos
+# https, salvo localhost) y tampoco hace falta: para probar el login esta
+# localhost:5173, y el sitio de verdad lo sirve la cuenta que tiene el dominio.
+aws_ s3api put-public-access-block --bucket "$BUCKET" \
+  --public-access-block-configuration \
+  "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" >/dev/null 2>&1
+aws_ s3api put-bucket-website --bucket "$BUCKET" --website-configuration \
+  '{"IndexDocument":{"Suffix":"index.html"},"ErrorDocument":{"Key":"index.html"}}' >/dev/null 2>&1
+POLITICA="$(printf '{"Version":"2012-10-17","Statement":[{"Sid":"LecturaPublicaDelSitio","Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::%s/*"}]}' "$BUCKET")"
+if aws_ s3api put-bucket-policy --bucket "$BUCKET" --policy "$POLITICA" >/dev/null 2>&1; then
+  gris "  sitio web: http://$BUCKET.s3-website-$REGION.amazonaws.com"
+else
+  gris "  no se pudo publicar el bucket como sitio web (revisa los permisos de la cuenta)"
+fi
+
 # El de respaldos NO lleva sitio web ni politica publica: nace privado y se
 # queda privado. Aqui van los volcados de la base, que sobreviven a que la
 # instancia se termine, se caiga o el laboratorio caduque.
@@ -390,6 +418,7 @@ INFRA_SG=$SG_ID
 INFRA_LLAVE=$LLAVE
 INFRA_BUCKET=$BUCKET
 INFRA_BUCKET_RESPALDOS=$BUCKET_RESPALDOS
+INFRA_SITIO_URL=http://$BUCKET.s3-website-$REGION.amazonaws.com
 ENV
 verde "  escrito: $SALIDA"
 

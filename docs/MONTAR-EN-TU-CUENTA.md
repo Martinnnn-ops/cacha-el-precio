@@ -15,6 +15,7 @@
 
 ## Índice
 
+- [**Las dos recetas, para copiar y pegar**](#las-dos-recetas-para-copiar-y-pegar)
 - [0. Lo primero: el dominio](#0-lo-primero-el-dominio)
 - [1. Antes de empezar](#1-antes-de-empezar)
 - [2. Los cuatro comandos](#2-los-cuatro-comandos)
@@ -24,6 +25,85 @@
 - [6. Apagar sin perder datos](#6-apagar-sin-perder-datos)
 - [7. Si algo falla](#7-si-algo-falla)
 - [Apéndice: qué se deriva solo](#apéndice-qué-se-deriva-solo-y-qué-no)
+
+---
+
+## Las dos recetas, para copiar y pegar
+
+> Si ya sabes en qué caso estás, esto es todo lo que necesitas. El resto del documento explica
+> el porqué de cada línea.
+
+### 🅐 Panditax · la cuenta que administra el dominio
+
+```bash
+git pull                          # el Caddyfile cambió: sin esto tu despliegue no coincide
+cd cacha-el-precio
+
+# 1 · credenciales del lab en ~/.aws/credentials, y la llave
+cp ~/Descargas/labsuser.pem ~/labsuser.pem && chmod 400 ~/labsuser.pem
+aws sts get-caller-identity       # tiene que responder con TU número de cuenta
+
+# 2 · la máquina, y anota la IP que imprime
+./tools/crear-infra.sh
+
+# 3 · la identidad (tú tienes google.env, así que aquí sí se crea el IdP de Google)
+./tools/crear-cognito.sh
+
+#    ⚠️ AQUÍ, y solo tú: en Cloudflare apunta el registro A de 'api' a la IP del paso 2.
+#       Espera a que resuelva:   getent hosts api.cacha-el-precio.com
+
+# 4 · el borde. Al detectar que el dominio ya es tuyo, usará https con certificado real
+./tools/crear-api-gateway.sh
+
+# 5 · la aplicación y el sitio
+LLAVE=~/labsuser.pem ./tools/desplegar.sh
+```
+
+**Si corres el paso 4 antes de tocar el DNS**, el borde apuntará a tu IP por el puerto 8080.
+Funciona igual, pero pierdes el salto cifrado — se arregla volviendo a correrlo después.
+
+### 🅑 Orion · sin dominio
+
+Lo mismo, **sin el paso del DNS y sin `google.env`**:
+
+```bash
+git pull
+cd cacha-el-precio
+
+cp ~/Descargas/labsuser.pem ~/labsuser.pem && chmod 400 ~/labsuser.pem
+aws sts get-caller-identity
+
+./tools/crear-infra.sh
+./tools/crear-cognito.sh          # avisa que falta google.env y sigue: es normal
+./tools/crear-api-gateway.sh      # detecta que el dominio no es tuyo → entra por :8080
+LLAVE=~/labsuser.pem ./tools/desplegar.sh
+```
+
+Al terminar, `desplegar.sh` te imprime la URL del sitio. El **login solo funciona en
+`localhost:5173`** (`cd frontend && npx vite preview --port 5173`), no en la URL de S3 — el
+motivo está en el [paso 5](#5-ver-el-sitio).
+
+### Los dos, al terminar
+
+```bash
+./tools/crear-infra.sh --borrar   # respalda solo, y borra lo que cobra
+```
+
+### Comprobar que quedó bien
+
+```bash
+source api-gateway.env && source infra.env
+curl -s -o /dev/null -w '%{http_code}\n' $API_GATEWAY_URL_PROD/health        # 200
+curl -s -o /dev/null -w '%{http_code}\n' $API_GATEWAY_URL_PROD/seguimiento   # 401
+curl -s -o /dev/null -w '%{http_code}\n' http://$INFRA_IP:8080/health        # 403
+```
+
+Y llenar el catálogo, que en una cuenta nueva nace vacío:
+
+```bash
+ssh -i ~/labsuser.pem ec2-user@$INFRA_IP \
+  'for T in paris hites sparta; do curl -s -X POST "http://127.0.0.1:8000/scrape/$T?limite=250"; done'
+```
 
 ---
 
