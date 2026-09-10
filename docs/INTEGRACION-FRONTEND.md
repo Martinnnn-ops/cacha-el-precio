@@ -108,11 +108,15 @@ GET    /health                          anónimo
 
 ### Deuda que el cambio introduce
 
-- **SQLite reemplazó a PostgreSQL** en el Product Service:
+- ~~**SQLite reemplazó a PostgreSQL** en el Product Service:
   `ConnectionStrings__Sqlite: Data Source=/app/data/product.db`, con volumen `product-datos`.
   Persiste entre redeploys ✅, pero no escala horizontalmente ni tiene réplica. En un ramo de
   **Cloud Native**, defender un archivo dentro del contenedor en vez de una BD gestionada es
-  cuesta arriba. El ADR-020 lo reconoce como costo aceptado.
+  cuesta arriba. El ADR-020 lo reconoce como costo aceptado.~~
+  > ✅ **RESUELTO el 09-09 en el PR #20** ([ADR-025](adr/025-catalogo-multi-oferta-postgresql.md)).
+  > `product-service` usa PostgreSQL, esquema `product`. **No queda una sola línea de SQLite en el
+  > repositorio**, así que este techo de escalado ya no existe y **no debe mencionarse como
+  > limitación vigente ni en el informe ni en la defensa.**
 - **El versionado por cabecera murió.** `ProductServiceProxy.cs` fija `Version: 1.0` e ignora el
   `X-API-VERSION` del cliente. Las tres versiones (0.1.0 / 0.2.0 / 0.3.0) ya no existen.
 - **Los filtros no se leen.** El proxy conserva el *query string*, pero `GetAllProducts()` no
@@ -288,7 +292,7 @@ no descubrirlo en la defensa**.
 | 🔴 | **¿Vuelven las visitas?** | ✅ **Sí**, en la Fase 4: campo en el modelo + migración EF Core + endpoint anónimo + restaurar las 31 líneas del front |
 | 🔴 | **Qué User Pool gana** | ⬜ Pendiente — depende de información que tiene otra persona (§5). Se resuelve en la Fase 5 |
 | 🟡 | **¿Se agrupa por `externalId`?** | ⬜ Pendiente — se decide en la Fase 4, junto con dónde se agrupa: en el BFF o en el navegador |
-| 🟡 | **SQLite vs PostgreSQL** | ⬜ Después de la entrega del 13-09. Cambiar de motor a dos días del freeze es como se pierde una entrega |
+| 🟢 | **SQLite vs PostgreSQL** | ✅ **HECHO el 09-09**, antes de lo previsto (PR #20, [ADR-025](adr/025-catalogo-multi-oferta-postgresql.md)). Ya no es deuda ni argumento de defensa |
 
 ### Choque concreto al mover los archivos — ✅ resuelto
 
@@ -389,7 +393,7 @@ contrato de verdad, no lo que dice el código que responde.
 1. `docker compose build gateway product-service` — acá se sabe si el C# siquiera compila.
 2. Levantarlo y probar **cada ruta** del gateway, incluida la que importa para el EP1: que las
    escrituras devuelvan **401 sin token**.
-3. Cargar datos de prueba: la base SQLite arranca vacía.
+3. Cargar datos de prueba: la base arranca vacía (PostgreSQL, esquema `product`).
 4. Anotar las respuestas reales.
 
 **Criterio de salida:** un mapa verificado del contrato, y el backend corriendo en local.

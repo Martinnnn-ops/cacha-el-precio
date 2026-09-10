@@ -378,16 +378,21 @@ recuperar hacia atrás.
 
 ---
 
-### 🟡 8 · `product-service` usa SQLite, no el modelo validado con datos reales
+### 🟢 8 · ~~`product-service` usa SQLite~~, no el modelo validado con datos reales — RESUELTO
 
 El modelo que se validó contra los 2.088 productos reales —con `pg_trgm`, `unaccent` y los
 esquemas `catalog` y `price`— sigue en `infra/db/` sin que nadie lo use. `product-service` tiene
 en su lugar un CRUD de `catalogos` + `productos` con un solo precio.
 
 El propio ADR-016 lo dice: *«SQLite no reemplaza las búsquedas avanzadas pensadas para
-PostgreSQL con pg_trgm; eso se tendrá que reevaluar antes de producción»*. Esto es esa
-reevaluación, y hay que hacerla **después** del EP1: cambiar de motor a tres días del freeze es
-como se pierde una entrega.
+PostgreSQL con pg_trgm; eso se tendrá que reevaluar antes de producción»*.
+
+> ✅ **RESUELTO el 09-09, antes de lo previsto.** El PR #20 migró `product-service` a PostgreSQL,
+> esquema `product` ([ADR-025](adr/025-catalogo-multi-oferta-postgresql.md)). Ya no hay que
+> esperar al EP1 ni cambiar de motor. **Lo único que falta para las búsquedas avanzadas es
+> habilitar las extensiones:** `pg_trgm` y `unaccent` no están en
+> `infra/postgres/init/01-scraper-schema.sql`, que solo crea los esquemas. Es un `CREATE EXTENSION`,
+> no una migración.
 
 **Dueño:** Orion · **Después de:** la entrega del 13-09.
 
