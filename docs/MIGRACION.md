@@ -159,8 +159,18 @@ ssh -i <llave>.pem ec2-user@<IP> 'docker --version && docker compose version'
 No despliega la aplicación porque eso necesita el `.env` con secretos, que no viaja en el
 repositorio. Y no toca el DNS porque Cloudflare está fuera de AWS.
 
-> **Probado el 10-09 en la cuenta `116813910999`:** instancia `t3.micro` corriendo, Elastic IP
-> asociada, bucket creado y puerto 22 respondiendo. El script tardó menos de dos minutos.
+> **Probado de punta a punta el 10-09 en la cuenta `116813910999`.** El script tardó menos de dos
+> minutos, y dentro de la máquina quedó:
+>
+> ```
+> Docker version 25.0.14, build 0bab007
+> Docker Compose version v5.5.1
+> ```
+>
+> Una lección que costó un rato: el perfil de instancia hay que asociarlo **al crear**, no después.
+> El agente SSM pide credenciales al arrancar y no vuelve a intentarlo, así que asociarlo tarde
+> obliga a reiniciar la máquina — y para reiniciarla por dentro hace falta SSH, que era justo lo
+> que no teníamos. Ya está corregido en el script.
 
 > El [ADR-015](adr/015-red-privada-con-vpc-link.md) describe el diseño correcto —VPC propia,
 > subredes privadas en dos zonas, NAT y ALB— y promete un `tools/crear-red.sh` que **no existe**.

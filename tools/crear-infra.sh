@@ -17,7 +17,8 @@
 #
 # QUE CREA
 #   · Un grupo de seguridad con 22, 80 y 443 abiertos
-#   · Una EC2 con Docker y el plugin de compose ya instalados
+#   · Una EC2 con Docker y el plugin de compose ya instalados, y con el perfil
+#     de instancia puesto desde el arranque (asi sirve SSM y Parameter Store)
 #   · Una Elastic IP, asociada a esa maquina (la IP deja de cambiar al apagar)
 #   · Un bucket S3 privado para el sitio compilado
 #
@@ -155,6 +156,21 @@ else
   fi
   gris "  AMI: $AMI"
 
+  # Perfil de instancia. Va al CREAR y no despues, y esa diferencia importa:
+  # el agente SSM pide credenciales al arrancar y no vuelve a intentarlo, asi
+  # que si se asocia mas tarde hay que reiniciar la maquina para que sirva.
+  # Con el perfil puesto desde el principio se puede entrar por SSM sin llave
+  # —util cuando el .pem esta en la consola del laboratorio y no en el disco—
+  # y ademas la maquina puede leer Parameter Store.
+  PERFIL="${PERFIL:-LabInstanceProfile}"
+  ARG_PERFIL=()
+  if aws_ iam get-instance-profile --instance-profile-name "$PERFIL" >/dev/null 2>&1; then
+    ARG_PERFIL=(--iam-instance-profile "Name=$PERFIL")
+    gris "  perfil: $PERFIL"
+  else
+    gris "  sin perfil de instancia: no habra SSM (se entra solo por SSH)"
+  fi
+
   INIT="$(mktemp)"
   cat > "$INIT" <<'CLOUDINIT'
 #!/bin/bash
@@ -169,12 +185,16 @@ curl -sSL https://github.com/docker/compose/releases/latest/download/docker-comp
   -o /usr/local/lib/docker/cli-plugins/docker-compose
 chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 mkdir -p /opt/cacha-el-precio && chown ec2-user:ec2-user /opt/cacha-el-precio
+# El agente SSM viene en la AMI, pero pide credenciales al arrancar. Se
+# reinicia al final para que tome las del perfil ya asociado.
+systemctl restart amazon-ssm-agent 2>/dev/null || true
 touch /var/log/cacha-listo
 CLOUDINIT
 
   ID="$(aws_ ec2 run-instances \
         --image-id "$AMI" --instance-type "$TIPO" --key-name "$LLAVE" \
         --security-group-ids "$SG_ID" --user-data "file://$INIT" \
+        "${ARG_PERFIL[@]}" \
         --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$NOMBRE}]" \
         --query 'Instances[0].InstanceId' --output text)"
   rm -f "$INIT"
