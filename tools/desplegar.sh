@@ -47,7 +47,13 @@ titulo "0. Comprobaciones"
 for f in infra.env cognito.env; do
   [[ -f "$RAIZ/$f" ]] || { rojo "  falta $f — corre primero crear-infra.sh y crear-cognito.sh"; exit 1; }
 done
-set -a; . "$RAIZ/infra.env"; . "$RAIZ/cognito.env"; set +a
+set -a; . "$RAIZ/infra.env"; . "$RAIZ/cognito.env"
+# api-gateway.env es opcional aqui: solo hace falta para compilar el frontend,
+# y --solo-backend no lo necesita. Si falta, el paso 4 avisa y para.
+[ -f "$RAIZ/api-gateway.env" ] && . "$RAIZ/api-gateway.env"
+# El secreto que Caddy exige en el 8080. Lo genera crear-api-gateway.sh.
+[ -f "$RAIZ/borde.env" ] && . "$RAIZ/borde.env"
+set +a
 verde "  infra.env y cognito.env leidos"
 
 LLAVE="${LLAVE:-$HOME/labsuser.pem}"
@@ -70,6 +76,12 @@ SOLO="${1:-}"
 #    que es justo el fallo que tuvimos.
 # ---------------------------------------------------------------------------
 if [[ "$SOLO" != "--solo-front" ]]; then
+if [[ "$SOLO" != "--solo-front" && -z "${BORDE_SECRETO:-}" ]]; then
+  rojo "  Falta borde.env, y sin el Caddy respondera 403 a todo el trafico del borde."
+  rojo "  Corre antes: ./tools/crear-api-gateway.sh"
+  exit 1
+fi
+
 titulo "1. Preparando el .env del servidor"
 
 CLAVE_BD="$($SSH "grep -s '^DB_PASSWORD=' $DESTINO/.env | cut -d= -f2-" 2>/dev/null)"
@@ -94,13 +106,14 @@ CADDY_HTTP_PORT=80
 CADDY_HTTPS_PORT=443
 APP_ENV=production
 AWS_REGION=$INFRA_REGION
+BORDE_SECRETO=$BORDE_SECRETO
 ENV
 verde "  .env armado (apunta al pool $COGNITO_USER_POOL_ID)"
 
 # -------------------------------------------------------------------------
 # 2. Codigo y arranque
-#    El swap no es un adorno: una t3.micro tiene 1 GB y compilar las imagenes
-#    de .NET se queda sin memoria a la mitad. Con 2 GB de swap termina.
+#    El swap no es un adorno: compilar las imagenes de .NET es el momento de
+#    mas presion de memoria. Con 2 GB de swap termina aunque la RAM se llene.
 # -------------------------------------------------------------------------
 titulo "2. Desplegando en la maquina"
 
@@ -111,8 +124,17 @@ rm -f "$ENVTMP"
 $SSH "bash -s" <<REMOTO
 set -e
 
-# Sin swap, compilar las imagenes de .NET se queda sin memoria en una t3.micro
-# (1 GB). Ojo: el mkswap de AL2023 no acepta -q.
+# Sin swap, compilar las imagenes de .NET se queda sin memoria en una maquina
+# chica. Desde el 10-09 la instancia es t3.small (2 GB) y en marcha no lo toca,
+# pero compilar sigue siendo el momento de mas presion: el swap se queda como
+# red de seguridad.
+#
+# Ojo con dos trampas, las dos encontradas probando esto de verdad:
+#   1. el mkswap de AL2023 no acepta -q
+#   2. swapon dura hasta el proximo reinicio. Sin la linea en /etc/fstab el
+#      swap desaparece al reiniciar y NADIE se entera, porque el script ya
+#      dijo "activado" en su momento. Pasa justo cuando cambias el tipo de
+#      instancia, que obliga a apagar y encender.
 if ! sudo swapon --show | grep -q .; then
   sudo dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
   sudo chmod 600 /swapfile
@@ -121,6 +143,12 @@ if ! sudo swapon --show | grep -q .; then
   sudo swapon --show | grep -q . && echo "  swap de 2 GB activado" || { echo "  ERROR: el swap no se activo"; exit 1; }
 else
   echo "  swap ya activo"
+fi
+
+# Que sobreviva al reinicio. Idempotente: solo la escribe si no esta.
+if ! grep -q '^/swapfile' /etc/fstab; then
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+  echo "  swap anotado en /etc/fstab (ahora si sobrevive al reinicio)"
 fi
 
 # El plugin de compose nuevo exige buildx >= 0.17 y la AMI trae 0.12.1 en
@@ -160,17 +188,114 @@ fi
 # ---------------------------------------------------------------------------
 if [[ "$SOLO" != "--solo-front" ]]; then
 titulo "3. Comprobando el backend"
+# Se comprueba el 8080, NO el 80.
+#
+# El puerto 80 lo atiende Caddy, que solo conoce el nombre
+# api.cacha-el-precio.com: a cualquier otra cosa le responde 308 redirigiendo a
+# https. O sea que preguntarle por localhost SIEMPRE da 308, este el sistema
+# sano o muerto, y este mismo script llego a gritar "no respondio" con los
+# cinco contenedores arriba y el borde devolviendo 200.
+#
+# El 8080 es el bloque sin dominio del Caddyfile y tambien pasa por el gateway,
+# asi que un 200 ahi dice lo que de verdad se quiere saber: que la peticion
+# cruzo Caddy, cruzo el gateway y volvio.
 OK=""
 for i in $(seq 1 20); do
-  CODIGO="$($SSH "curl -s -o /dev/null -w '%{http_code}' http://localhost/health" 2>/dev/null)"
+  # Con el encabezado: sin el, Caddy responde 403 y la comprobacion diria que el
+  # sistema esta caido cuando en realidad esta bien cerrado.
+  CODIGO="$($SSH "curl -s -o /dev/null -w '%{http_code}' -H 'X-Borde-Secreto: $BORDE_SECRETO' http://localhost:8080/health" 2>/dev/null)"
   [[ "$CODIGO" == "200" ]] && { OK="si"; break; }
   sleep 10
 done
 if [[ -n "$OK" ]]; then
-  verde "  /health responde 200 dentro de la maquina"
+  verde "  /health responde 200 dentro de la maquina (via Caddy y el gateway)"
 else
-  rojo  "  /health no respondio. Mira los registros:"
+  rojo  "  /health no respondio (ultimo codigo: ${CODIGO:-sin respuesta}). Mira los registros:"
   gris  "  ssh -i $LLAVE ec2-user@$INFRA_IP 'cd $DESTINO && docker compose logs --tail=40'"
+fi
+fi
+
+# ---------------------------------------------------------------------------
+# 3.5 Respaldo automatico diario
+#
+#    POR QUE. El 10-09 se perdieron 221 productos con su historial al terminar
+#    la instancia. crear-infra.sh --borrar ya respalda antes de destruir, pero
+#    eso solo cubre el borrado DELIBERADO. No cubre que el laboratorio caduque,
+#    que la maquina se caiga, ni que alguien la termine desde la consola.
+#
+#    Esta es la segunda capa: un volcado diario al bucket de respaldos, que es
+#    privado y SOBREVIVE a la instancia. El catalogo lo repone el scraper; el
+#    historial de precios no vuelve, y por eso se protege aparte.
+#
+#    Va como timer de systemd y no como cron porque systemd recupera la
+#    ejecucion perdida (Persistent=true): si la maquina estuvo apagada a la
+#    hora que tocaba, respalda al encender en vez de saltarse el turno.
+#
+#    POR HORA, no por dia, y la razon es el patron de uso real. El laboratorio
+#    no esta encendido 24/7: se prende un rato y se apaga. Con un timer diario,
+#    Persistent hace que dispare AL ARRANCAR —o sea que respalda el estado de la
+#    sesion ANTERIOR— y despues no vuelve a correr en las horas que de verdad se
+#    trabaja. Todo lo hecho en la sesion se perdia igual.
+#
+#    El volcado comprimido pesa ~100 KB. Hacerlo cada hora no cuesta nada y baja
+#    la ventana de perdida de un dia entero a sesenta minutos.
+# ---------------------------------------------------------------------------
+if [[ "$SOLO" != "--solo-front" ]]; then
+titulo "3.5 Respaldo automatico diario"
+
+if [[ -z "${INFRA_BUCKET_RESPALDOS:-}" ]]; then
+  gris "  no hay INFRA_BUCKET_RESPALDOS en infra.env; vuelve a correr crear-infra.sh"
+else
+  $SSH "sudo bash -s" <<REMOTO2 >/dev/null 2>&1
+set -e
+cat > /usr/local/bin/cep-respaldo <<'GUION'
+#!/usr/bin/env bash
+set -uo pipefail
+cd /opt/cacha-el-precio || exit 1
+./tools/respaldar.sh || exit 1
+CARPETA="\$(ls -1dt /opt/cacha-el-precio/respaldos/*/ 2>/dev/null | head -1)"
+[ -z "\$CARPETA" ] && exit 1
+[ -s "\$CARPETA/database.sql" ] || exit 1
+SELLO="\$(basename "\$CARPETA")"
+gzip -c "\$CARPETA/database.sql" > "/tmp/\$SELLO.sql.gz"
+aws s3 cp "/tmp/\$SELLO.sql.gz" "s3://$INFRA_BUCKET_RESPALDOS/db/\$SELLO.sql.gz" --region $INFRA_REGION
+rm -f "/tmp/\$SELLO.sql.gz"
+# El disco de la instancia es chico: solo se guardan 7 dias en local.
+# La copia que importa ya esta en S3, que sobrevive a la maquina.
+find /opt/cacha-el-precio/respaldos -maxdepth 1 -type d -mtime +7 -exec rm -rf {} + 2>/dev/null
+GUION
+chmod +x /usr/local/bin/cep-respaldo
+
+cat > /etc/systemd/system/cep-respaldo.service <<'UNIDAD'
+[Unit]
+Description=Respaldo de la base de Cacha el Precio hacia S3
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cep-respaldo
+UNIDAD
+
+cat > /etc/systemd/system/cep-respaldo.timer <<'TEMPO'
+[Unit]
+Description=Respaldo por hora de Cacha el Precio
+[Timer]
+OnCalendar=hourly
+Persistent=true
+[Install]
+WantedBy=timers.target
+TEMPO
+
+systemctl daemon-reload
+systemctl enable --now cep-respaldo.timer
+REMOTO2
+
+  if $SSH 'systemctl is-active cep-respaldo.timer' >/dev/null 2>&1; then
+    PROX="$($SSH "systemctl list-timers cep-respaldo.timer --no-pager --no-legend | awk '{print \$1, \$2, \$3}'" 2>/dev/null)"
+    verde "  timer activo — proximo respaldo: ${PROX:-cada hora}"
+    gris  "  destino: s3://$INFRA_BUCKET_RESPALDOS/db/"
+  else
+    rojo  "  el timer no quedo activo. Comprueba con:"
+    gris  "  ssh -i $LLAVE ec2-user@$INFRA_IP 'systemctl status cep-respaldo.timer'"
+  fi
 fi
 fi
 
@@ -184,7 +309,25 @@ if [[ "$SOLO" != "--solo-backend" ]]; then
 titulo "4. Compilando y subiendo el frontend"
 cd "$RAIZ/frontend" || { rojo "  no encuentro frontend/"; exit 1; }
 
-API_PUB="${API_PUBLICA:-https://api.cacha-el-precio.com}"
+# A donde llama el frontend. Por defecto, al API GATEWAY, no a la EC2.
+#
+# Esto era https://api.cacha-el-precio.com, o sea la maquina directa, y ese era
+# "el borde esta fuera del camino": el API Gateway existia, estaba bien armado y
+# no lo cruzaba nadie. De el dependen tres indicadores del EP2 (validar el JWT
+# en las rutas, enrutar hacia los servicios, y el CORS con origenes explicitos),
+# y un borde que nadie atraviesa no demuestra ninguno de los tres.
+#
+# Se lee de api-gateway.env, que lo escribe crear-api-gateway.sh, asi que cada
+# cuenta apunta sola a SU propio borde sin editar nada.
+if [[ -n "${API_PUBLICA:-}" ]]; then
+  API_PUB="$API_PUBLICA"
+elif [[ -n "${API_GATEWAY_URL_PROD:-}" ]]; then
+  API_PUB="$API_GATEWAY_URL_PROD"
+else
+  rojo "  No encuentro api-gateway.env. Corre antes ./tools/crear-api-gateway.sh"
+  rojo "  (o pasa API_PUBLICA=... a mano si sabes lo que haces)"
+  exit 1
+fi
 cat > .env.produccion.local <<FRONT
 VITE_API_BASE_URL=$API_PUB
 VITE_API_VERSION=1.0
@@ -194,11 +337,47 @@ FRONT
 gris "  compilando contra $API_PUB y el pool de esta cuenta"
 
 npm ci --silent 2>&1 | tail -2
-if npm run build -- --mode produccion.local >/dev/null 2>&1 || npm run build >/dev/null 2>&1; then
-  verde "  compilado"
-else
-  rojo "  fallo la compilacion del frontend"; exit 1
+
+# NO hay respaldo a "npm run build" a secas, y es a proposito.
+#
+# Antes esta linea era:  npm run build -- --mode produccion.local || npm run build
+# con las dos salidas mandadas a /dev/null. Si la primera fallaba, la segunda
+# compilaba contra frontend/.env.production, que todavia apunta al user pool de
+# OTRA cuenta. Resultado: un sitio que se sube perfecto, no da ningun error, y
+# manda a la gente a iniciar sesion en un Cognito que no es el nuestro. Un
+# respaldo silencioso a la configuracion equivocada es peor que un fallo.
+#
+# Si falla, falla y se ve.
+if ! npm run build -- --mode produccion.local > /tmp/build-front.log 2>&1; then
+  rojo "  fallo la compilacion del frontend"
+  gris "  ultimas lineas:"
+  tail -15 /tmp/build-front.log
+  exit 1
 fi
+verde "  compilado contra el pool $COGNITO_USER_POOL_ID"
+
+# Cinturon: mirar DENTRO del bundle antes de subirlo.
+#
+# Se comprueba el client id y la URL de la API, no el user pool id: el pool id
+# no viaja al navegador (el frontend usa el dominio del Hosted UI y el client
+# id), asi que buscarlo daba una falsa alarma.
+#
+# Esto agarra el fallo que no se ve: un sitio que compila, sube y funciona a
+# medias porque quedo apuntando al Cognito o a la API de otra cuenta. Sin esta
+# comprobacion solo se descubre cuando alguien intenta entrar.
+FALLO=""
+grep -rqF "$VITE_COGNITO_CLIENT_ID" dist/assets/*.js 2>/dev/null \
+  || FALLO="$FALLO\n  - no encuentro el client id $VITE_COGNITO_CLIENT_ID"
+grep -rqF "$API_PUB" dist/assets/*.js 2>/dev/null \
+  || FALLO="$FALLO\n  - no encuentro la API $API_PUB"
+
+if [[ -n "$FALLO" ]]; then
+  rojo  "  El bundle no lleva la configuracion de esta cuenta:"
+  printf "%b\n" "$FALLO"
+  rojo  "  No lo subo. Revisa frontend/.env.production, que apunta a otra cuenta."
+  exit 1
+fi
+verde "  verificado dentro del bundle: client id y API de esta cuenta"
 
 aws --region "$INFRA_REGION" s3 sync dist/ "s3://$INFRA_BUCKET/" --delete --only-show-errors \
   && verde "  subido a s3://$INFRA_BUCKET/" || rojo "  fallo la subida"
