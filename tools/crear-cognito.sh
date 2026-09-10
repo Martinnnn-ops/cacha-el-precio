@@ -422,7 +422,14 @@ COGNITO_AUDIENCE=$CLIENT_ID
 # El access_token de Cognito NO trae "aud", trae "client_id" (ver IDENTIDAD.md 5).
 # El BFF valida contra esta lista, no contra un solo valor: si validara solo
 # contra el frontend, los tokens del client de pruebas darian 401 en los tests.
-COGNITO_CLIENT_IDS_VALIDOS=$CLIENT_ID,$CLIENT_PRUEBAS
+#
+# Van los TRES, y el del scraper faltaba (encontrado el 10-09 midiendo el borde):
+# el BFF devolvia 401 a un token de maquina perfectamente valido, con su scope
+# 'ingesta' y todo. El sintoma enganya el doble, porque un 401 de escritura hace
+# pensar en el scope, y el scope no tenia nada que ver: el token no llegaba a
+# esa comprobacion. Ojo que la misma lista hace falta en el JWT Authorizer del
+# API Gateway; son dos sitios distintos y hay que corregir los dos.
+COGNITO_CLIENT_IDS_VALIDOS=$CLIENT_ID,$CLIENT_PRUEBAS,$CLIENT_SCRAPER
 
 # --- scraper (maquina) ---
 COGNITO_SCRAPER_CLIENT_ID=$CLIENT_SCRAPER
