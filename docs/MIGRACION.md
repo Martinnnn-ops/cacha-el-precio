@@ -23,8 +23,7 @@ pasó.
 | 📁 | `caddy/Caddyfile`, `docker-compose.yml`, las migraciones | ✅ En el repo |
 | 📊 | El historial que captura `tools/scraper-rapido` | ✅ Vive en el notebook, no en AWS |
 | 🔑 | `cognito.env` y `api-gateway.env` | ⚠️ En disco, **no** en el repo. Si se pierde el equipo, se regeneran corriendo los scripts |
-| 🗄️ | **La base SQLite de `product-service`** | 🔴 **NO.** Vive en un volumen de Docker dentro de la EC2 |
-| 🗄️ | **El Postgres del scraper** (productos e historial de precios) | 🔴 **NO.** Mismo volumen |
+| 🗄️ | **El PostgreSQL de `product-service` y del scraper** (esquemas `product` y `scraper`) | 🔴 **NO.** Un solo volumen de Docker dentro de la EC2 |
 | 🖼️ | Las imágenes en S3 | 🔴 **NO.** El bucket se va con la cuenta |
 | 👤 | Los usuarios registrados en Cognito | 🔴 **NO.** Los de prueba se recrean; los reales se pierden |
 
@@ -49,8 +48,8 @@ CON_S3=1 ./tools/respaldar.sh        # y además baja las imágenes del bucket
 Deja una carpeta con `scraper.sql` (productos e historial), `product.db` (el catálogo) y un
 `MANIFIESTO.txt` que dice qué se guardó y cuánto pesa.
 
-**El script se verifica solo**, y esa es la parte que importa: comprueba que el `.db` sea de
-verdad una base SQLite y que el volcado traiga filas de productos, no solo la estructura. Si algo
+**El script se verifica solo**, y esa es la parte que importa: comprueba que el volcado de
+Postgres traiga filas de productos en los esquemas `scraper` y `product`, no solo la estructura. Si algo
 salió vacío lo dice y termina con código distinto de cero. *La falla clásica de un respaldo es que
 corre, no da error, y guarda cero bytes* — el problema se descubre el día que hay que restaurar.
 
@@ -127,23 +126,47 @@ versiona porque cambia con cada cuenta.
 
 ## 4. El cómputo
 
-🔴 **Este paso todavía no está en un script, y es el hueco más grande de esta guía.**
+🟢 **Desde el 10-09 esto está en un script, y se probó de verdad** — no está escrito de memoria.
 
-Hoy hay que hacerlo a mano:
+```bash
+./tools/crear-infra.sh
+```
 
-1. Lanzar una EC2 (`t3.small` alcanza) con Amazon Linux o Ubuntu.
-2. Security group: abrir **80** y **443**, y el **22** solo para tu IP.
-3. Instalar Docker y el plugin de compose.
-4. Clonar el repo, copiar `.env` y rellenar las contraseñas.
-5. `docker compose up -d`.
-6. Restaurar los respaldos del punto 1.
-7. **Elastic IP**, o la dirección cambia cada vez que el laboratorio reinicia la instancia y el
-   DNS deja de apuntar a ninguna parte.
+Crea, y reutiliza lo que ya exista:
+
+| | Qué | Por qué así |
+|---|---|---|
+| 1 | Grupo de seguridad con 22, 80 y 443 | Caddy necesita 80 y 443 para resolver el certificado |
+| 2 | Par de llaves | Usa la `vockey` del laboratorio si está; si no, crea una y la guarda fuera del repo |
+| 3 | EC2 con **Docker y compose ya instalados** | La AMI se pide por su parámetro público, no por un id escrito a mano: los ids cambian por región y con cada versión, y es lo primero que se pudre en un script |
+| 4 | **Elastic IP, asociada sola** | Sin esto la dirección cambia en cada reinicio del laboratorio |
+| 5 | Bucket privado para el sitio | Cloudflare va delante y pone el HTTPS |
+
+Deja los datos en `infra.env` (fuera del repo) y te imprime lo que falta.
+
+**Lo que el script NO hace, y lo dice al terminar:**
+
+```bash
+# a. Copiar el .env y levantar la aplicación
+scp -i <llave>.pem .env ec2-user@<IP>:/opt/cacha-el-precio/
+ssh -i <llave>.pem ec2-user@<IP>
+cd /opt/cacha-el-precio && git clone <repo> . && docker compose up -d
+
+# b. Comprobar que el arranque dejó Docker listo
+ssh -i <llave>.pem ec2-user@<IP> 'docker --version && docker compose version'
+```
+
+No despliega la aplicación porque eso necesita el `.env` con secretos, que no viaja en el
+repositorio. Y no toca el DNS porque Cloudflare está fuera de AWS.
+
+> **Probado el 10-09 en la cuenta `116813910999`:** instancia `t3.micro` corriendo, Elastic IP
+> asociada, bucket creado y puerto 22 respondiendo. El script tardó menos de dos minutos.
 
 > El [ADR-015](adr/015-red-privada-con-vpc-link.md) describe el diseño correcto —VPC propia,
 > subredes privadas en dos zonas, NAT y ALB— y promete un `tools/crear-red.sh` que **no existe**.
 > Lo que hay desplegado es la opción B de ese mismo ADR: EC2 con IP pública en la VPC por
-> defecto. Está anotado en [`DESPLIEGUE.md`](DESPLIEGUE.md).
+> defecto, porque el NAT y el balanceador cobran por hora. Está anotado en
+> [`DESPLIEGUE.md`](DESPLIEGUE.md).
 
 ---
 
@@ -185,16 +208,58 @@ A mano hoy:
 
 ---
 
-## 7. Las URL de retorno, que es donde siempre falla
+## 7. Google y las URL de retorno
 
-Cognito **rechaza cualquier URL de retorno que no esté declarada**, y el error que da no explica
-por qué. Al final de todo hay que registrar en el app client del frontend:
+🟢 **Desde el 10-09 esto ya no es un paso suelto: lo hace `crear-cognito.sh`.**
 
-- `https://www.tu-dominio.com/auth/google` (o la ruta que use el frontend)
-- `http://localhost:5173/callback` para desarrollo
+### Las dos listas, que se confunden
 
-Hoy `crear-cognito.sh` solo declara las de `localhost`. Las de producción se agregan aparte, y
-**es el paso 7 del runbook que nunca se ejecutó**.
+Son dos cosas distintas y fallan distinto:
+
+| Lista | Dónde vive | Quién la usa |
+|---|---|---|
+| **Retornos del app client** | Cognito | A dónde vuelve el usuario **a tu sitio** |
+| **Retornos autorizados** | Google Cloud Console | A dónde vuelve Google **a Cognito** |
+
+La primera la declara el script con todas sus direcciones de una vez —`localhost` y producción—,
+así que ya no hay que volver a tocarla al desplegar.
+
+### La segunda es el truco de la migración
+
+Google siempre devuelve a la misma forma de dirección:
+
+```
+https://<dominio-de-cognito>/oauth2/idpresponse
+```
+
+Y el dominio lo arma el script como `cacha-el-precio-<id-de-cuenta>`, o sea que **es predecible
+sin haber creado nada todavía**. Como un cliente de Google acepta **varias** direcciones de
+retorno, se declaran **las tres de una vez**:
+
+```
+https://cacha-el-precio-<CUENTA-1>.auth.us-east-1.amazoncognito.com/oauth2/idpresponse
+https://cacha-el-precio-<CUENTA-2>.auth.us-east-1.amazoncognito.com/oauth2/idpresponse
+https://cacha-el-precio-<CUENTA-3>.auth.us-east-1.amazoncognito.com/oauth2/idpresponse
+```
+
+**Hecho eso una vez, el día de la migración no se entra a Google.** Es lo que convierte el salto
+de cuenta en minutos en vez de una tarde.
+
+> ⚠️ Solo funciona si **las tres cuentas usan el script**. Un pool creado a mano recibe un dominio
+> automático (`us-east-1xxxxxxx`) que nadie puede predecir, y ahí el truco se cae. Fue justamente
+> lo que pasó: el pool que usa el sitio no se creó con el script.
+
+### Las credenciales
+
+Van en `google.env`, en la raíz, **fuera del repositorio**:
+
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
+
+Si no están, el script **avisa y sigue sin Google** en vez de fallar: todo lo demás se monta igual
+y Google se agrega después volviendo a correrlo.
 
 ---
 
@@ -203,18 +268,38 @@ Hoy `crear-cognito.sh` solo declara las de `localhost`. Las de producción se ag
 | Pieza | Estado |
 |---|---|
 | Comprobar la cuenta | ✅ `tools/verificar-aws-academy.sh` |
-| Identidad (Cognito) | ✅ `tools/crear-cognito.sh` — 🔴 le falta el IdP de Google |
+| **EC2, grupo de seguridad, llaves** | ✅ `tools/crear-infra.sh` · **nuevo el 10-09** |
+| **Elastic IP, asociada sola** | ✅ `tools/crear-infra.sh` |
+| **Bucket del sitio** | ✅ `tools/crear-infra.sh` |
+| Identidad (Cognito) | ✅ `tools/crear-cognito.sh` |
+| **Proveedor de Google** | ✅ `tools/crear-cognito.sh` · **arreglado el 10-09** |
+| **URL de retorno de producción** | ✅ `tools/crear-cognito.sh` |
 | API Manager | ✅ `tools/crear-api-gateway.sh` |
-| Red (VPC, subredes, NAT) | 🔴 `tools/crear-red.sh` está prometido y **no existe** |
-| EC2 y despliegue del compose | 🔴 a mano |
-| Bucket de S3 y frontend | 🔴 a mano |
-| DNS y certificados | 🔴 a mano |
-| Respaldo y restauración de datos | ✅ `tools/respaldar.sh`, probado de punta a punta |
-| URL de retorno de producción | 🔴 a mano |
+| Respaldo y restauración | ✅ `tools/respaldar.sh`, probado de punta a punta |
+| Desplegar el compose en la EC2 | 🔴 a mano — necesita el `.env` con secretos |
+| Compilar y subir el frontend | 🔴 dos comandos, ver el paso 6 |
+| **DNS en Cloudflare** | 🔴 a mano — está fuera de AWS |
+| Red privada (VPC, NAT) | 🔴 `tools/crear-red.sh` está prometido y **no existe**. Decidido que no entra: el NAT cobra por hora |
 
-**Cuatro de nueve.** La regla de "todo por script" está cumplida para la identidad y el API
-Manager; el resto todavía se reconstruye leyendo este documento. Eso es mejor que nada —hoy la
-alternativa era la memoria— pero no es lo que promete el ADR-015.
+**Nueve de trece, y las cuatro que faltan son cortas.** Lo que queda a mano es: copiar un archivo
+de secretos, dos comandos de compilación, y **un cambio de DNS**, que es el único paso que cruza
+fuera de AWS.
+
+### La migración completa, en orden
+
+```bash
+# En la cuenta nueva, con sus credenciales cargadas:
+./tools/crear-infra.sh          # máquina + IP fija + bucket
+./tools/crear-cognito.sh        # identidad + Google
+./tools/crear-api-gateway.sh    # el borde
+
+# Después, a mano:
+#  1. copiar .env a la máquina y  docker compose up -d
+#  2. npm run build  +  aws s3 sync dist/ s3://<bucket>/ --delete
+#  3. en Cloudflare: 'api' → la IP nueva,  'www' → el bucket nuevo
+```
+
+**El dominio y el cliente de Google no se tocan.** Solo cambia a dónde apuntan.
 
 ### Lo siguiente, en orden de lo que más duele
 
