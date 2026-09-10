@@ -354,7 +354,13 @@ Revisando los dos PR aparecieron **ocho decisiones de arquitectura** que se toma
 camino, de las cuales **solo una está en un ADR** (la 016) y **cuatro contradicen algo que ya
 está escrito y que vamos a defender oralmente**: SQLite contra el ADR-010, el scraper en Python
 contra el ADR-013, Caddy contra el ADR-015, y la ingesta por HTTP directo contra el argumento de
-mensajería de `ARQUITECTURA.md` §6. Eso último es lo que más pesa: si en la defensa preguntan
+mensajería de `ARQUITECTURA.md` §6.
+
+> 📌 **Nota del 10-09:** de esas cuatro, **la de SQLite ya no aplica**. El PR #20 migró
+> `product-service` a PostgreSQL ([ADR-025](adr/025-catalogo-multi-oferta-postgresql.md)) y no
+> queda una sola línea de SQLite en el repositorio. **No hay que defenderla ni mencionarla como
+> limitación:** hacerlo sería reconocer un techo de escalado que ya no tenemos. Las otras tres
+> siguen en pie. Eso último es lo que más pesa: si en la defensa preguntan
 «¿por qué mensajería y no llamadas directas?», el documento tiene tres párrafos de respuesta y
 el código hace lo contrario.
 
@@ -556,7 +562,7 @@ siempre. De él dependen tres indicadores del EP2 (20% + 13% + 7%).
 |---|---|
 | CDN | **Cloudflare**, no CloudFront ([ADR-023](adr/023-cloudflare-como-cdn.md)) |
 | CORS | **solo en el API Manager**; dominio único pospuesto ([ADR-024](adr/024-cors-en-el-api-manager.md)) |
-| Persistencia | SQLite se queda hasta después del EP1 |
+| Persistencia | ~~SQLite se queda hasta después del EP1~~ → **quedó obsoleta el mismo día:** el PR #20 migró a PostgreSQL ([ADR-025](adr/025-catalogo-multi-oferta-postgresql.md)) |
 | CI/CD y emparejamiento | fuera del EP1 ([ADR-022](adr/022-identidad-de-producto-entre-tiendas.md)) |
 
 Dato que nadie tenía: **nunca se comprobó si CloudFront está disponible en el Learner Lab.**
@@ -575,3 +581,59 @@ la rama. Están en `feature/frontend-en-monorepo`, respaldados en origin, y nece
 **Lo primero al retomar:** pedirle a Panditax el *client secret* de Google y que declare la URL de
 retorno de Cognito en Google Cloud. La fase 1 del plan no arranca sin eso, y es la primera porque
 el API Gateway valida contra ese pool.
+
+### 10-09 · La cadena de scripts, probada de verdad contra AWS
+
+**Martín —** primera sesión con credenciales de AWS en la mano. El objetivo no era desplegar:
+era que **el sistema se pueda rehacer entero en otra cuenta en minutos**, porque las cuentas de
+laboratorio se agotan y tarde o temprano hay que saltar.
+
+**Lo que el sondeo respondió, y llevaba semanas sin respuesta:**
+
+| | |
+|---|---|
+| 🔴 **CloudFront** | **bloqueado**, ni siquiera deja *leer* (`AccessDenied` en `ListDistributions`) |
+| 🟢 Elastic IP | permitida — `allocate-address --dry-run` responde *«would have succeeded»* |
+| 🟢 Cognito · API Gateway · S3 · CloudWatch · Parameter Store · RDS · EC2 | permitidos |
+
+Eso **cierra el ADR-023 con evidencia dura**: Cloudflare no era solo lo prudente. Y de paso
+responde el ADR-024 — el dominio único con CloudFront no es «mal momento», es **imposible** en
+cuenta de laboratorio.
+
+🔑 **El «problema de los dos user pools» no es de pools: es de cuentas.** En la cuenta de Martín
+hay un pool y **cero instancias EC2**; el frontend desplegado apunta a un pool que **no existe
+ahí**. La máquina, el bucket y el pool que usa el sitio están en otra cuenta. Por eso la API se
+cae cuando esa cuenta se apaga, y por eso no era «elegir qué pool gana».
+
+**El API Gateway estaba viejo, no mal.** Tenía 7 rutas y el script declaraba 12. Las horas lo
+cuentan solas: la API se creó el 07-09 a las 22:57 y el script se arregló a las **23:51, 54
+minutos después**, y nunca se volvió a correr. El arreglo vivía en el código y no en AWS.
+Peor: `GET /productos` y `/catalogos` estaban **detrás del token**, que es justo lo que el
+ADR-007 prohíbe. El propio ADR decía que se había detectado a tiempo; nunca se corrigió en la
+API desplegada. Hoy son 13 rutas, catálogo público y `AllowCredentials=false`.
+
+📏 **Evidencia del EP2 medida a través del borde, con el backend apagado** — y eso la hace más
+fuerte, no más débil: el **401** de `/seguimiento` y `/api/yo` solo puede venir del API Gateway,
+porque detrás no había nadie que lo generara. Las públicas dan **503**, que prueba que pasaron el
+borde sin token. El preflight devuelve cabeceras con el origen permitido y **ninguna** con uno
+ajeno.
+
+**Dos scripts nuevos** cierran la cadena: `crear-infra.sh` (máquina, IP fija, bucket) y
+`desplegar.sh` (la aplicación dentro). Migrar de cuenta pasa a ser **cuatro comandos y un cambio
+de DNS**, que es el único paso fuera de AWS.
+
+**Se desplegó entero y funcionó:** cinco contenedores corriendo y el BFF respondiendo 200, más
+53 archivos del sitio en el bucket. Después se apagó todo — la EC2 gasta crédito.
+
+> **Lección, y es la misma de la Fase 3:** probar los scripts encontró **cuatro defectos que no se
+> veían leyéndolos**. El perfil de instancia asociado tarde (el agente SSM solo pide credenciales
+> al arrancar). `mkswap -q`, que no existe en Amazon Linux 2023 — y el script **decía que había
+> funcionado igual**, porque la cadena de comandos se cortaba sin avisar. `buildx` 0.12.1 en la
+> AMI cuando compose exige 0.17: comprobar que *exista* no basta, hay que mirar la **versión**. Y
+> un heredoc sin comillas que expandía las variables del bloque remoto **en el portátil**.
+>
+> Un runbook que nunca se ejecutó no es un runbook. Estos cuatro habrían costado la tarde el día
+> de la migración de verdad.
+
+**Lo que queda, y no es técnico:** decidir **en qué cuenta vive el sistema**. Hasta entonces el
+despliegue depende de que otra persona encienda su laboratorio, y eso no se arregla con código.
