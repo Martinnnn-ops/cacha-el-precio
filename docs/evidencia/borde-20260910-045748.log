@@ -1,0 +1,44 @@
+EVIDENCIA DEL BORDE — Cacha el Precio
+Fecha:   2026-09-10T04:57:48-03:00
+Cuenta:  116813910999      API id: qxaa9rl4dj      Pool: us-east-1_cH76LiA02
+Borde:   https://qxaa9rl4dj.execute-api.us-east-1.amazonaws.com/prod
+Backend: http://52.200.101.67:8080   (EC2 t3.small con IP fija)
+Medido A TRAVES del API Gateway, no contra la EC2.
+=======================================================================
+
+1. RUTAS PUBLICAS — el catalogo se ve sin iniciar sesion (ADR-007)
+   /health                    sin token   200
+   /productos                 sin token   200
+   /productos/1               sin token   200
+   /catalogos                 sin token   200
+
+2. RUTAS PROTEGIDAS — el JWT Authorizer corta en el borde
+   /seguimiento               sin token   401
+   /api/yo                    sin token   401
+   /api/admin/diagnostico     sin token   401
+
+3. LAS MISMAS CON TOKEN DE USUARIO — el borde deja pasar y el BFF responde
+   /seguimiento               token user  200
+   /api/yo                    token user  200
+
+4. ESCRITURA — la escalera completa de autorizacion
+   POST /productos            sin token   401   (el borde rechaza)
+   POST /productos            token user  403   (identidad OK, falta el scope)
+   POST /productos            token maq.  400   (paso las dos capas; 400 = cuerpo vacio a proposito)
+
+   El 400 es el resultado bueno: el token de maquina atraviesa el JWT
+   Authorizer Y la validacion del BFF, y lo unico que falla es el payload.
+
+5. CORS — origenes explicitos, sin comodin
+   Origen permitido (https://www.cacha-el-precio.com):
+     access-control-allow-origin: https://www.cacha-el-precio.com
+     access-control-allow-methods: DELETE,GET,OPTIONS,POST,PUT
+     access-control-allow-headers: authorization,content-type,version
+     access-control-max-age: 86400
+   Origen NO permitido (https://sitio-malicioso.com):
+     cabeceras access-control devueltas: 0   (0 = el origen fue rechazado)
+
+6. AUDIENCIA DEL AUTHORIZER — los tres clients
+     61amk99kv70gndiupsfsebc49d
+     7dsdgq8154barv9cjbdf83h9hu
+     1frh7rk3d8k6pf222ts3qp8va4

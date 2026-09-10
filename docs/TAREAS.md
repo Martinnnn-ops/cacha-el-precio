@@ -54,14 +54,15 @@ tarea que no se va a hacer nunca.
 
 | | Tarea | Quién | Toca | Límite |
 |---|---|---|---|---|
-| 🔴 | **Encender el laboratorio de AWS** — sin esto no se puede probar nada | Panditax | — | **ya** |
 | 🔴 | **Pasar el *client secret* de Google** y declarar la URL de retorno de Cognito | Panditax | Google Cloud Console | **ya** |
-| 🟢 | **Elastic IP** + actualizar el registro A en Cloudflare | | `tools/` · DNS | **antes que todo lo demás** |
-| 🟢 | **Decidir en qué cuenta vive el sistema** y dejar UN solo User Pool con Google, creado por script | | `tools/crear-cognito.sh` · `frontend/.env.*` | 10-sep |
-| 🟢 | **El frontend pasa a llamar al API Gateway** | | `frontend/.env.*` · DNS | 10-sep |
-| 🟢 | **Caddy exige el encabezado secreto del borde** — va junto con la de arriba | | `caddy/Caddyfile` · `tools/crear-api-gateway.sh` | 10-sep |
-| 🟢 | **CORS solo en el API Manager**, y apagar `AllowCredentials` en los dos | | `caddy/Caddyfile` · `tools/crear-api-gateway.sh` | 10-sep |
-| 🟢 | **Declarar `POST /productos/{id}/visitas`** en el borde | | `tools/crear-api-gateway.sh` | 10-sep |
+| ✅ | ~~Encender el laboratorio~~ — se montó todo en la cuenta de Martín (`116813910999`) | Martín | — | 10-sep |
+| ✅ | ~~Elastic IP~~ — `52.200.101.67`, la crea `crear-infra.sh` | Martín | `tools/` | 10-sep |
+| ✅ | ~~En qué cuenta vive el sistema~~ — en la de Martín; los otros dos la montan sin dominio | Martín | `tools/` | 10-sep |
+| ✅ | ~~El frontend llama al API Gateway~~ — verificado **dentro del bundle**, no en la config | Martín | `tools/desplegar.sh` | 10-sep |
+| ✅ | ~~Caddy exige el encabezado secreto~~ — [ADR-026](adr/026-encabezado-secreto-del-borde.md); el 8080 da 403 sin él | Martín | `caddy/Caddyfile` | 10-sep |
+| ✅ | ~~CORS solo en el API Manager~~ — 3 orígenes explícitos, `AllowCredentials=false` | Martín | `tools/crear-api-gateway.sh` | 10-sep |
+| ✅ | ~~Declarar `POST /productos/{id}/visitas`~~ — 13 rutas en el borde | Martín | `tools/crear-api-gateway.sh` | 10-sep |
+| ✅ | ~~Respaldo programado~~ — cada hora a un bucket privado con versionado | Martín | `tools/desplegar.sh` | 10-sep |
 | 🟢 | **Mostrar en pantalla los roles y scopes del token** — punto explícito de la rúbrica | | `frontend/src/modules/cuenta/` | 11-sep |
 | 🟢 | **Volver a medir 200 / 401 / 403 a través del borde** + el preflight en el navegador | | `docs/evidencia/` | 11-sep |
 | 🟢 | **Informe ejecutivo de 5 páginas** | | fuera del repo | 12-sep |
@@ -69,11 +70,13 @@ tarea que no se va a hacer nunca.
 | 🟢 | **Ensayo cronometrado**, 5 a 10 minutos | los 3 | — | 12-sep |
 | 🟢 | **Entregar**: enlaces de GitHub a AVA + copia al correo | | — | **13-sep 23:59** |
 
-> ⚠️ **El freeze del jueves 10 está en riesgo, y conviene decidirlo hoy, no el viernes.**
-> Con el borde fuera del camino, congelar hoy significa entregar sin los tres indicadores del
-> API Manager. **Las dos salidas honestas son:** correr el freeze al viernes 11 y dejar el sábado
-> para informe y ensayo, o congelar hoy y asumir la pérdida. Lo que no sirve es no decidirlo y
-> descubrirlo el domingo.
+> ✅ **El riesgo del freeze se despejó el 10-09.** Los tres indicadores del API Manager ya se
+> pueden demostrar: el borde está en el camino, valida el JWT, enruta hacia los servicios y es
+> el único dueño del CORS. La evidencia medida a través del borde está en
+> [`evidencia/`](evidencia/).
+>
+> ⚠️ **Lo que sigue bloqueado es el login con Google**, y no depende de código: falta el
+> *client secret*. Sin él, la demo del inicio de sesión con Google no existe en ninguna cuenta.
 
 > 🎥 **El video de respaldo salió de la lista**: no hay que entregarlo. Si la demo en vivo te
 > pone nervioso, grábalo igual — pero no es una tarea del proyecto.

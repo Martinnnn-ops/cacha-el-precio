@@ -35,6 +35,11 @@ services:
       # Puerto interno, sin dominio ni TLS: es por donde API Gateway le habla
       # directo a product-service (ver caddy/Caddyfile, bloque ":8080").
       - "8080:8080"
+    environment:
+      # El secreto que solo conoce el API Gateway. Lo pone tools/desplegar.sh en
+      # el .env del servidor, leyendolo de borde.env. Si falta, el Caddyfile
+      # responde 403 a todo por su valor por defecto.
+      BORDE_SECRETO: "${BORDE_SECRETO:-}"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

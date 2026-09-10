@@ -50,9 +50,32 @@ api.cacha-el-precio.com {
     reverse_proxy gateway:8080
 }
 
-# Puerto interno, sin dominio ni TLS. Tambien pasa por el gateway: si dejara una
-# puerta que lo esquiva, la validacion del token seria opcional, y una
-# validacion opcional no es una validacion.
+# Puerto interno, sin dominio ni TLS. Es por donde entra el API Gateway cuando
+# el DNS no apunta a esta maquina, o sea en cualquier cuenta que no sea la duena
+# del dominio. Tambien pasa por el gateway: si dejara una puerta que lo esquiva,
+# la validacion del token seria opcional, y una validacion opcional no es una
+# validacion.
+#
+# ─── EL ENCABEZADO DEL BORDE ────────────────────────────────────────────────
+# Este puerto esta abierto a internet (el security group no puede limitarlo a
+# las direcciones del API Gateway: AWS no publica un rango fijo para eso). Sin
+# nada mas, cualquiera podria llamar a la EC2 directamente y saltarse el borde.
+#
+# Que se gana cerrandolo, y que no. El token se valida igual mas adentro, en el
+# BFF, asi que la puerta abierta NO filtraba datos privados. Lo que arregla esto
+# es que el borde deje de ser opcional: hoy el API Gateway es el unico que
+# conoce el secreto, asi que es el unico camino posible. Sin eso, "todo el
+# trafico pasa por el borde" era una costumbre del frontend, no una garantia.
+#
+# El secreto lo genera tools/crear-api-gateway.sh, lo inyecta el propio API
+# Gateway en cada integracion, y llega aqui por el entorno del contenedor.
+#
+# El valor por defecto es a proposito imposible de acertar: si la variable no
+# esta puesta, esto responde 403 a todo en vez de abrirse. Un fallo de
+# configuracion tiene que romper hacia el lado seguro.
 :8080 {
+    @sin_secreto not header X-Borde-Secreto "{$BORDE_SECRETO:sin-configurar}"
+    respond @sin_secreto "no viene del borde" 403
+
     reverse_proxy gateway:8080
 }
