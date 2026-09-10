@@ -111,3 +111,9 @@ api-gateway.env
 
 # Respaldos de datos: nunca al repo
 respaldos/
+
+# Credenciales del cliente de Google (OAuth). NUNCA al repositorio.
+google.env
+
+# Datos de la infraestructura por cuenta (ids, IP, bucket). No al repositorio.
+infra.env
