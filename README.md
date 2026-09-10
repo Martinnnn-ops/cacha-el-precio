@@ -18,14 +18,21 @@ tiendas, conserva sus observaciones de precio y permite comprobar si un descuent
 
 ```text
 Frontend Vue ──▶ API Gateway ──▶ Caddy ──▶ Gateway ASP.NET Core
-                                              │
-                                              ▼
-                                      Product Service C# ──┐
-                                              ▲
-                                              │ HTTP / API v1
-Scraper Python ──▶ PostgreSQL + S3 ◀───────────┘
+                 JWT · CORS      403 si no                │
+                 50 req/s        viene del borde          ▼
+                                                  Product Service C# ──┐
+                                                          ▲
+                                                          │ HTTP / API v1
+Scraper Python ──▶ PostgreSQL + S3 ◀───────────────────────┘
                    schemas scraper/product
+                        │
+                        └──▶ S3 respaldos (privado, cada hora)
 ```
+
+El API Gateway no es una opción: la EC2 responde **403** a cualquier petición que no traiga el
+encabezado que solo el borde inyecta ([ADR-026](docs/adr/026-encabezado-secreto-del-borde.md)).
+El token se valida dos veces —en el borde y en el BFF— y el catálogo es público a propósito
+(ADR-007), así que un `GET /productos` sin token responde 200 y un `GET /seguimiento` responde 401.
 
 Los servicios de aplicación se estandarizaron en **C# y ASP.NET Core 10**. El scraper permanece
 en Python porque ese ecosistema es adecuado para extracción y procesamiento de datos. La elección
@@ -117,6 +124,36 @@ dotnet ef database update --project product-service/Product-Service.csproj
 dotnet ef migrations has-pending-model-changes --project product-service/Product-Service.csproj
 ```
 
+## Desplegar en AWS
+
+Cuatro comandos, y **no hay que editar ningún archivo**: todo se deriva del número de cuenta.
+
+```bash
+./tools/crear-infra.sh            # EC2 + IP fija + los dos buckets
+./tools/crear-cognito.sh          # user pool, clients, grupos, Google
+./tools/crear-api-gateway.sh      # el borde: rutas, JWT, CORS, throttling, secreto
+LLAVE=~/labsuser.pem ./tools/desplegar.sh   # la aplicación, el sitio y el respaldo
+
+./tools/crear-infra.sh --borrar   # apagar: respalda solo antes de destruir
+```
+
+`crear-api-gateway.sh` comprueba si `api.cacha-el-precio.com` resuelve a **tu** IP: si sí usa el
+dominio con HTTPS; si no, entra por `http://<TU-IP>:8080` con el encabezado del borde. Por eso el
+mismo procedimiento sirve en las tres cuentas del equipo.
+
+El procedimiento completo, con los dos casos y qué hacer cuando algo falla, está en
+[MONTAR-EN-TU-CUENTA](docs/MONTAR-EN-TU-CUENTA.md).
+
+### Los datos
+
+La base vive en un volumen de Docker dentro de la EC2, y ese volumen **se destruye con la
+instancia**. Tres capas lo cubren:
+
+1. `--borrar` respalda, se baja la copia al equipo, comprueba que no llegó vacía y solo entonces
+   destruye. Si algo falla, no borra nada.
+2. Un temporizador vuelca la base **cada hora** a un bucket privado que sobrevive a la instancia.
+3. Al volver a desplegar, si la base está en cero se **restaura sola** desde el último respaldo.
+
 ## Comprobaciones antes de un PR
 
 ```bash
@@ -147,6 +184,10 @@ BACKEND_URL=http://127.0.0.1:8080 npm run humo
 | [INTEGRACIÓN](docs/INTEGRACION.md) | deuda descubierta al integrar ramas anteriores |
 | [IDENTIDAD](docs/IDENTIDAD.md) | Cognito, tokens y autorización |
 | [DESPLIEGUE](docs/DESPLIEGUE.md) | despliegue en AWS |
+| [MONTAR-EN-TU-CUENTA](docs/MONTAR-EN-TU-CUENTA.md) | levantar el sistema en una cuenta, paso a paso |
+| [MIGRACIÓN](docs/MIGRACION.md) | qué se pierde al cambiar de cuenta, y cómo restaurarlo |
+| [EVALUACIONES](docs/EVALUACIONES.md) | qué pide el ramo y con qué se cumple |
+| [ADR-026](docs/adr/026-encabezado-secreto-del-borde.md) | por qué el borde se identifica con un encabezado |
 | [Product Service](product-service/README.md) | API, modelo y migraciones |
 | [Gateway](gateway/README.md) | rutas, seguridad y configuración |
 | [Scraper](scraper-service/README.md) | tiendas, persistencia y ejecución |

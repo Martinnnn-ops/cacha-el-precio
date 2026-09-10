@@ -410,7 +410,39 @@ pueda pisar al último bueno.
 no existe y el login con Google no funciona en ninguna cuenta — el script ya sabe crear el
 proveedor.
 
-📄 Guía nueva para el equipo: [`MONTAR-EN-TU-CUENTA.md`](MONTAR-EN-TU-CUENTA.md).
+📄 Guía nueva para el equipo: [`MONTAR-EN-TU-CUENTA.md`](MONTAR-EN-TU-CUENTA.md), que arranca con
+dos recetas copiables — una para la cuenta que administra el dominio y otra para las que no.
+
+(10-09, cierre) 🔒 **El borde pasó de costumbre a garantía.** El API Gateway inyecta
+`X-Borde-Secreto` en sus nueve integraciones y Caddy responde **403** a quien no lo traiga
+([ADR-026](adr/026-encabezado-secreto-del-borde.md)). El puerto 8080 no se puede limitar por grupo
+de seguridad —AWS no publica un rango fijo para las integraciones de HTTP API— así que la
+alternativa era dejarlo abierto.
+
+> 🧪 **Se probó revirtiendo la máquina al `Caddyfile` viejo a propósito** y volviendo a desplegar:
+> se cerró sola. Eso demuestra algo que conviene tener presente: **la EC2 clona desde GitHub**, así
+> que un cambio en el `Caddyfile` o el compose no surte efecto hasta estar en `development`. Solo
+> el `.env` se copia aparte.
+
+🔁 **Y al remontar, la base se restaura sola.** Faltaba el otro extremo del problema de los datos:
+estaban respaldados, pero nadie los volvía a poner, y un sistema recién montado arranca perfecto y
+responde 200 con la base vacía. Ahora `desplegar.sh` cuenta las filas y, si son cero, baja el
+último respaldo del bucket y lo carga. **La condición de «cero filas» es lo que lo hace seguro**:
+si no hay ni una fila no se puede pisar nada. Probado con el pipeline real sobre una base limpia:
+481 productos, 481 de historial y 361 del catálogo.
+
+🛡️ **Tres cosas más de seguridad:** límite de **50 req/s** en los dos stages —no protege datos,
+protege el crédito del laboratorio—; **versionado** en el bucket de respaldos, para que un volcado
+corrupto no pise al último bueno; y `pg_trgm` + `unaccent`, que destraban el emparejamiento entre
+tiendas del [ADR-022](adr/022-identidad-de-producto-entre-tiendas.md) (`"Nike Air Max 90"` contra
+`"NIKE AIRMAX 90 Hombre"` da **0,52** de similitud).
+
+🔌 **AWS apagado y verificado:** 0 instancias, 0 IPs reservadas. El `--borrar` respaldó solo,
+**se bajó la copia al portátil** (1325 filas) y solo entonces destruyó. Sobreviven sin costo el
+user pool, la HTTP API y los dos buckets.
+
+📌 **Lo único que sigue bloqueado no es código:** el *client secret* de Google, que tiene Panditax.
+Sin `google.env` no hay IdP federado en ninguna cuenta, y la rúbrica lo pide explícitamente.
 
 ---
 

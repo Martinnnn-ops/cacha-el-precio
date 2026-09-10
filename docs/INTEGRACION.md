@@ -91,7 +91,17 @@ El punto 1 de la §2 de este documento deja de ser deuda y pasa a ser **un incid
 > `@Post` de un plumazo: es lectura y visitas anónimas, y CRUD solo para `admin` o el scope
 > `ingesta`.
 
-### 🔴 0.2 · Hay dos User Pools de Cognito, y no se hablan
+### ✅ 0.2 · Los dos User Pools (resuelto)
+
+> 🟢 **RESUELTO el 10-09, y no era un problema de pools sino de CUENTAS.** El pool "del frontend"
+> vivía en la cuenta de otra persona; en la cuenta propia solo hay uno. Ahora
+> `crear-cognito.sh` deriva el pool del número de cuenta, así que **cada cuenta tiene el suyo,
+> creado por script y completo** (3 app clients, grupos, resource server). El frontend ya no
+> puede quedar apuntando a un pool ajeno: `desplegar.sh` mira dentro del bundle antes de subirlo
+> y se niega si no encuentra el client id de esta cuenta.
+>
+> Lo que queda de esto: el **IdP de Google**, que el script ya sabe crear pero necesita
+> `google.env`. La tabla de abajo se conserva como registro del diagnóstico.
 
 | | Pool del script (`cognito.env`) | Pool del frontend desplegado |
 |---|---|---|
@@ -159,16 +169,20 @@ escrita en un ADR. Esto importa más de lo que parece, porque el informe del EP1
 justamente por *justificar las elecciones*, y en la defensa un ADR **es** la respuesta a
 «¿por qué?».
 
+> 🟢 **Al 10-09, tres de estas nueve ya están resueltas** — van marcadas ✅ en la última columna.
+> El resto de la tabla se conserva como registro de la auditoría del 07-09; **no describe el
+> estado actual**.
+
 | # | Decisión | ¿Documentada? | ¿Choca con algo ya decidido? |
 |---|---|---|---|
 | 1 | `catalog-service` → `product-service`, dueño de catálogos **y** productos | ✅ ADR-016 | No. Docs alineados de forma consistente |
 | 2 | Sin DTO: los controllers devuelven las entidades | ✅ ADR-016, con el costo anotado | No |
-| 3 | **SQLite** como base de `product-service` | ⚠️ Mencionada al pasar en ADR-016 | 🔴 **Sí** — ADR-010: una RDS Postgres con un esquema por servicio |
+| 3 | ~~**SQLite** como base de `product-service`~~ | ✅ ADR-025 | ✅ **Resuelto (09-09).** El PR #20 migró a PostgreSQL, esquema `product`. No queda una línea de SQLite |
 | 4 | **Versionado de rutas por header** `X-API-VERSION` | ❌ No | No, pero ADR-014 es sobre versionar *artefactos*, no rutas. Es otra decisión |
 | 5 | El scraper deja de ser **Java** y pasa a **Python/FastAPI** | ❌ No | 🔴 **Sí** — ADR-013: Java 25 + Maven como base del backend |
-| 6 | **Caddy** como reverse proxy con TLS y CORS | ❌ No | 🔴 **Sí** — ADR-015 y la rúbrica: el API Manager es API Gateway de AWS |
+| 6 | **Caddy** como reverse proxy con TLS y CORS | ✅ ADR-026 | ✅ **Resuelto (10-09).** El API Manager es API Gateway y es el **único** camino: Caddy queda detrás y responde 403 a lo que no venga del borde. El CORS vive solo en el borde |
 | 7 | La ingesta va **HTTP directo** scraper → `product-service` | ❌ No | 🔴 **Sí** — ARQUITECTURA §6: la ingesta pasa por RabbitMQ |
-| 8 | El mismo producto vive **duplicado** en Postgres y en SQLite | ❌ No | 🔴 **Sí** — deja a `price-service` sin dueño del historial |
+| 8 | ~~El mismo producto vive **duplicado** en Postgres y en SQLite~~ | ✅ ADR-025 | ✅ **Resuelto (09-09).** Un solo servidor PostgreSQL con dos esquemas: `scraper` dueño del historial, `product` del catálogo |
 | 9 | El alcance pasa de **solo calzado** a **ropa y calzado** | ❌ No | 🔴 **Sí** — `PLAN.md` §2 dice que la ropa entra *después* del EP1 |
 
 ### Lo que hay que entender de esta tabla

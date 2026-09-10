@@ -64,7 +64,7 @@ tarea que no se va a hacer nunca.
 | ✅ | ~~Declarar `POST /productos/{id}/visitas`~~ — 13 rutas en el borde | Martín | `tools/crear-api-gateway.sh` | 10-sep |
 | ✅ | ~~Respaldo programado~~ — cada hora a un bucket privado con versionado | Martín | `tools/desplegar.sh` | 10-sep |
 | 🟢 | **Mostrar en pantalla los roles y scopes del token** — punto explícito de la rúbrica | | `frontend/src/modules/cuenta/` | 11-sep |
-| 🟢 | **Volver a medir 200 / 401 / 403 a través del borde** + el preflight en el navegador | | `docs/evidencia/` | 11-sep |
+| ✅ | ~~Volver a medir 200 / 401 / 403 a través del borde~~ — hecho el 10-09. Falta solo el preflight visto **en el navegador** (con `curl` no se ve igual) | Martín | `docs/evidencia/` | 11-sep |
 | 🟢 | **Informe ejecutivo de 5 páginas** | | fuera del repo | 12-sep |
 | 🟢 | **Cerrar quién presenta cada indicador del EP2** | los 3 | — | 12-sep |
 | 🟢 | **Ensayo cronometrado**, 5 a 10 minutos | los 3 | — | 12-sep |
@@ -106,9 +106,9 @@ el resto.
 |---|---|---|---|
 | 🟢 | **Frontend con OIDC** | **60% EP1** | Vue 3 desplegado con PKCE real. Registro, guard e interceptor hechos. **Falta mostrar los roles del token en pantalla** |
 | 🟢 | **Validación del JWT en el BFF** | **40% EP1** | ASP.NET Core: firma contra el JWKS, `iss`, vigencia, `client_id`, `token_use`, scopes y grupos |
-| 🟡 | **200 / 401 / 403 demostrables** | 20% EP2 | Medidos, pero **contra la EC2**. Hay que repetirlos a través del borde |
-| 🔴 | **Rutas del API Manager → microservicios** | 13% EP2 | El borde no está en el camino |
-| 🔴 | **CORS en el API Manager** | 7% EP2 | Declarado en dos sitios a la vez |
+| 🟢 | **200 / 401 / 403 demostrables** | 20% EP2 | **Medidos a través del borde** el 10-09, con la escalera completa: 401 sin token, 403 con token sin el scope, y 400 con token de máquina (que es el buen resultado: pasó las dos capas). En [`evidencia/`](evidencia/) |
+| 🟢 | **Rutas del API Manager → microservicios** | 13% EP2 | 13 rutas enrutando a la EC2. Y el borde **no es opcional**: la máquina responde 403 a quien no traiga su encabezado ([ADR-026](adr/026-encabezado-secreto-del-borde.md)) |
+| 🟢 | **CORS en el API Manager** | 7% EP2 | Solo en el borde, con **3 orígenes explícitos** y `AllowCredentials=false`. Un origen inventado recibe **cero** cabeceras `access-control` |
 
 ---
 
