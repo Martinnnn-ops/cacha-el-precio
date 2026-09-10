@@ -204,6 +204,13 @@ incidente: la EC2 vive en la cuenta de AWS de un compañero, con créditos limit
 mantiene encendida 24/7 a propósito**. Conviene decirlo así en el informe en vez de presentarlo
 como un servicio caído.
 
+> 🟢 **10-09 — el problema de fondo ya tiene respuesta, aunque la restricción siga.** El sistema
+> deja de depender de una sola cuenta: los scripts levantan todo en cualquiera de las tres en
+> ~15 minutos, y quien no administre el dominio no necesita tocarlo (el borde detecta que el DNS
+> no apunta a su máquina y entra por su IP). El apagado sigue siendo de coordinación —eso no lo
+> arregla ningún script— pero **ya no hay una sola persona que pueda dejar el sistema sin demo**.
+> Ver [`MONTAR-EN-TU-CUENTA.md`](MONTAR-EN-TU-CUENTA.md).
+
 > ⚠️ Esto **corrige el punto 0.4 de [`INTEGRACION.md`](INTEGRACION.md)**, que trata el apagado como
 > un riesgo a resolver con una Elastic IP. Una Elastic IP evita que la dirección cambie al
 > reiniciar, pero no enciende la instancia: si el laboratorio está cerrado el día de la demo, el
@@ -218,7 +225,17 @@ recorriendo un catálogo vacío.
 
 ---
 
-## 5. Cognito: los dos User Pools siguen sin reconciliar
+## 5. Cognito: los dos User Pools (resuelto)
+
+> 🟢 **RESUELTO el 10-09, y no era un problema de pools sino de CUENTAS.** El pool "del frontend"
+> vivía en la cuenta de otra persona; en la cuenta propia solo hay uno. Ahora
+> `crear-cognito.sh` deriva el pool del número de cuenta, así que **cada cuenta tiene el suyo,
+> creado por script y completo** (3 app clients, grupos, resource server). El frontend ya no
+> puede quedar apuntando a un pool ajeno: `desplegar.sh` mira dentro del bundle antes de subirlo
+> y se niega si no encuentra el client id de esta cuenta.
+>
+> Lo que queda de esto: el **IdP de Google**, que el script ya sabe crear pero necesita
+> `google.env`. La tabla de abajo se conserva como registro del diagnóstico.
 
 | | Pool del script (`cognito.env`) | Pool que usa el frontend |
 |---|---|---|

@@ -137,9 +137,9 @@ comercial. Basta nombrar la equivalencia una vez en el informe y en la presentac
 | **OpenID Connect** | **Cognito User Pool**: emite `id_token`, `access_token` y `refresh_token`, publica su JWKS |
 | **Login con Google** | Google como **IdP federado** en el User Pool (adicional al registro propio) |
 | **OAuth2** | **Authorization Code + PKCE** para el frontend · **Client Credentials** para el scraper |
-| **API Manager** | **API Gateway HTTP API** con JWT Authorizer: stages dev/prod, CORS, throttling, OpenAPI |
+| **API Manager** | **API Gateway HTTP API** con JWT Authorizer: stages dev/prod, CORS de orígenes explícitos, throttling de 50 req/s. Y desde el 10-09 es el **único camino de entrada**: la EC2 responde 403 a quien no traiga el encabezado que solo el borde inyecta ([ADR-026](adr/026-encabezado-secreto-del-borde.md)) |
 | **Integración** | HTTP interno entre scraper y Product Service; mensajería pospuesta hasta tener consumidores reales (ver [ADR-020](adr/020-csharp-y-simplificacion-de-servicios.md)) |
-| **Validación en los servicios** | `micronaut-security-jwt` valida firma, issuer, audience, vigencia y roles contra el JWKS |
+| **Validación en los servicios** | El **BFF en ASP.NET Core** valida firma, issuer, vigencia, `client_id` y `cognito:groups` contra el JWKS. Y antes que él, el **JWT Authorizer del API Gateway** corta en el borde: un token falso no llega a gastar instancia |
 
 ### Equivalencias de vocabulario (una tabla en el informe y listo)
 
@@ -171,14 +171,14 @@ Son **5 a 10 minutos**. Casi todo demo en vivo, pocos slides. Orden sugerido:
 | 1–2 | Diagrama de arquitectura y por qué está separado así |
 | 2–4 | **Registro de un usuario en vivo** → login → DevTools mostrando `code_challenge`, `state` y `nonce` |
 | 4–5 | El token decodificado en pantalla: claims, scopes y `cognito:groups` |
-| 5–7 | **Postman**: la misma ruta con token (**200**), sin token (**401**), y con usuario común en ruta admin (**403**) |
-| 7–8 | Consola de AWS: API Gateway con las rutas y CORS, la EC2 con los contenedores corriendo |
+| 5–7 | **Postman**: la misma ruta con token (**200**), sin token (**401**), usuario común en ruta admin (**403**), y el token de máquina escribiendo (**pasa el scope**). Todo **a través del API Gateway** |
+| 7–8 | Consola de AWS: API Gateway con las 13 rutas, su CORS y el throttling; la EC2 con los contenedores. **Y el remate**: llamar a la EC2 directa, saltándose el borde → **403**. Demuestra que el API Manager no es opcional |
 | 8–9 | El producto: buscar un modelo, ver el descuento real y el gráfico de historial |
-| 9–10 | Cierre: *"agregar alertas es suscribir un servicio nuevo al evento `precio.cambiado`, sin tocar el código existente"* |
+| 9–10 | Cierre: *"el historial ya está capturado, así que agregar alertas de bajada de precio es un servicio nuevo que lo lee — no hay que tocar lo que existe"* |
 
 ### Antes de presentar
 
-- [ ] Grabar un **video de respaldo** de la demo completa el día anterior
+- [ ] ~~Grabar un video de respaldo~~ — **descartado el 10-09, no hay que entregarlo.** Grábalo igual si la demo en vivo te pone nervioso, pero no es una tarea del proyecto
 - [ ] Tener los usuarios de prueba creados y las contraseñas a mano
 - [ ] Postman con la colección lista y las tres llamadas guardadas
 - [ ] Verificar que el ambiente de AWS está prendido (no apagado por ahorro de crédito)
