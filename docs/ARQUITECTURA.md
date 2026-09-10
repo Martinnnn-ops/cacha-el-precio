@@ -22,22 +22,24 @@ Scraper Python ───────▶ PostgreSQL ◀────────�
        └─────────────▶ S3 (imágenes)
 ```
 
-> 🔴 **El diagrama de arriba es el diseño, no el tráfico real.** Verificado el 09-09:
-> `frontend/.env.production` apunta a `api.cacha-el-precio.com`, ese nombre resuelve a la IP de la
-> EC2, y **ningún archivo del repositorio menciona `execute-api`**. El API Gateway está creado y
-> probado, pero **ninguna petición de usuario lo atraviesa**: el camino real es
-> `navegador → Caddy → gateway`. Meterlo en la cadena es el primer punto de la v1, porque de él
-> dependen tres indicadores del EP2 (validación del JWT en las rutas, rutas hacia los servicios, y
-> CORS).
+> 🟢 **Corregido el 10-09: el diagrama y el tráfico real ya coinciden.** El frontend se compila
+> apuntando al API Gateway —verificado buscando `qxaa9rl4dj` **dentro de `dist/assets/`**, no en
+> la configuración— y Caddy responde **403** a quien llegue sin el encabezado que solo inyecta el
+> borde ([ADR-026](adr/026-encabezado-secreto-del-borde.md)). El camino ya no es una costumbre
+> del frontend: es el único posible.
+>
+> *Lo que decía antes, como registro:* hasta el 09-09 `frontend/.env.production` apuntaba a
+> `api.cacha-el-precio.com`, ningún archivo del repositorio mencionaba `execute-api`, y ninguna
+> petición de usuario atravesaba el borde — justo del que dependen tres indicadores del EP2.
 
 | Componente | Responsabilidad | Estado |
 |---|---|---|
-| API Gateway | JWT en el borde, CORS y stages | creado y probado, **fuera del camino real** |
-| Caddy | TLS y proxy hacia el BFF | activo |
+| API Gateway | JWT en el borde, CORS y stages | **único camino de entrada**, con límite de 50 req/s |
+| Caddy | TLS, proxy hacia el BFF y **exigir el encabezado del borde** | activo |
 | Gateway | autorización de negocio y contrato público | ASP.NET Core 10 |
 | Product Service | catálogo vigente y ofertas | ASP.NET Core 10 + EF Core + PostgreSQL |
 | Scraper | extracción, normalización e historial | Python + PostgreSQL + S3 |
-| Cognito | usuarios, login, grupos y tokens | existen dos pools por reconciliar |
+| Cognito | usuarios, login, grupos y tokens | **un pool por cuenta**, con 3 app clients; falta el IdP de Google |
 | CDN del sitio | TLS y caché de los archivos estáticos | **Cloudflare**, no CloudFront ([ADR-023](adr/023-cloudflare-como-cdn.md)) |
 
 ## Principios

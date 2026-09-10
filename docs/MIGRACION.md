@@ -37,6 +37,18 @@ pasó.
 
 Se corre **contra la EC2 que está viva**, no después de perderla.
 
+> 🟢 **Desde el 10-09 ya no hace falta acordarse, y hay dos redes:**
+>
+> 1. **`crear-infra.sh --borrar` respalda solo antes de destruir**, se baja la copia al portátil,
+>    comprueba que no llegó vacía, y **si algo falla no borra nada**. Saltárselo exige pedirlo a
+>    mano con `--sin-respaldo`.
+> 2. **Un timer de systemd vuelca la base cada hora** a `s3://cacha-el-precio-respaldos-<cuenta>/`,
+>    privado y con versionado, que **sobrevive a que la instancia desaparezca**.
+>
+> Se añadió después de perder 221 productos con su historial. La causa era de diseño: este script
+> corre *dentro* de la EC2 y `crear-infra.sh` corre *en el portátil*, así que **el que destruye
+> nunca llamaba al que protege**.
+
 ```bash
 # En la EC2, o por ssh
 cd /ruta/del/proyecto
@@ -116,7 +128,8 @@ los grupos `admin` y `usuario`, y dos usuarios de prueba.
 otra cuenta sale otro nombre solo. Los identificadores quedan en `cognito.env`, que no se
 versiona porque cambia con cada cuenta.
 
-> 🔴 **Lo que este script NO hace todavía: crear el IdP de Google.** No hay ningún
+> 🟢 **Corregido el 10-09: el script ya crea el IdP de Google** si encuentra `google.env`.
+> Lo de abajo queda como registro de lo que fallaba. No hay ningún
 > `create-identity-provider` en él, y ese hueco es la causa de que existan dos user pools — ver
 > [`INTEGRACION.md` §0.2](INTEGRACION.md). Mientras no se agregue, en una cuenta nueva el login
 > con Google **no va a funcionar**, y hay que crearlo a mano en la consola. Es lo primero que
@@ -286,27 +299,34 @@ y Google se agrega después volviendo a correrlo.
 | **URL de retorno de producción** | ✅ `tools/crear-cognito.sh` |
 | API Manager | ✅ `tools/crear-api-gateway.sh` |
 | Respaldo y restauración | ✅ `tools/respaldar.sh`, probado de punta a punta |
-| Desplegar el compose en la EC2 | 🔴 a mano — necesita el `.env` con secretos |
-| Compilar y subir el frontend | 🔴 dos comandos, ver el paso 6 |
-| **DNS en Cloudflare** | 🔴 a mano — está fuera de AWS |
+| **Desplegar el compose en la EC2** | ✅ `tools/desplegar.sh` · **nuevo el 10-09** |
+| **Compilar y subir el frontend** | ✅ `tools/desplegar.sh`, y **mira dentro del bundle** antes de subirlo |
+| **Encabezado secreto del borde** | ✅ `crear-api-gateway.sh` + `desplegar.sh` · [ADR-026](adr/026-encabezado-secreto-del-borde.md) |
+| **Respaldo automático cada hora a S3** | ✅ `tools/desplegar.sh` instala el timer de systemd |
+| **DNS en Cloudflare** | 🔴 a mano — fuera de AWS, y **solo el dueño del dominio** |
 | Red privada (VPC, NAT) | 🔴 `tools/crear-red.sh` está prometido y **no existe**. Decidido que no entra: el NAT cobra por hora |
 
-**Nueve de trece, y las cuatro que faltan son cortas.** Lo que queda a mano es: copiar un archivo
-de secretos, dos comandos de compilación, y **un cambio de DNS**, que es el único paso que cruza
-fuera de AWS.
+**Doce de trece.** Lo único que queda a mano en el procedimiento normal es **el cambio de DNS**,
+el único paso que cruza fuera de AWS — y que solo hace falta en la cuenta que administra el
+dominio.
+
+> 🔑 **Las otras dos cuentas no tocan el DNS y aun así les funciona.** `crear-api-gateway.sh`
+> comprueba si el dominio resuelve a *tu* IP; si no, apunta el borde a `http://<TU-IP>:8080`.
+> Corres los cuatro comandos sin banderas y queda montado. Ver
+> [`MONTAR-EN-TU-CUENTA.md`](MONTAR-EN-TU-CUENTA.md).
 
 ### La migración completa, en orden
 
 ```bash
 # En la cuenta nueva, con sus credenciales cargadas:
-./tools/crear-infra.sh          # máquina + IP fija + bucket
+./tools/crear-infra.sh          # máquina + IP fija + los dos buckets
 ./tools/crear-cognito.sh        # identidad + Google
-./tools/crear-api-gateway.sh    # el borde
+./tools/crear-api-gateway.sh    # el borde, y genera borde.env
 
-# Después, a mano:
-#  1. copiar .env a la máquina y  docker compose up -d
-#  2. npm run build  +  aws s3 sync dist/ s3://<bucket>/ --delete
-#  3. en Cloudflare: 'api' → la IP nueva,  'www' → el bucket nuevo
+LLAVE=~/labsuser.pem ./tools/desplegar.sh   # la aplicación, el sitio y el respaldo
+
+# Después, a mano y SOLO en la cuenta que administra el dominio:
+#  · en Cloudflare: 'api' → la IP nueva,  'www' → el bucket nuevo
 ```
 
 **El dominio y el cliente de Google no se tocan.** Solo cambia a dónde apuntan.
