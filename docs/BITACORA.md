@@ -436,7 +436,7 @@ PYTHONPATH=scraper-service/src uv run --no-project --with pytest --with pydantic
 y separó producto canónico de oferta. `canonicalKey` agrupa el mismo modelo entre tiendas y
 `(store, externalId)` hace el POST idempotente; la respuesta entrega `offers[]`, imágenes por
 oferta y tallas abiertas como `S`, `38` o `42.5`. La decisión y el riesgo del matching heurístico
-quedaron en el ADR-021.
+quedaron en el ADR-025.
 
 El scraper amplió las categorías de ropa, accesorios y baño, lee JSON-LD anidado,
 `ProductGroup`, `AggregateOffer`, precios chilenos y tallas de variantes. El frontend ya traduce
@@ -517,3 +517,61 @@ docker compose up --build -d postgres product-service scraper-api
 **Panditax —**
 
 **Del equipo:**
+
+### 09-09, segunda parte · revisión, Fase 4 y la arquitectura v1
+
+**Martín —** la sesión siguió después de la entrada de arriba. Lo que pasó, en orden:
+
+**Una revisión de la rama entera** encontró **ocho defectos, y acertó en los ocho**. Tres eran
+graves y **los tres los había introducido el trabajo de esa misma sesión**: con la API caída todo
+enlace válido acababa en 404; el guard dejaba la página en blanco al abrir un enlace compartido; y
+el `sitemap.xml` emitía N veces la misma URL inexistente. Los tres se comprobaron **ejecutando**
+—apagando el gateway, entrando en frío, generando el sitemap contra el backend—, no leyendo.
+
+> **Lección para el informe:** ninguno de los tres se veía leyendo el código. Aparecieron al correr
+> el sistema en condiciones que no son la feliz.
+
+**Fase 4:** vuelven el contador de visitas y la fecha de alta que había borrado el PR #18. El
+incremento va con `ExecuteUpdateAsync` —una sola sentencia `UPDATE … SET Visits = Visits + 1`—
+para que dos visitas simultáneas no se pisen. Dos tropiezos que valen para la defensa: **SQLite no
+acepta añadir una columna con un valor por defecto no constante** (`CURRENT_TIMESTAMP` falla), que
+es el ejemplo concreto que le faltaba a la deuda SQLite-vs-Postgres; y **una fecha sin zona horaria
+vale menos que ninguna** — llegaba sin la `Z` y el navegador la leía como hora local, así que en
+Chile un producto recién creado parecía creado tres horas en el futuro.
+
+**El PR #19 se mergeó a `development`** el 09-09 a las 04:18 UTC, **sin revisiones**. Lo mergeó su
+propio autor. Queda anotado sin más: `AGENTS.md` dice que nadie mergea su propio PR, y la regla
+existe para que un segundo par de ojos mire antes. A un día del freeze es entendible; conviene
+recordarlo la próxima.
+
+**Auditoría de arquitectura y definición de la v1.** El hallazgo que reordenó todo:
+**el API Gateway está creado, probado y fuera del camino.** `frontend/.env.production` apunta a
+`api.cacha-el-precio.com`, ese nombre resuelve a la IP de la EC2, y **ningún archivo del repo
+menciona `execute-api`**. No es que se *pueda* saltar el API Manager: lo salta todo el mundo,
+siempre. De él dependen tres indicadores del EP2 (20% + 13% + 7%).
+
+**Cuatro decisiones cerradas**, dos de ellas con ADR nuevo:
+
+| Decisión | Resultado |
+|---|---|
+| CDN | **Cloudflare**, no CloudFront ([ADR-023](adr/023-cloudflare-como-cdn.md)) |
+| CORS | **solo en el API Manager**; dominio único pospuesto ([ADR-024](adr/024-cors-en-el-api-manager.md)) |
+| Persistencia | SQLite se queda hasta después del EP1 |
+| CI/CD y emparejamiento | fuera del EP1 ([ADR-022](adr/022-identidad-de-producto-entre-tiendas.md)) |
+
+Dato que nadie tenía: **nunca se comprobó si CloudFront está disponible en el Learner Lab.**
+`tools/verificar-aws-academy.sh` sondea Cognito, API Gateway, EC2 e IAM, y CloudFront no aparece.
+El ADR-023 deja el comando exacto para comprobarlo — y el aviso de que la lectura no prueba nada,
+decide `create-distribution`.
+
+**El backlog de la v1** quedó en 9,5 h obligatorias (identidad, meter el borde en el camino,
+cerrarlo por detrás, CORS en un solo sitio, la ruta de visitas) + 11,5 h de calidad. **Todo lo
+obligatorio cuesta cero dólares:** se arregla con configuración y scripts, no con infraestructura.
+Tablero visual actualizado en el mismo enlace de siempre.
+
+⚠️ **Los ADR 022, 023 y 024 quedaron fuera del merge del PR #19** — se commitearon después de subir
+la rama. Están en `feature/frontend-en-monorepo`, respaldados en origin, y necesitan su propio PR.
+
+**Lo primero al retomar:** pedirle a Panditax el *client secret* de Google y que declare la URL de
+retorno de Cognito en Google Cloud. La fase 1 del plan no arranca sin eso, y es la primera porque
+el API Gateway valida contra ese pool.

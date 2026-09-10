@@ -34,10 +34,10 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 | Límites de servicios, BFF, persistencia, escalado y ADR | `docs/ARQUITECTURA.md` y `docs/adr/020-*.md` | — |
 | Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 401 líneas |
 | **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 241 líneas |
-| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 202 líneas |
+| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 212 líneas |
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 493 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 783 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
 | Presentar el proyecto a alguien de afuera | `README.md` | 155 líneas |
 

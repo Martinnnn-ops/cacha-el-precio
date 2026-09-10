@@ -149,14 +149,24 @@ Eso es el 40% de la rúbrica del EP1 — no se delega en el API Gateway "porque 
 Este es el *API Manager* que el informe tiene que justificar. Un reverse proxy no valida JWT en
 el borde ni tiene stages: por eso se cayeron Caddy y CloudFlare.
 
-## 6. Frontend a S3 + CloudFront
+## 6. Frontend a S3 + un CDN
 
-Un Vue compilado son archivos estáticos. Se usa la URL que da el CDN; **no se compra
-dominio** (no aporta nada al MVP y cuesta plata).
+Un Vue compilado son archivos estáticos: van a un bucket de S3 con un CDN delante que pone el
+TLS y la caché.
+
+⚠️ **El CDN es Cloudflare, no CloudFront** — decidido y argumentado en el
+[ADR-023](adr/023-cloudflare-como-cdn.md). Este documento decía «S3 + CloudFront» desde el
+principio, pero **nunca se comprobó si CloudFront está disponible en el Learner Lab**:
+`tools/verificar-aws-academy.sh` sondea Cognito, API Gateway, EC2 e IAM, y CloudFront no aparece.
+Alguien resolvió con Cloudflare y funcionó.
+
+Consecuencia práctica de la que hay que acordarse: **el bucket queda accesible por su propia URL**,
+sin el Origin Access Control que daría CloudFront. No expone datos —son archivos públicos— pero
+quien conozca esa URL se salta el CDN.
 
 ## 7. Actualizar las redirect URIs de Cognito
 
-Apuntarlas al dominio de CloudFront.
+Apuntarlas al dominio del sitio (hoy, el que sirve Cloudflare).
 
 > ⚠️ **Este es el paso que hunde entregas.** El login sigue funcionando perfecto en local,
 > muere en producción, y el error de Cognito no dice por qué. Si algo se va a olvidar, es esto.

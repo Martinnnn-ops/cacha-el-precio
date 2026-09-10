@@ -22,14 +22,23 @@ Scraper Python ───────▶ PostgreSQL ◀────────�
        └─────────────▶ S3 (imágenes)
 ```
 
+> 🔴 **El diagrama de arriba es el diseño, no el tráfico real.** Verificado el 09-09:
+> `frontend/.env.production` apunta a `api.cacha-el-precio.com`, ese nombre resuelve a la IP de la
+> EC2, y **ningún archivo del repositorio menciona `execute-api`**. El API Gateway está creado y
+> probado, pero **ninguna petición de usuario lo atraviesa**: el camino real es
+> `navegador → Caddy → gateway`. Meterlo en la cadena es el primer punto de la v1, porque de él
+> dependen tres indicadores del EP2 (validación del JWT en las rutas, rutas hacia los servicios, y
+> CORS).
+
 | Componente | Responsabilidad | Estado |
 |---|---|---|
-| API Gateway | JWT en el borde, CORS y stages | creado; falta alinear el despliegue final |
+| API Gateway | JWT en el borde, CORS y stages | creado y probado, **fuera del camino real** |
 | Caddy | TLS y proxy hacia el BFF | activo |
 | Gateway | autorización de negocio y contrato público | ASP.NET Core 10 |
 | Product Service | catálogo vigente y ofertas | ASP.NET Core 10 + EF Core + PostgreSQL |
 | Scraper | extracción, normalización e historial | Python + PostgreSQL + S3 |
 | Cognito | usuarios, login, grupos y tokens | existen dos pools por reconciliar |
+| CDN del sitio | TLS y caché de los archivos estáticos | **Cloudflare**, no CloudFront ([ADR-023](adr/023-cloudflare-como-cdn.md)) |
 
 ## Principios
 
@@ -63,7 +72,7 @@ URL, imagen y disponibilidad. `canonicalKey` intenta reconocer el mismo modelo e
 
 Usa PostgreSQL en el esquema `product`. Comparte servidor con el scraper para reducir operación,
 pero no tablas ni acceso: cada servicio mantiene su esquema y cruza la frontera por HTTP. La
-decisión y los costos del matching heurístico están en el ADR-021.
+decisión y los costos del matching heurístico están en el ADR-025.
 
 ### Scraper
 
@@ -187,4 +196,8 @@ La situación actual de red pública, los dos User Pools y los pasos de la cuent
 | [018](adr/018-scraper-en-python.md) | scraper en Python | vigente |
 | [019](adr/019-api-gateway-como-api-manager.md) | API Gateway y Caddy | vigente |
 | [020](adr/020-csharp-y-simplificacion-de-servicios.md) | C# y retiro de procesos vacíos | vigente |
-| [021](adr/021-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta y PostgreSQL | vigente |
+| [021](adr/021-contrato-publico-en-el-bff.md) | el contrato público es el del BFF | vigente |
+| [022](adr/022-identidad-de-producto-entre-tiendas.md) | identidad de producto entre tiendas | propuesta, sin implementar |
+| [023](adr/023-cloudflare-como-cdn.md) | Cloudflare como CDN | vigente |
+| [024](adr/024-cors-en-el-api-manager.md) | CORS solo en el API Manager | vigente |
+| [025](adr/025-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta y PostgreSQL | vigente |

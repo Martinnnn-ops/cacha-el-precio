@@ -79,7 +79,9 @@ pero no es un BFF completo. Un BFF completo devuelve la vista que la pantalla ne
 concreto que lo pide es la agrupación de ofertas por `(store, externalId)` para comparar el mismo
 artículo entre tiendas: **hoy eso no lo hace nadie**, y hacerlo en el navegador significa bajarse
 el catálogo entero para agrupar en el cliente. Ese es el trabajo que convierte al gateway en un
-BFF de verdad, y se decide aparte.
+BFF de verdad, y está diseñado en el [ADR-022](022-identidad-de-producto-entre-tiendas.md) — con
+el motivo de por qué no entra en el EP1: agrupar por `(store, externalId)` no junta nada, porque
+ese par identifica una oferta y no un producto.
 
 ## Actualización · 09-09
 
