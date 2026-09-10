@@ -216,6 +216,57 @@ fi
 fi
 
 # ---------------------------------------------------------------------------
+# 3.4 Si la base quedo vacia y hay respaldo, restaurarlo
+#
+#    Al terminar una EC2 se va su volumen de Docker, asi que al remontar la base
+#    nace VACIA. El sistema arranca perfecto, responde 200 y no da ningun error:
+#    simplemente no hay datos, y es facil no darse cuenta hasta la demo.
+#
+#    Se restaura SOLO si la base esta en cero. Esa condicion es la que lo hace
+#    seguro: si no hay ni una fila, no se puede pisar nada. Con datos dentro no
+#    se toca nada y solo se informa — restaurar encima de datos buenos es
+#    justo el accidente que este script existe para evitar.
+#
+#    SIN_RESTAURAR=1 lo salta.
+# ---------------------------------------------------------------------------
+if [[ "$SOLO" != "--solo-front" ]]; then
+titulo "3.4 Datos"
+
+PSQL_REMOTO="cd $DESTINO && set -a; source .env; set +a; docker compose exec -T postgres psql -U \$DB_USER -d \$DB_NAME"
+FILAS="$($SSH "$PSQL_REMOTO -t -A -c 'select count(*) from scraper.products' 2>/dev/null" 2>/dev/null | tr -d '[:space:]')"
+
+if [[ "$FILAS" =~ ^[0-9]+$ ]] && [[ "$FILAS" -gt 0 ]]; then
+  verde "  la base trae $FILAS productos"
+elif [[ -z "${INFRA_BUCKET_RESPALDOS:-}" ]]; then
+  gris  "  la base esta vacia y no se donde buscar respaldos (falta INFRA_BUCKET_RESPALDOS)"
+else
+  ULTIMO="$(aws --region "$INFRA_REGION" s3 ls "s3://$INFRA_BUCKET_RESPALDOS/db/" 2>/dev/null | sort | tail -1 | awk '{print $4}')"
+  if [[ -z "$ULTIMO" ]]; then
+    gris "  la base esta vacia y no hay respaldos todavia"
+    gris "  llenala con el scraper:"
+    gris "    ssh -i $LLAVE ec2-user@$INFRA_IP 'curl -s -X POST \"http://127.0.0.1:8000/scrape/paris?limite=250\"'"
+  elif [[ "${SIN_RESTAURAR:-}" == "1" ]]; then
+    gris "  la base esta vacia; hay respaldo ($ULTIMO) pero SIN_RESTAURAR=1"
+  else
+    gris  "  la base esta vacia. Restaurando el ultimo respaldo: $ULTIMO"
+    if aws --region "$INFRA_REGION" s3 cp "s3://$INFRA_BUCKET_RESPALDOS/db/$ULTIMO" - 2>/dev/null \
+         | gunzip | $SSH "$PSQL_REMOTO -q -v ON_ERROR_STOP=1" >/dev/null 2>&1; then
+      NUEVAS="$($SSH "$PSQL_REMOTO -t -A -c 'select count(*) from scraper.products' 2>/dev/null" 2>/dev/null | tr -d '[:space:]')"
+      if [[ "$NUEVAS" =~ ^[0-9]+$ ]] && [[ "$NUEVAS" -gt 0 ]]; then
+        verde "  restaurado: $NUEVAS productos, con su historial"
+      else
+        rojo "  el respaldo se aplico pero la base sigue vacia. Revisala a mano."
+      fi
+    else
+      rojo "  no se pudo restaurar $ULTIMO. El sistema queda arriba pero SIN datos."
+      gris "  a mano:"
+      gris "    aws s3 cp s3://$INFRA_BUCKET_RESPALDOS/db/$ULTIMO - | gunzip | ssh -i $LLAVE ec2-user@$INFRA_IP '$PSQL_REMOTO'"
+    fi
+  fi
+fi
+fi
+
+# ---------------------------------------------------------------------------
 # 3.5 Respaldo automatico diario
 #
 #    POR QUE. El 10-09 se perdieron 221 productos con su historial al terminar
