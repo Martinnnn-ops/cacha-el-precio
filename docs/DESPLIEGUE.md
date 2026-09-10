@@ -24,9 +24,9 @@ levantó siguiendo estos pasos: se hizo por otro camino, más corto.
 | Pieza | Estado real |
 |---|---|
 | **Frontend** | 🟢 `www.cacha-el-precio.com` — S3 detrás de **Cloudflare** (no CloudFront) |
-| **API** | 🟢 `api.cacha-el-precio.com` — **EC2 con IP pública** y Caddy delante |
+| **API** | 🟢 Se entra **por el API Gateway**, que reenvía a la EC2. Si el DNS apunta a tu máquina va por `https://api.cacha-el-precio.com`; si no, por `http://<TU-IP>:8080` — y ese puerto exige el encabezado del borde ([ADR-026](adr/026-encabezado-secreto-del-borde.md)) |
 | **Dominio** | 🟢 Comprado por el equipo, con TLS |
-| **Cognito** | 🟡 Levantado, pero hay **dos user pools** — ver [`INTEGRACION.md` §0.2](INTEGRACION.md) |
+| **Cognito** | 🟢 **Un solo pool por cuenta** (`crear-cognito.sh` lo deriva del número de cuenta). Falta el IdP de Google: sin `google.env` el script avisa y sigue sin él |
 | **VPC propia, subredes privadas, NAT, ALB** | 🔴 No existen. La EC2 está en la VPC por defecto |
 | **RDS** | 🔴 No existe (servicio gestionado). `product-service` usa el **PostgreSQL del compose**, esquema `product`, dentro de la EC2 ([ADR-025](adr/025-catalogo-multi-oferta-postgresql.md)) |
 | **API Gateway** | 🟢 Creado el 07-09 con `tools/crear-api-gateway.sh`, con JWT Authorizer y 200/401/403 probados ([ADR-019](adr/019-api-gateway-como-api-manager.md)). Caddy queda detrás, con el TLS |

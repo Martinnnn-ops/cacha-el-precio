@@ -342,6 +342,79 @@ DTO todavía; el costo de ese acoplamiento quedó anotado en ADR-016 para no olv
 
 **Martín —**
 
+(10-09, madrugada) 🚀 **El sistema completo montado y medido en AWS, y el borde por fin en el
+camino.** Se desplegó entero en la cuenta `116813910999`: EC2 `t3.small` con IP fija
+`52.200.101.67`, los cinco contenedores arriba, 361 productos servidos y el sitio compilado en
+el bucket.
+
+**Lo que resuelve la entrega:** el frontend ya no llama a la EC2 directa sino al API Gateway, y
+está verificado *dentro del bundle* —buscando la cadena `qxaa9rl4dj` en `dist/assets/`—, no
+mirando la configuración. Con eso los tres indicadores del EP2 pasan de imposibles a medibles.
+La evidencia, tomada **a través del borde**, en `docs/evidencia/borde-20260910-045748.log`.
+
+La escalera de autorización queda en tres peldaños: **401** sin token, **403** con token de
+usuario sin el scope `ingesta`, y **400** con token de máquina — este último es el buen
+resultado, porque significa que atravesó el JWT Authorizer *y* la validación del BFF y lo único
+que falló fue el cuerpo, que se mandó vacío a propósito.
+
+🔒 **La puerta de atrás cerrada** ([ADR-026](adr/026-encabezado-secreto-del-borde.md)). El API
+Gateway inyecta `X-Borde-Secreto` en sus nueve integraciones y Caddy responde 403 a quien no lo
+traiga. Antes, que el tráfico pasara por el borde era una costumbre del frontend; ahora es una
+propiedad del sistema.
+
+💾 **El respaldo, después de perder datos de verdad.** Al recrear la infraestructura se
+descubrió que los 221 productos y su historial habían desaparecido: la base vivía en un volumen
+de Docker sobre el disco de la instancia, y terminar la EC2 lo destruye. La causa de fondo era
+de diseño — `respaldar.sh` corre *dentro* de la máquina y `crear-infra.sh --borrar` corre *en el
+portátil*: **el que destruye nunca llamaba al que protege**. Ahora hay dos capas: `--borrar`
+respalda, se baja la copia al portátil y comprueba que no llegó vacía antes de destruir nada; y
+un timer de systemd vuelca la base **cada hora** a un bucket privado aparte, con versionado.
+
+> Por hora y no por día, y la razón es el patrón de uso: el laboratorio no está encendido 24/7.
+> Con un timer diario, `Persistent=true` dispara **al arrancar** —o sea que respalda la sesión
+> anterior— y no vuelve a correr en las horas que de verdad se trabaja. Todo lo hecho en la
+> sesión se perdía igual.
+
+🐛 **Siete defectos que solo aparecieron al desplegarlo**, ninguno visible leyendo el código.
+Los tres primeros son el mismo patrón —el script decía «ya existe» y nunca reconciliaba—:
+
+1. El JWT Authorizer no tenía al scraper en su audiencia: **401 con un token perfecto**, y el
+   síntoma apuntaba al scope, que no tenía nada que ver.
+2. El BFF repetía el fallo una capa más adentro (`COGNITO_CLIENT_IDS_VALIDOS`). Se descubrió
+   porque el 401 traía `server: Kestrel`: ya no lo ponía AWS.
+3. Los puertos del grupo de seguridad no se revisaban en cada corrida.
+4. El swap no sobrevivía al reinicio — `swapon` sin línea en `/etc/fstab`, y desaparecía en
+   silencio justo al cambiar el tipo de instancia.
+5. La comprobación de salud preguntaba al puerto 80, que Caddy siempre responde con 308:
+   **gritaba «no respondió» con los cinco contenedores arriba**.
+6. El frontend se compilaba apuntando a la EC2 directa, esquivando el borde.
+7. Un `|| npm run build` de respaldo, con las dos salidas a `/dev/null`, compilaba contra el
+   user pool de otra cuenta y **subía sin un solo error**.
+
+🖥️ **La máquina pasó a `t3.small`.** Medido con el sistema en marcha: los cinco contenedores
+usan ~355 MB, así que en una `t3.micro` quedaban 225 MB libres y ya había 81 MB en swap sin
+hacer nada. El que aprieta es compilar las imágenes de .NET. Son 0,0104 USD/hora más.
+
+🌐 **Dos formas de ver el sitio sin tocar el dominio**: `localhost:5173` (el login funciona,
+porque Cognito acepta `localhost` como única excepción a su regla de retornos `https`) y la URL
+de sitio estático de S3, pública, donde se ve el catálogo pero **no se puede iniciar sesión**.
+S3 no puede dar HTTPS por sí solo: haría falta un CDN delante, y para eso hace falta el dominio.
+
+🛡️ **Y tres cosas más de seguridad:** límite de 50 peticiones por segundo en los dos stages del
+borde —no protege datos, protege el crédito del laboratorio—; el bucket de respaldos nace
+privado y **separado del bucket del sitio**, que es de lectura pública y donde los volcados
+quedarían descargables por cualquiera; y versionado activado, para que un respaldo corrupto no
+pueda pisar al último bueno.
+
+⚠️ **Lo que queda pendiente y no es código:** el *client secret* de Google. Sin él, `google.env`
+no existe y el login con Google no funciona en ninguna cuenta — el script ya sabe crear el
+proveedor.
+
+📄 Guía nueva para el equipo: [`MONTAR-EN-TU-CUENTA.md`](MONTAR-EN-TU-CUENTA.md).
+
+---
+
+
 (07-09) 🔀 **Integradas a `development` las dos ramas del equipo** (PR #10 de Orion, PR #11 de
 Panditax). Las dos traían el mismo conflicto en esta bitácora —eran anteriores a la entrada del
 03-09— y se resolvió conservando las dos partes.
