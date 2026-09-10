@@ -38,11 +38,75 @@ COGNITO_ENV="$RAIZ/cognito.env"
 SALIDA="$RAIZ/api-gateway.env"
 
 NOMBRE_API="cacha-el-precio"
-# A donde apunta el API Gateway. Esa direccion la atiende Caddy, que reenvia
-# siempre al gateway C# (BFF).
-BACKEND_URL="${BACKEND_URL:-https://api.cacha-el-precio.com}"
+DOMINIO_API="api.cacha-el-precio.com"
+
+# ---------------------------------------------------------------------------
+# A donde apunta el API Gateway, y por que NO se puede escribir fijo.
+#
+# El registro DNS de api.cacha-el-precio.com admite UNA sola IP, y el dominio
+# lo administra una sola persona. Quien no sea el dueno del DNS y deje esta
+# variable en el dominio, arma un borde que llama a la maquina de OTRO: si esa
+# maquina esta apagada, sus rutas dan 503 y parece un fallo propio.
+#
+# Por eso se decide sola, en este orden:
+#   1. Si te la pasan a mano (BACKEND_URL=...), manda esa y no se discute.
+#   2. Si el dominio resuelve a la IP de ESTA cuenta, se usa el dominio: hay
+#      certificado de verdad y el salto va cifrado.
+#   3. Si no, se usa http://<TU-IP>:8080, el bloque sin dominio del Caddyfile.
+#      Tambien pasa por el gateway, o sea que el token se valida igual; lo
+#      unico que cambia es que el salto interno va sin TLS. El cliente sigue
+#      hablando HTTPS, porque el certificado lo pone el API Gateway.
+#
+# Asi el companero corre los tres scripts sin banderas y le funciona.
+# ---------------------------------------------------------------------------
+resolver_ip() {
+  getent ahostsv4 "$1" 2>/dev/null | awk '{print $1; exit}' ||
+  python3 -c "import socket,sys;print(socket.gethostbyname(sys.argv[1]))" "$1" 2>/dev/null
+}
+
+if [[ -n "${BACKEND_URL:-}" ]]; then
+  ORIGEN_BACKEND="lo pasaste a mano"
+else
+  INFRA_IP=""
+  [[ -f "$RAIZ/infra.env" ]] && INFRA_IP="$(grep -E '^INFRA_IP=' "$RAIZ/infra.env" | cut -d= -f2)"
+
+  if [[ -z "$INFRA_IP" ]]; then
+    BACKEND_URL="https://$DOMINIO_API"
+    ORIGEN_BACKEND="no hay infra.env todavia; asumo el dominio"
+  elif [[ "$(resolver_ip "$DOMINIO_API")" == "$INFRA_IP" ]]; then
+    BACKEND_URL="https://$DOMINIO_API"
+    ORIGEN_BACKEND="el DNS apunta a tu maquina"
+  else
+    BACKEND_URL="http://$INFRA_IP:8080"
+    ORIGEN_BACKEND="el DNS apunta a otra maquina; voy directo a la tuya"
+  fi
+fi
+
 ORIGEN_WEB="${ORIGEN_WEB:-https://www.cacha-el-precio.com}"
 ORIGEN_LOCAL="http://localhost:5173"
+
+# Tercer origen: el sitio servido directo desde el bucket de S3.
+#
+# Para que sirve. Quien no tenga el dominio no puede ver el sitio por
+# www.cacha-el-precio.com, asi que su unica forma de enseñarselo a alguien es la
+# URL de sitio estatico del bucket. Si ese origen no esta declarado aqui, la
+# pagina carga pero el navegador BLOQUEA todas las llamadas a la API por CORS,
+# y se ve una web vacia sin ningun error claro.
+#
+# El nombre sale del bucket, que a su vez sale del numero de cuenta, asi que en
+# cada cuenta apunta sola al suyo sin escribir nada.
+#
+# OJO: es http://, sin cifrar. Sirve para MIRAR el catalogo; el inicio de sesion
+# no funciona ahi porque Cognito solo admite retornos https (salvo localhost).
+ORIGEN_S3=""
+if [[ -f "$RAIZ/infra.env" ]]; then
+  BUCKET_WEB="$(grep -E '^INFRA_BUCKET=' "$RAIZ/infra.env" | cut -d= -f2)"
+  REGION_WEB="$(grep -E '^INFRA_REGION=' "$RAIZ/infra.env" | cut -d= -f2)"
+  [[ -n "$BUCKET_WEB" ]] && ORIGEN_S3="http://$BUCKET_WEB.s3-website-${REGION_WEB:-us-east-1}.amazonaws.com"
+fi
+
+ORIGENES="$ORIGEN_WEB,$ORIGEN_LOCAL"
+[[ -n "$ORIGEN_S3" ]] && ORIGENES="$ORIGENES,$ORIGEN_S3"
 
 verde()  { printf '\033[0;32m%s\033[0m\n' "$1"; }
 rojo()   { printf '\033[0;31m%s\033[0m\n' "$1"; }
@@ -78,6 +142,7 @@ for v in COGNITO_ISSUER COGNITO_CLIENT_IDS_VALIDOS; do
 done
 verde "  emisor  $COGNITO_ISSUER"
 gris  "  backend $BACKEND_URL"
+gris  "          ($ORIGEN_BACKEND)"
 
 # --------------------------------------------------------------------------
 # Modo borrar
@@ -123,8 +188,8 @@ fi
 
 aws_ apigatewayv2 update-api --api-id "$API_ID" \
   --cors-configuration \
-    "AllowOrigins=$ORIGEN_WEB,$ORIGEN_LOCAL,AllowMethods=GET,POST,PUT,DELETE,OPTIONS,AllowHeaders=Content-Type,Authorization,Version,MaxAge=86400,AllowCredentials=false" \
-  >/dev/null && verde "  CORS: $ORIGEN_WEB y $ORIGEN_LOCAL (sin comodin)"
+    "AllowOrigins=$ORIGENES,AllowMethods=GET,POST,PUT,DELETE,OPTIONS,AllowHeaders=Content-Type,Authorization,Version,MaxAge=86400,AllowCredentials=false" \
+  >/dev/null && verde "  CORS (sin comodin): $ORIGENES"
 
 # --------------------------------------------------------------------------
 # 2. El JWT Authorizer
@@ -132,23 +197,57 @@ aws_ apigatewayv2 update-api --api-id "$API_ID" \
 #    la peticion llegue siquiera a la EC2. Un token vencido o falso no gasta
 #    instancia.
 #
-#    Audience lleva los DOS client id nuestros. Cognito no manda `aud` en el
+#    Audience lleva TODOS los client id nuestros. Cognito no manda `aud` en el
 #    access_token —manda `client_id`— y el authorizer de API Gateway compara
-#    contra los dos claims. Son dos clients: el del frontend y el de pruebas.
+#    contra los dos claims.
+#
+#    Son TRES, y el tercero se habia quedado fuera:
+#      · frontend  · pruebas  · SCRAPER (el de maquina, client_credentials)
+#
+#    Sin el scraper en la lista, su token se rechaza con 401 en el borde ANTES
+#    de que nadie mire el scope, aunque el token traiga 'ingesta' perfecto.
+#    Hoy no se nota porque el scraper escribe directo a la EC2, saltandose el
+#    borde; el dia que se cierre esa puerta —que es justo lo que esta pendiente—
+#    el scraper dejaria de poder escribir, y el sintoma (401 con un token
+#    valido) no apunta para nada a la causa.
+#
+#    Y la lista se RECONCILIA en cada corrida, no solo al crear. Es el mismo
+#    problema que ya mordio con el app client de Cognito y con los puertos del
+#    security group: un authorizer creado antes de este arreglo se quedaba con
+#    la lista vieja para siempre mientras el script decia "ya existe".
 # --------------------------------------------------------------------------
 titulo "2. JWT Authorizer"
+
+AUDIENCIA="$COGNITO_CLIENT_IDS_VALIDOS"
+if [[ -n "${COGNITO_SCRAPER_CLIENT_ID:-}" ]] && [[ ",$AUDIENCIA," != *",$COGNITO_SCRAPER_CLIENT_ID,"* ]]; then
+  AUDIENCIA="$AUDIENCIA,$COGNITO_SCRAPER_CLIENT_ID"
+fi
+
 AUTH_ID="$(aws_ apigatewayv2 get-authorizers --api-id "$API_ID" \
            --query "Items[?Name=='cognito'].AuthorizerId | [0]" --output text)"
 
 if [[ "$AUTH_ID" != "None" && -n "$AUTH_ID" ]]; then
-  verde "  ya existe: $AUTH_ID"
+  ACTUAL="$(aws_ apigatewayv2 get-authorizer --api-id "$API_ID" --authorizer-id "$AUTH_ID" \
+            --query 'JwtConfiguration.Audience' --output text 2>/dev/null | tr '\t' ',')"
+  ESPERADO="$(tr ',' '\n' <<<"$AUDIENCIA" | sort | paste -sd,)"
+  ENCONTRADO="$(tr ',' '\n' <<<"$ACTUAL" | sort | paste -sd,)"
+  if [[ "$ESPERADO" == "$ENCONTRADO" ]]; then
+    verde "  ya existe: $AUTH_ID (audiencia al dia)"
+  else
+    aws_ apigatewayv2 update-authorizer --api-id "$API_ID" --authorizer-id "$AUTH_ID" \
+      --jwt-configuration "Audience=$AUDIENCIA,Issuer=$COGNITO_ISSUER" >/dev/null \
+      && verde "  $AUTH_ID: audiencia corregida" \
+      || { rojo "  no se pudo actualizar el authorizer"; exit 1; }
+    gris  "    antes: $ENCONTRADO"
+    gris  "    ahora: $ESPERADO"
+  fi
 else
   AUTH_ID="$(aws_ apigatewayv2 create-authorizer \
     --api-id "$API_ID" \
     --name cognito \
     --authorizer-type JWT \
     --identity-source '$request.header.Authorization' \
-    --jwt-configuration "Audience=$COGNITO_CLIENT_IDS_VALIDOS,Issuer=$COGNITO_ISSUER" \
+    --jwt-configuration "Audience=$AUDIENCIA,Issuer=$COGNITO_ISSUER" \
     --query AuthorizerId --output text)" || { rojo "  no se pudo crear el authorizer"; exit 1; }
   verde "  creado: $AUTH_ID"
 fi
@@ -161,12 +260,58 @@ fi
 # --------------------------------------------------------------------------
 titulo "3. Integraciones"
 
+# ---------------------------------------------------------------------------
+# El secreto del borde.
+#
+# El puerto 8080 de la EC2 esta abierto a internet, porque el security group no
+# puede limitarse a las direcciones del API Gateway (AWS no publica un rango
+# fijo). Sin esto, cualquiera podria llamar a la maquina directamente y saltarse
+# el borde entero.
+#
+# El API Gateway inyecta este encabezado en CADA integracion y el Caddyfile
+# rechaza con 403 lo que no lo traiga. Asi el borde deja de ser una costumbre
+# del frontend y pasa a ser el unico camino posible.
+#
+# Se guarda en borde.env y se REUTILIZA: si se regenerara en cada corrida, el
+# valor dejaria de coincidir con el que tiene la maquina y todo daria 403 hasta
+# volver a desplegar.
+# ---------------------------------------------------------------------------
+BORDE_ENV="$RAIZ/borde.env"
+if [[ -f "$BORDE_ENV" ]]; then
+  # shellcheck disable=SC1090
+  set -a; source "$BORDE_ENV"; set +a
+fi
+if [[ -z "${BORDE_SECRETO:-}" ]]; then
+  BORDE_SECRETO="$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 40)"
+  cat > "$BORDE_ENV" <<FIN
+# Secreto que el API Gateway inyecta en cada peticion hacia la EC2, y que Caddy
+# exige en el puerto 8080. Generado por tools/crear-api-gateway.sh.
+#
+# NO se sube al repositorio. Si se pierde, se borra este archivo, se vuelve a
+# correr este script y despues tools/desplegar.sh: se genera otro y se sincroniza.
+BORDE_SECRETO=$BORDE_SECRETO
+FIN
+  chmod 600 "$BORDE_ENV"
+  verde "  secreto del borde generado -> borde.env"
+else
+  gris  "  secreto del borde: reutilizando el de borde.env"
+fi
+
+# El encabezado va como "parameter mapping" de la integracion: lo pone el API
+# Gateway, no el cliente, asi que el navegador nunca lo ve ni lo puede falsear.
+PARAM_BORDE="overwrite:header.X-Borde-Secreto=$BORDE_SECRETO"
+
 integracion() {  # $1 = ruta del backend
   local destino="$BACKEND_URL$1"
   local existente
   existente="$(aws_ apigatewayv2 get-integrations --api-id "$API_ID" --max-results 200 \
     --query "Items[?IntegrationUri=='$destino'].IntegrationId | [0]" --output text)"
   if [[ "$existente" != "None" && -n "$existente" ]]; then
+    # Reconciliar, no solo crear. Una integracion hecha antes de que existiera el
+    # encabezado se quedaria sin el para siempre, y el script diria que todo bien
+    # mientras la EC2 le responde 403 a su propio borde.
+    aws_ apigatewayv2 update-integration --api-id "$API_ID" --integration-id "$existente" \
+      --request-parameters "$PARAM_BORDE" >/dev/null 2>&1
     echo "$existente"; return
   fi
   aws_ apigatewayv2 create-integration \
@@ -175,6 +320,7 @@ integracion() {  # $1 = ruta del backend
     --integration-method ANY \
     --integration-uri "$destino" \
     --payload-format-version 1.0 \
+    --request-parameters "$PARAM_BORDE" \
     --query IntegrationId --output text
 }
 
@@ -308,6 +454,21 @@ for etapa in dev prod; do
   fi
 done
 
+
+# Limite de peticiones, en los dos stages.
+#
+# Sin esto el unico tope es el de la cuenta (10.000 por segundo), que para este
+# proyecto no es un tope: es una via para que alguien agote el credito del
+# laboratorio a base de peticiones y tumbe la demo el dia de la entrega. No
+# protege datos —esos ya los cuida el JWT— protege la cuenta.
+#
+# 50 por segundo con rafagas de 100 es holgado para un catalogo que sirve una
+# sola pagina, y corta en seco cualquier martilleo.
+for STAGE in dev prod; do
+  aws_ apigatewayv2 update-stage --api-id "$API_ID" --stage-name "$STAGE" \
+    --default-route-settings "ThrottlingRateLimit=50,ThrottlingBurstLimit=100" >/dev/null 2>&1 \
+    && gris "  $STAGE: limite 50/s, rafaga 100"
+done
 # --------------------------------------------------------------------------
 # 6. Salida
 # --------------------------------------------------------------------------
