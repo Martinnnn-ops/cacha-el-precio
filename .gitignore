@@ -117,3 +117,4 @@ google.env
 
 # Datos de la infraestructura por cuenta (ids, IP, bucket). No al repositorio.
 infra.env
+borde.env
