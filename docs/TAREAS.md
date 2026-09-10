@@ -170,7 +170,7 @@ tiene el proyecto y no se arregla con código.
 
 - **Réplica en las otras dos cuentas** y un simulacro de salto de dominio, hecho a propósito un
   día tranquilo. *Un plan de respaldo que nunca se probó no es un plan.*
-- **Habilitar `pg_trgm` y `unaccent`** en `infra/postgres/init/` — hoy solo crea los esquemas.
+- ~~Habilitar `pg_trgm` y `unaccent`~~ ✅ 10-sep en `infra/postgres/init/` — hoy solo crea los esquemas.
   Es una línea de SQL y destraba lo siguiente.
 - **Emparejamiento entre tiendas** ([ADR-022](adr/022-identidad-de-producto-entre-tiendas.md)).
   Ya no lo frena la base de datos: falta la identidad de producto, porque el `externalId` es el

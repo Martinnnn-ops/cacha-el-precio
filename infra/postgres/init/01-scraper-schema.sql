@@ -2,6 +2,21 @@
 -- Comparten servidor, no tablas ni acceso de dominio.
 -- Se ejecuta UNA sola vez, cuando el volumen de Postgres se crea vacío.
 
+-- ─── Extensiones ────────────────────────────────────────────────────────────
+-- Las necesita el emparejamiento entre tiendas (ADR-022): la misma zapatilla se
+-- llama distinto en cada una ("Nike Air Max 90" / "NIKE AIRMAX 90 Hombre"), asi
+-- que hay que comparar por parecido y no por igualdad.
+--
+--   pg_trgm   compara cadenas por trigramas -> "similitud del 82%"
+--   unaccent  quita tildes, para que "Adidas" y "Ádidas" sean lo mismo
+--
+-- Van aqui y no en una migracion de EF porque son del servidor, no del modelo:
+-- crearlas necesita permisos que la aplicacion no tiene por que tener.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- ─── Esquemas ───────────────────────────────────────────────────────────────
+
 CREATE SCHEMA IF NOT EXISTS scraper;
 CREATE SCHEMA IF NOT EXISTS product;
 

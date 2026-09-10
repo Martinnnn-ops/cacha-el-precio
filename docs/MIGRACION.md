@@ -4,6 +4,11 @@
 > resetean, o el día que el proyecto se mude a una cuenta de AWS normal. En los tres casos el
 > procedimiento es el mismo.
 >
+> 👉 **Si solo quieres levantar el sistema en una cuenta, ve a
+> [`MONTAR-EN-TU-CUENTA.md`](MONTAR-EN-TU-CUENTA.md)**, que es el paso a paso con los dos casos
+> (con dominio y sin dominio). Este documento es lo otro: **qué se pierde al cambiar de cuenta,
+> cómo respaldarlo y cómo restaurarlo.**
+>
 > **Por qué existe.** La regla del proyecto desde el 30-08 es *nada se crea a mano en la consola*.
 > No es purismo: si nos dan otra cuenta, lo que no se puede improvisar es volver a levantarlo
 > todo. Un recurso creado a mano es un recurso que no se sabe recrear.
