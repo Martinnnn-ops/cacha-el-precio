@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 from scraper.config.settings import Settings, get_settings
+from scraper.domain.clothing import texto_parece_vestimenta
 from scraper.infrastructure.database.repositories.product_repository import (
     RepositorioEnMemoria,
 )
@@ -30,6 +31,8 @@ from scraper.scrapers.base.scraper_http import ScraperHttp
 from scraper.scrapers.converse.scraper import ConverseScraper
 from scraper.scrapers.falabella.scraper import FalabellaScraper
 from scraper.scrapers.hites.scraper import HitesScraper
+from scraper.scrapers.hym.scraper import HymScraper
+from scraper.scrapers.lapolar.scraper import LaPolarScraper
 from scraper.scrapers.paris.scraper import ParisScraper
 from scraper.scrapers.ripley.scraper import RipleyScraper
 from scraper.scrapers.sparta.scraper import SpartaScraper
@@ -85,6 +88,8 @@ def construir_servicio(cfg: Settings, repo) -> ScraperService:
         "paris": ParisScraper(http, delay=demora, reintentos=reintentos),
         "ripley": RipleyScraper(http, delay=demora, reintentos=reintentos),
         "hites": HitesScraper(http, delay=demora, reintentos=reintentos),
+        "hym": HymScraper(http, delay=demora, reintentos=reintentos),
+        "lapolar": LaPolarScraper(http, delay=demora, reintentos=reintentos),
         "sparta": SpartaScraper(http, delay=demora, reintentos=reintentos),
     }
     image_service = None
@@ -141,6 +146,8 @@ def sitemap_de(cfg: Settings, tienda: str) -> str | None:
         "paris": cfg.paris_sitemap,
         "ripley": cfg.ripley_sitemap,
         "hites": cfg.hites_sitemap,
+        "hym": cfg.hym_sitemap,
+        "lapolar": cfg.lapolar_sitemap,
         "sparta": cfg.sparta_sitemap,
     }.get(tienda)
 
@@ -153,8 +160,15 @@ def descubrir_urls(cfg: Settings, tienda: str, limite: int, http: HttpClient) ->
     url = sitemap_de(cfg, tienda)
     if not url:
         return []
-    crudas = leer_sitemap(url, http, max_urls=limite * 4)
-    return _solo_fichas(tienda, crudas)[:limite]
+    # Paris/Hites/La Polar mezclan rubros dentro del sitemap. Leer sólo
+    # ``limite * 4`` antes de clasificar hacía que los primeros muebles o
+    # electrodomésticos agotaran el cupo y el barrido devolviera cero prendas.
+    ventana = max(limite * 200, 1000) if tienda in _FILTRAR_SLUG_VESTIMENTA else limite
+    crudas = leer_sitemap(url, http, max_urls=ventana)
+    fichas = _solo_fichas(tienda, crudas)
+    if tienda in _FILTRAR_SLUG_VESTIMENTA:
+        fichas = [url_ficha for url_ficha in fichas if texto_parece_vestimenta(url_ficha)]
+    return fichas[:limite]
 
 
 # Registro unico de tiendas: lo usan tanto el filtro de URLs como el
@@ -165,8 +179,12 @@ _TIENDAS: dict[str, type[ScraperHttp]] = {
     "paris": ParisScraper,
     "ripley": RipleyScraper,
     "hites": HitesScraper,
+    "hym": HymScraper,
+    "lapolar": LaPolarScraper,
     "sparta": SpartaScraper,
 }
+
+_FILTRAR_SLUG_VESTIMENTA = {"paris", "hites", "lapolar"}
 
 
 def _solo_fichas(tienda: str, urls: list[str]) -> list[str]:
@@ -235,8 +253,7 @@ def main(argv: list[str] | None = None) -> int:
         for t in _TIENDAS:
             sm = sitemap_de(cfg, t)
             print(
-                f"{t}\t"
-                f"{'fuente automatica disponible' if sm else 'hay que dar URLs autorizadas'}"
+                f"{t}\t{'fuente automatica disponible' if sm else 'hay que dar URLs autorizadas'}"
             )
         return 0
 

@@ -107,7 +107,7 @@ class ScraperHttp(BaseScraper):
             try:
                 productos.extend(self.scrape(url))
             except DescargaFallida:
-                continue      # ya quedo registrado en el log
+                continue  # ya quedo registrado en el log
         return productos
 
     def _descargar(self, url: str) -> str | None:
@@ -119,7 +119,7 @@ class ScraperHttp(BaseScraper):
                 if intento == self._reintentos:
                     log.error("fallo definitivo al descargar %s: %s", url, e)
                     return None
-                espera = self._delay * intento      # retroceso lineal
+                espera = self._delay * intento  # retroceso lineal
                 log.warning("intento %d/%d fallo en %s: %s", intento, self._reintentos, url, e)
                 time.sleep(espera)
         return None

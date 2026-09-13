@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 
-from scraper.domain.categoria import categoria_de
+from scraper.domain.categoria import clasificacion_de
 from scraper.domain.product import Product
 from scraper.domain.product_identity import canonical_key
 from scraper.infrastructure.http.product_service_client import ProductServiceClient
@@ -38,13 +38,17 @@ class ProductServiceSync:
 
     def sincronizar(self, producto: Product) -> bool:
         """Crea o actualiza la oferta en Product Service."""
+        clasificacion = clasificacion_de(producto)
         payload = {
             "canonicalKey": canonical_key(producto.brand, producto.name),
             "externalId": producto.external_id,
             "store": producto.store,
             "name": producto.name,
             "brand": producto.brand or "Sin marca",
-            "category": categoria_de(producto),
+            "category": clasificacion.categoria,
+            "bodyArea": clasificacion.zona_corporal,
+            "gender": clasificacion.genero,
+            "layer": clasificacion.capa,
             "price": producto.price,
             "sizes": producto.sizes,
             "description": producto.description or "",

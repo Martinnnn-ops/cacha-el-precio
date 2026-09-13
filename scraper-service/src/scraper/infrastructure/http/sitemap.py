@@ -91,7 +91,5 @@ def leer_sitemap(
         restantes = None if max_urls is None else max_urls - len(urls)
         if restantes is not None and restantes <= 0:
             break
-        urls.extend(
-            leer_sitemap(hijo, cliente, max_urls=restantes, profundidad=profundidad - 1)
-        )
+        urls.extend(leer_sitemap(hijo, cliente, max_urls=restantes, profundidad=profundidad - 1))
     return urls[:max_urls] if max_urls else urls

@@ -14,8 +14,14 @@ from scraper.services.scraper_service import ScraperService
 
 
 def prod(external_id="A1", precio=79990, store="converse"):
-    return Product(external_id=external_id, store=store, name="Zapatilla",
-                   brand="Converse", price=precio, product_url=f"https://x/{external_id}")
+    return Product(
+        external_id=external_id,
+        store=store,
+        name="Zapatilla",
+        brand="Converse",
+        price=precio,
+        product_url=f"https://x/{external_id}",
+    )
 
 
 class ScraperFalso:
@@ -35,7 +41,7 @@ def test_barrido_normal():
     r = s.ejecutar("converse", ["u1", "u2"])
     assert r.productos_extraidos == 2
     assert r.guardados == 2
-    assert r.cambios_de_precio == 2      # primera vez, todo es cambio
+    assert r.cambios_de_precio == 2  # primera vez, todo es cambio
     assert r.urls_fallidas == []
     assert len(repo) == 2
 
@@ -62,7 +68,7 @@ def test_url_sin_producto_no_es_un_fallo_de_descarga():
     r = s.ejecutar("converse", ["vacia"])
     assert r.sin_producto == ["vacia"]
     assert r.urls_fallidas == []
-    assert r.urls_ok == 1              # se descargo bien
+    assert r.urls_ok == 1  # se descargo bien
     assert r.guardados == 0
 
 
@@ -125,8 +131,9 @@ def test_sincroniza_lo_guardado():
             return True
 
     sync = SyncFalso()
-    s = ScraperService({"converse": ScraperFalso({"u1": [prod("A1")]})},
-                       RepositorioEnMemoria(), sync_service=sync)
+    s = ScraperService(
+        {"converse": ScraperFalso({"u1": [prod("A1")]})}, RepositorioEnMemoria(), sync_service=sync
+    )
     r = s.ejecutar("converse", ["u1"])
 
     assert r.sincronizados == 1
@@ -141,8 +148,9 @@ def test_fallo_de_sync_no_pierde_el_producto():
             raise RuntimeError("Product Service no disponible")
 
     repo = RepositorioEnMemoria()
-    s = ScraperService({"converse": ScraperFalso({"u1": [prod("A1")]})},
-                       repo, sync_service=SyncRoto())
+    s = ScraperService(
+        {"converse": ScraperFalso({"u1": [prod("A1")]})}, repo, sync_service=SyncRoto()
+    )
     r = s.ejecutar("converse", ["u1"])
 
     assert r.guardados == 1
@@ -170,9 +178,11 @@ def test_fallo_de_imagen_no_pierde_el_producto():
             raise RuntimeError("S3 no disponible")
 
     repo = RepositorioEnMemoria()
-    producto = prod("A1").model_copy(update={
-        "source_image_url": "https://cdn.example/image.jpg",
-    })
+    producto = prod("A1").model_copy(
+        update={
+            "source_image_url": "https://cdn.example/image.jpg",
+        }
+    )
     service = ScraperService(
         {"converse": ScraperFalso({"u1": [producto]})},
         repo,
@@ -192,19 +202,23 @@ def test_fallo_de_imagen_conserva_la_anterior_para_reintentar():
             raise RuntimeError("S3 no disponible")
 
     repo = RepositorioEnMemoria()
-    anterior = prod("A1").model_copy(update={
-        "source_image_url": "https://cdn.example/old.jpg",
-        "image_url": "https://bucket.example/old-detail.webp",
-        "image_card_url": "https://bucket.example/old-card.webp",
-        "image_detail_url": "https://bucket.example/old-detail.webp",
-        "image_card_key": "products/old-card.webp",
-        "image_detail_key": "products/old-detail.webp",
-        "image_hash": "a" * 64,
-    })
+    anterior = prod("A1").model_copy(
+        update={
+            "source_image_url": "https://cdn.example/old.jpg",
+            "image_url": "https://bucket.example/old-detail.webp",
+            "image_card_url": "https://bucket.example/old-card.webp",
+            "image_detail_url": "https://bucket.example/old-detail.webp",
+            "image_card_key": "products/old-card.webp",
+            "image_detail_key": "products/old-detail.webp",
+            "image_hash": "a" * 64,
+        }
+    )
     repo.guardar(anterior)
-    nuevo = prod("A1", 69990).model_copy(update={
-        "source_image_url": "https://cdn.example/new.jpg",
-    })
+    nuevo = prod("A1", 69990).model_copy(
+        update={
+            "source_image_url": "https://cdn.example/new.jpg",
+        }
+    )
     service = ScraperService(
         {"converse": ScraperFalso({"u1": [nuevo]})},
         repo,
@@ -221,12 +235,14 @@ def test_fallo_de_imagen_conserva_la_anterior_para_reintentar():
 
 def test_fuente_ausente_no_borra_la_imagen_anterior():
     repo = RepositorioEnMemoria()
-    anterior = prod("A1").model_copy(update={
-        "source_image_url": "https://cdn.example/old.jpg",
-        "image_url": "https://bucket.example/detail.webp",
-        "image_detail_url": "https://bucket.example/detail.webp",
-        "image_detail_key": "products/detail.webp",
-    })
+    anterior = prod("A1").model_copy(
+        update={
+            "source_image_url": "https://cdn.example/old.jpg",
+            "image_url": "https://bucket.example/detail.webp",
+            "image_detail_url": "https://bucket.example/detail.webp",
+            "image_detail_key": "products/detail.webp",
+        }
+    )
     repo.guardar(anterior)
     service = ScraperService(
         {"converse": ScraperFalso({"u1": [prod("A1", 69990)]})},

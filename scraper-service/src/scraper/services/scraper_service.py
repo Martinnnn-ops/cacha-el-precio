@@ -51,11 +51,11 @@ class ResultadoBarrido:
     productos_descartados: int = 0
     imagenes_procesadas: int = 0
     sincronizados: int = 0
-    urls_fallidas: list[str] = field(default_factory=list)   # no se pudo descargar
+    urls_fallidas: list[str] = field(default_factory=list)  # no se pudo descargar
     errores_guardado: list[str] = field(default_factory=list)
     errores_imagen: list[str] = field(default_factory=list)
     errores_sync: list[str] = field(default_factory=list)
-    sin_producto: list[str] = field(default_factory=list)    # bajo, pero no hay producto
+    sin_producto: list[str] = field(default_factory=list)  # bajo, pero no hay producto
     segundos: float = 0.0
 
     @property
@@ -170,8 +170,9 @@ class ScraperService:
                     except Exception:
                         # El sync a Product Service es un plus: si no se puede,
                         # el producto ya quedo en la base propia del scraper.
-                        log.exception("no se pudo sincronizar %s/%s", producto.store,
-                                      producto.external_id)
+                        log.exception(
+                            "no se pudo sincronizar %s/%s", producto.store, producto.external_id
+                        )
                         res.errores_sync.append(f"{producto.store}/{producto.external_id}")
 
         res.segundos = time.monotonic() - inicio
@@ -183,12 +184,14 @@ class ScraperService:
         """Un fallo temporal no debe borrar una imagen que ya era valida."""
         if anterior is None:
             return producto
-        return producto.model_copy(update={
-            "source_image_url": anterior.source_image_url,
-            "image_url": anterior.image_url,
-            "image_card_url": anterior.image_card_url,
-            "image_detail_url": anterior.image_detail_url,
-            "image_card_key": anterior.image_card_key,
-            "image_detail_key": anterior.image_detail_key,
-            "image_hash": anterior.image_hash,
-        })
+        return producto.model_copy(
+            update={
+                "source_image_url": anterior.source_image_url,
+                "image_url": anterior.image_url,
+                "image_card_url": anterior.image_card_url,
+                "image_detail_url": anterior.image_detail_url,
+                "image_card_key": anterior.image_card_key,
+                "image_detail_key": anterior.image_detail_key,
+                "image_hash": anterior.image_hash,
+            }
+        )

@@ -26,7 +26,7 @@ def producto(precio: int = 79990, disponible: bool = True, minutos: int = 0) -> 
 
 def test_guarda_y_recupera():
     r = RepositorioEnMemoria()
-    assert r.guardar(producto()) is True          # primera vez: siempre es cambio
+    assert r.guardar(producto()) is True  # primera vez: siempre es cambio
     p = r.obtener("converse", "A21842C-800")
     assert p is not None and p.price == 79990
     assert len(r) == 1
@@ -47,10 +47,10 @@ def test_no_duplica_historial_si_el_precio_no_cambia():
 def test_anade_historial_cuando_baja_el_precio():
     r = RepositorioEnMemoria()
     r.guardar(producto(79990, minutos=0))
-    r.guardar(producto(79990, minutos=1))         # sin cambio
+    r.guardar(producto(79990, minutos=1))  # sin cambio
     assert r.guardar(producto(59990, minutos=2)) is True
     h = r.historial("converse", "A21842C-800")
-    assert [o.price for o in h] == [59990, 79990]   # mas reciente primero
+    assert [o.price for o in h] == [59990, 79990]  # mas reciente primero
 
 
 def test_tambien_registra_el_cambio_de_disponibilidad():
@@ -83,10 +83,12 @@ def test_producto_inexistente_devuelve_none():
 
 def test_repositorio_rechaza_productos_fuera_de_vestimenta():
     r = RepositorioEnMemoria()
-    control = producto().model_copy(update={
-        "name": "Control PS5 DualSense",
-        "product_url": "https://tienda.cl/control-ps5",
-    })
+    control = producto().model_copy(
+        update={
+            "name": "Control PS5 DualSense",
+            "product_url": "https://tienda.cl/control-ps5",
+        }
+    )
 
     with pytest.raises(ValueError, match="fuera de vestimenta"):
         r.guardar(control)

@@ -14,6 +14,8 @@ import pytest
 
 from scraper.domain.clothing import es_vestimenta
 from scraper.scrapers.hites.parser import HitesParser
+from scraper.scrapers.hym.parser import HymParser
+from scraper.scrapers.lapolar.parser import LaPolarParser
 from scraper.scrapers.paris.parser import ParisParser
 from scraper.scrapers.ripley.parser import RipleyParser
 from scraper.scrapers.sparta.parser import SpartaParser
@@ -24,6 +26,8 @@ TIENDAS = [
     pytest.param(ParisParser, "paris", "MKVAN0WH9S", 21990, "Fox", id="paris"),
     pytest.param(RipleyParser, "ripley", "2000380632868", 69990, "SONY", id="ripley"),
     pytest.param(HitesParser, "hites", "937898001", 4500, "ROLLY GO", id="hites"),
+    pytest.param(HymParser, "hym", "253308", 12990, "H&M", id="hym"),
+    pytest.param(LaPolarParser, "lapolar", "60796", 6990, "INTIME", id="lapolar"),
     pytest.param(SpartaParser, "sparta", "x-61200000TMICROFS2400", 2990, "ZVibes", id="sparta"),
 ]
 
@@ -67,6 +71,8 @@ def test_ripley_encuentra_el_product_dentro_de_graph():
         (ParisParser, "paris", True),
         (RipleyParser, "ripley", False),
         (HitesParser, "hites", False),
+        (HymParser, "hym", True),
+        (LaPolarParser, "lapolar", True),
         (SpartaParser, "sparta", False),
     ],
 )
@@ -199,3 +205,17 @@ def test_lee_low_price_de_aggregate_offer():
     p = ParisParser().parse_product(html, "https://paris.cl/polera")
 
     assert p is not None and p.price == 12990
+
+
+def test_hym_lee_tallas_de_las_variantes_next():
+    producto = HymParser().parse_product(html_de("hym"))
+
+    assert producto is not None
+    assert producto.sizes == ["4-6M", "6-9M", "9-12M", "12-18M"]
+
+
+def test_lapolar_lee_tallas_disponibles_de_microdatos():
+    producto = LaPolarParser().parse_product(html_de("lapolar"))
+
+    assert producto is not None
+    assert producto.sizes == ["S", "M", "L"]

@@ -41,6 +41,9 @@ class Product(BaseModel):
     available: bool = True
     # Se guardan como texto para representar tanto XS/XL como 38, 42.5 o 10 US.
     sizes: list[str] = Field(default_factory=list)
+    # Contexto semántico de la tienda (breadcrumbs/categorías). Sirve para
+    # clasificar títulos ambiguos, pero no forma parte del dato persistido.
+    taxonomy_context: str | None = Field(default=None, exclude=True)
 
     # Cuando se observo. Sin esto no hay forma de saber si un precio es
     # de hoy o de hace tres semanas, ni de construir el historial.

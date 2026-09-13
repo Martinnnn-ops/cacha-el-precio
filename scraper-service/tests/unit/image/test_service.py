@@ -54,9 +54,7 @@ def product():
 
 def test_uploads_two_variants_and_enriches_product():
     storage = StorageFalso()
-    result = ProductImageService(
-        DownloaderFalso(), ImageProcessor(), storage
-    ).process(product())
+    result = ProductImageService(DownloaderFalso(), ImageProcessor(), storage).process(product())
 
     assert len(storage.objects) == 2
     assert result.image_card_key.startswith("products/paris/SKU-1/")

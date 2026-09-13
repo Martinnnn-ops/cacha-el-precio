@@ -2,7 +2,7 @@
 
 import pytest
 
-from scraper.domain.clothing import es_vestimenta
+from scraper.domain.clothing import es_vestimenta, texto_parece_vestimenta
 from scraper.domain.product import Product
 
 
@@ -50,3 +50,8 @@ def test_rechaza_productos_fuera_de_vestimenta(nombre):
 
 def test_ropa_de_cama_no_pasa_por_contener_ropa():
     assert es_vestimenta(producto("Set de ropa de cama")) is False
+
+
+def test_filtra_slugs_de_sitemap_antes_de_descargar_fichas():
+    assert texto_parece_vestimenta("https://paris.cl/poleron-hombre-123.html") is True
+    assert texto_parece_vestimenta("https://paris.cl/refrigerador-lg-123.html") is False

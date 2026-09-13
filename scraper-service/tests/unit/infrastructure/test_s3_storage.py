@@ -21,9 +21,7 @@ class FakeS3:
 
 def test_upload_sets_web_cache_and_encryption_headers():
     client = FakeS3()
-    storage = S3ImageStorage(
-        "bucket", "https://bucket.example/", client=client
-    )
+    storage = S3ImageStorage("bucket", "https://bucket.example/", client=client)
 
     url = storage.upload("products/tienda/a card.webp", b"webp")
 

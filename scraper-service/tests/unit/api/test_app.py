@@ -20,14 +20,24 @@ def cliente() -> TestClient:
 
 @pytest.fixture
 def producto_guardado():
-    p = Product(external_id="A1", store="converse", name="Zapatilla", brand="Converse",
-                price=79990, product_url="https://www.converse.cl/a1")
+    p = Product(
+        external_id="A1",
+        store="converse",
+        name="Zapatilla",
+        brand="Converse",
+        price=79990,
+        product_url="https://www.converse.cl/a1",
+    )
     _repo.guardar(p)
     # Un segundo precio, mas tarde: es lo que pasa en un barrido real.
-    _repo.guardar(p.model_copy(update={
-        "price": 59990,
-        "scraped_at": datetime.now(UTC) + timedelta(hours=1),
-    }))
+    _repo.guardar(
+        p.model_copy(
+            update={
+                "price": 59990,
+                "scraped_at": datetime.now(UTC) + timedelta(hours=1),
+            }
+        )
+    )
     return p
 
 
@@ -42,8 +52,8 @@ def test_health(cliente):
 def test_tiendas_indica_cual_tiene_sitemap(cliente):
     d = cliente.get("/tiendas").json()
     por_nombre = {t["tienda"]: t for t in d}
-    assert por_nombre["falabella"]["sitemap"]          # Falabella publica sitemap
-    assert por_nombre["converse"]["sitemap"] is None   # Converse no
+    assert por_nombre["falabella"]["sitemap"]  # Falabella publica sitemap
+    assert por_nombre["converse"]["sitemap"] is None  # Converse no
     assert por_nombre["falabella"]["modo"] == "listados"
     assert por_nombre["converse"]["modo"] == "urls_autorizadas"
 
@@ -51,10 +61,10 @@ def test_tiendas_indica_cual_tiene_sitemap(cliente):
 def test_producto_y_su_historial(cliente, producto_guardado):
     r = cliente.get("/productos/converse/A1")
     assert r.status_code == 200
-    assert r.json()["price"] == 59990                  # el ultimo precio visto
+    assert r.json()["price"] == 59990  # el ultimo precio visto
 
     h = cliente.get("/productos/converse/A1/historial").json()
-    assert [o["price"] for o in h] == [59990, 79990]   # mas reciente primero
+    assert [o["price"] for o in h] == [59990, 79990]  # mas reciente primero
 
 
 def test_producto_inexistente_da_404(cliente):

@@ -46,6 +46,9 @@ def test_adapta_producto_al_contrato_csharp():
     assert product["name"] == "Poleron CK"
     assert product["price"] == 79990
     assert product["category"] == "Polerones"
+    assert product["bodyArea"] == "Torso"
+    assert product["gender"] == "Unisex"
+    assert product["layer"] == "Abrigo"
     assert product["externalId"] == "MK4QJFISTR"
     assert product["store"] == "paris"
     assert product["sizes"] == []

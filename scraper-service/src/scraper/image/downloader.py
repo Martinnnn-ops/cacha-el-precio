@@ -103,10 +103,7 @@ class ImageDownloader:
                 addresses = self._resolver(host)
             except OSError as exc:
                 raise ImageDownloadError("no se pudo resolver el host de imagen") from exc
-            if not addresses or any(
-                not ipaddress.ip_address(ip).is_global
-                for ip in addresses
-            ):
+            if not addresses or any(not ipaddress.ip_address(ip).is_global for ip in addresses):
                 raise ImageDownloadError(
                     "el host de imagen resuelve a una red no publica"
                 ) from None
