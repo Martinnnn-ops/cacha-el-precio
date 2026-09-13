@@ -6,10 +6,9 @@ import { useRouter } from 'vue-router'
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import { registrarVisita } from '@/modules/comparador/services/comparador.service'
 import { rutaNoEncontrada } from '@/modules/comparador/routes'
-import { useTiendas } from '@/modules/comparador/composables/useTiendas'
-import { formatearFecha, formatearPrecio } from '@/shared/utils/formato'
-import { descuento, minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
-import { slugProducto } from '@/shared/utils/slug'
+import { formatearPrecio } from '@/shared/utils/formato'
+import { minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
+import { slugProducto, slugProductoAnterior } from '@/shared/utils/slug'
 import DetalleSkeleton from '@/modules/comparador/components/DetalleSkeleton.vue'
 import EligeTuTienda from '@/modules/comparador/components/EligeTuTienda.vue'
 import FichaCaracteristicas from '@/modules/comparador/components/FichaCaracteristicas.vue'
@@ -18,7 +17,6 @@ import SelloDescuento from '@/modules/comparador/components/SelloDescuento.vue'
 import AdSlot from '@/shared/components/AdSlot.vue'
 import BaseButton from '@/shared/components/BaseButton.vue'
 import MigasDePan from '@/shared/components/MigasDePan.vue'
-import EnlaceTienda from '@/shared/components/EnlaceTienda.vue'
 import BaseTicket from '@/shared/components/BaseTicket.vue'
 import PrendaArt from '@/shared/components/PrendaArt.vue'
 
@@ -29,12 +27,11 @@ const props = defineProps({
 const store = useComparadorStore()
 const router = useRouter()
 const { producto, cargando, error } = storeToRefs(store)
-const { nombreTienda, colorTienda } = useTiendas()
 
-// La URL del detalle es el slug, pero la API identifica los productos por id.
-// La vista resuelve slug -> id mirando el catálogo ya cargado en el store (si
-// no está cargado, se trae antes). Con el slug se llega a la URL y con el id
-// se pide la ficha.
+// La URL del detalle usa el mismo slug canónico que Product Service V2, así
+// que una entrada directa no necesita descargar el catálogo completo antes de
+// pedir la ficha. El catálogo sólo se consulta como compatibilidad cuando el
+// backend responde 404 y la URL podría tener la forma antigua `nombre-id`.
 //
 // Si el slug no corresponde a ningún producto, se va al 404 de verdad y no se
 // pinta la ficha vacía. El motivo no es estético:
@@ -50,36 +47,43 @@ const { nombreTienda, colorTienda } = useTiendas()
 // Se usa `replace` y no `push` para que la URL mala no quede en el historial:
 // el botón de atrás no debe devolver a una página que no existe.
 async function cargarPorSlug(slug) {
-  if (store.productos.length === 0) {
-    await store.cargarProductos()
-  }
+  await store.cargarProducto(slug)
 
-  // `cargarProductos` NUNCA lanza: captura el fallo y lo deja en `store.error`
-  // para no borrar lo que ya estuviera en pantalla. Así que hay que
-  // preguntárselo explícitamente. Si la carga falló, no sabemos si el producto
-  // existe, y mandar al 404 afirmaría algo que no nos consta: se muestra el
-  // estado de error con reintento, que es lo que el usuario necesita en una
-  // caída. Enviar al 404 aquí convertía cualquier enlace compartido en
-  // «página no encontrada» mientras la API estuviera abajo.
-  if (store.error && store.productos.length === 0) {
-    store.producto = null
+  if (store.error) return
+
+  if (store.producto) {
+    const canonico = slugProducto(store.producto)
+
+    // También cubre la entrada numérica V2: el navegador sigue el 302 del
+    // gateway, axios obtiene la ficha y la SPA deja visible la URL canónica.
+    if (canonico !== slug) {
+      router.replace({ name: 'producto-detalle', params: { slug: canonico } })
+      return
+    }
+
+    avisarVisita(store.producto.id)
     return
   }
 
-  const encontrado = store.productos.find((p) => slugProducto(p) === slug)
+  if (store.productos.length === 0) await store.cargarProductos()
 
-  if (!encontrado) {
-    store.producto = null
-    router.replace(rutaNoEncontrada('producto', slug))
+  // `cargarProductos` conserva el error en el store. Si también falla el
+  // catálogo no hay evidencia para afirmar que el producto no existe.
+  if (store.error && store.productos.length === 0) return
+
+  const anterior = store.productos.find(
+    (producto) => slugProductoAnterior(producto) === slug,
+  )
+
+  if (anterior) {
+    router.replace({
+      name: 'producto-detalle',
+      params: { slug: slugProducto(anterior) },
+    })
     return
   }
 
-  await store.cargarProducto(encontrado.id)
-
-  // El contador de vistas vale para todos, con o sin sesión: no le pide nada
-  // al usuario, sólo que abra la ficha. Para que la misma persona recargando
-  // no lo infle, la visita se registra UNA vez por día y por navegador.
-  avisarVisita(encontrado.id)
+  router.replace(rutaNoEncontrada('producto', slug))
 }
 
 // Fecha en YYYY-MM-DD, suficiente para comparar el día, no la hora.
@@ -115,6 +119,18 @@ const masBarato = computed(() => precioMasBajo(producto.value))
 // Con una sola fuente de precio no hay comparación: la ficha deja de hablar de
 // "la más barata" y de titular una tabla como "Precio por tienda".
 const comparando = computed(() => (producto.value?.precios?.length ?? 0) > 1)
+
+const tallasDisponibles = computed(() =>
+  [...new Set(
+    (producto.value?.precios ?? [])
+      .filter((oferta) => oferta.stock)
+      .flatMap((oferta) => oferta.tallas ?? []),
+  )],
+)
+
+const ofertasDisponibles = computed(
+  () => (producto.value?.precios ?? []).filter((oferta) => oferta.stock).length,
+)
 
 // La marca no siempre viene (la API no la guarda). Sin este guard el eyebrow
 // salía como " · Poleras", con el separador colgando al principio.
@@ -181,8 +197,6 @@ const subtitulo = computed(() =>
   [producto.value?.marca, producto.value?.categoria].filter(Boolean).join(' · '),
 )
 
-// Serie por tienda a partir del historial, para el gráfico.
-
 </script>
 
 <template>
@@ -235,6 +249,14 @@ const subtitulo = computed(() =>
               <p v-if="minimo" class="mono cabecera__minimo">
                 Mínimo que hemos visto: {{ formatearPrecio(minimo.precio) }}
               </p>
+              <p class="mono cabecera__disponibilidad">
+                {{ ofertasDisponibles }}
+                {{ ofertasDisponibles === 1 ? 'tienda disponible' : 'tiendas disponibles' }}
+                <template v-if="tallasDisponibles.length">
+                  · {{ tallasDisponibles.length }}
+                  {{ tallasDisponibles.length === 1 ? 'talla' : 'tallas' }}
+                </template>
+              </p>
             </div>
 
             <!-- El sello se queda arriba: es lo que dice de un vistazo si hoy
@@ -246,6 +268,10 @@ const subtitulo = computed(() =>
 
       <!-- ——— dónde comprarla: el bloque que resuelve la visita ——— -->
       <EligeTuTienda :ofertas="producto.precios" :comparando="comparando" />
+
+      <!-- Pausa editorial después de resolver la compra. Nunca se interpone
+           entre el nombre del producto y sus precios o tallas. -->
+      <AdSlot :bloque="BLOQUE_FICHA" :alto="96" class="detalle__anuncio" />
 
       <!-- ——— características ——— -->
       <section v-if="tieneFicha" class="bloque">
@@ -295,8 +321,6 @@ const subtitulo = computed(() =>
           </div>
         </BaseTicket>
       </section>
-
-      <AdSlot :bloque="BLOQUE_FICHA" :alto="120" />
 
       <!-- ——— historial ———
            La sección se muestra SIEMPRE. Antes se ocultaba entera cuando no
@@ -353,6 +377,20 @@ const subtitulo = computed(() =>
   margin: var(--cep-sp-15) 0 0;
   font-size: var(--cep-fs-xs);
   color: var(--cep-exito);
+}
+.cabecera__disponibilidad {
+  margin: var(--cep-sp-2) 0 0;
+  color: var(--cep-muted);
+  font-size: var(--cep-fs-xs);
+}
+@media (min-width: 560px) {
+  .cabecera__texto {
+    padding-left: var(--cep-sp-6);
+    border-left: 1px dashed var(--cep-line-media);
+  }
+}
+.detalle__anuncio {
+  margin-top: var(--cep-sp-10);
 }
 
 /* ——— bloques de la ficha ——— */
@@ -456,122 +494,33 @@ const subtitulo = computed(() =>
   font-weight: 700;
 }
 
-/* ——— el dinero ——— */
-.tachado {
-  color: var(--cep-muted);
-  text-decoration: line-through;
-  text-decoration-color: var(--cep-alerta);
-}
-.verde {
-  color: var(--cep-exito);
-}
-
-.detalle__mejor strong {
-  color: var(--cep-exito);
-}
-
 .panel {
-  margin-bottom: 24px;
-  padding: 18px;
+  margin: var(--cep-sp-8) 0 var(--cep-sp-6);
+  padding: var(--cep-sp-5);
   background: var(--cep-surface);
   border: 1px solid var(--cep-line);
-  border-radius: 10px;
+  border-radius: var(--cep-r-lg);
+  box-shadow: var(--cep-shadow-1);
 }
 .panel__titulo {
-  margin: 0 0 12px;
-  font-size: 13px;
+  margin: 0 0 var(--cep-sp-3);
+  font-family: var(--cep-font-display);
+  font-size: var(--cep-fs-lg);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cep-muted);
 }
 .panel__vacio {
   margin: 0;
   color: var(--cep-muted);
 }
 
-.tabla {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.tabla th {
-  text-align: left;
-  padding: 0 8px 8px;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--cep-muted);
-  font-weight: 500;
-}
-.tabla td {
-  padding: 10px 8px;
-  border-top: 1px solid var(--cep-line);
-}
-.tabla__fila--mejor {
-  background: color-mix(in srgb, var(--cep-exito) 10%, transparent);
-}
-.tabla__fila--mejor .tabla__monto {
-  color: var(--cep-exito);
-  font-weight: 600;
-}
-.tabla__monto {
-  font-variant-numeric: tabular-nums;
-}
-.tabla__antes {
-  color: var(--cep-muted);
-  font-size: 13px;
-}
-.tabla__descuento {
-  margin-left: 6px;
-  color: var(--cep-alerta);
-  font-weight: 600;
-}
-
-.tabla__ir {
-  text-align: right;
-  white-space: nowrap;
-}
-
-.punto {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  margin-right: 7px;
-}
-
-.chip {
-  display: inline-block;
-  padding: 2px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--cep-line-fuerte);
-  font-size: 11px;
-  color: var(--cep-muted);
-}
-.chip--ok {
-  border-color: var(--cep-exito);
-  color: var(--cep-exito);
-}
-
-.gráfico {
-  width: 100%;
-  height: auto;
-}
-.gráfico__fecha {
-  font-size: 10px;
-  fill: var(--cep-muted);
-}
-
-
-
 .aviso {
-  padding: 56px 20px;
+  padding: var(--cep-sp-16) var(--cep-sp-5);
   text-align: center;
   color: var(--cep-muted);
 }
 .aviso__titulo {
-  margin: 0 0 4px;
-  font-size: 17px;
+  margin: 0 0 var(--cep-sp-1);
+  font-size: var(--cep-fs-lg);
   font-weight: 600;
   color: var(--cep-ink);
 }
@@ -579,6 +528,6 @@ const subtitulo = computed(() =>
   color: var(--cep-alerta);
 }
 .aviso--error p {
-  margin-bottom: 16px;
+  margin-bottom: var(--cep-sp-4);
 }
 </style>

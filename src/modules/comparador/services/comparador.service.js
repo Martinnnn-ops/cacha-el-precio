@@ -8,6 +8,7 @@ import {
 } from '@/modules/comparador/services/producto.adapter'
 import { PRODUCTOS_MOCK } from '@/modules/comparador/data/productos.mock'
 import { TIENDAS } from '@/modules/comparador/data/tiendas'
+import { slugProducto, slugProductoAnterior } from '@/shared/utils/slug'
 
 // Capa de servicios del módulo: aquí y sólo aquí se sabe cómo son las URLs del
 // backend y la forma que devuelve. El store llama a estas funciones y recibe
@@ -22,7 +23,8 @@ import { TIENDAS } from '@/modules/comparador/data/tiendas'
 // página abierta — y el frontend se despliega aparte, así que ni siquiera se
 // actualizan a la vez.
 
-const VERSION = '1.0'
+const VERSION_CATALOGO = '1.0'
+const VERSION_DETALLE = '2.0'
 
 const RETARDO_MOCK = 250
 
@@ -54,7 +56,7 @@ async function filasProductos({ forzar = false } = {}) {
   // «Reintentar» posterior, y las tres llamadas de la portada —productos,
   // categorías y tiendas— volvían a descargar el catálogo cada una por su
   // lado. Es una carrera: no falla siempre, y cuando falla parece lentitud.
-  const esta = http.get('/productos', { version: VERSION }).catch((error) => {
+  const esta = http.get('/productos', { version: VERSION_CATALOGO }).catch((error) => {
     if (cacheFilas === esta) cacheFilas = null
     throw error
   })
@@ -116,19 +118,31 @@ export async function registrarVisita(id) {
   if (USAR_MOCK) return
 
   return http.post(`/productos/${encodeURIComponent(id)}/visitas`, null, {
-    version: VERSION,
+    version: VERSION_CATALOGO,
   })
 }
 
-/** GET /productos/:id */
-export async function obtenerProducto(id) {
+/** GET /productos/:slug mediante el contrato canónico V2. */
+export async function obtenerProducto(slug) {
   if (USAR_MOCK) {
-    return simularRed(PRODUCTOS_MOCK.find((p) => p.id === id) ?? null)
+    return simularRed(
+      PRODUCTOS_MOCK.find(
+        (producto) =>
+          slugProducto(producto) === slug ||
+          slugProductoAnterior(producto) === slug ||
+          producto.id === slug,
+      ) ?? null,
+    )
   }
 
-  const fila = await http.get(`/productos/${encodeURIComponent(id)}`, {
-    version: VERSION,
-  })
+  try {
+    const fila = await http.get(`/productos/${encodeURIComponent(slug)}`, {
+      version: VERSION_DETALLE,
+    })
 
-  return adaptarProducto(fila)
+    return adaptarProducto(fila)
+  } catch (error) {
+    if (error.status === 404) return null
+    throw error
+  }
 }

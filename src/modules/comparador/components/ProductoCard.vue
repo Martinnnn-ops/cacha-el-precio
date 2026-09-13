@@ -33,9 +33,9 @@ const ofertas = computed(() =>
   }),
 )
 
-const visibles = computed(() =>
-  props.compacta ? ofertas.value.slice(0, 3) : ofertas.value,
-)
+// Cuatro tiendas bastan para comparar de un vistazo. El resto queda resumido
+// y disponible en la ficha, sin estirar una sola tarjeta y toda su fila.
+const visibles = computed(() => ofertas.value.slice(0, props.compacta ? 3 : 4))
 
 const ocultas = computed(() => ofertas.value.length - visibles.value.length)
 

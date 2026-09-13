@@ -14,8 +14,15 @@ import { formatearPrecio } from '@/shared/utils/formato'
 // Desglose y totales del outfit. Es la pantalla que responde a la pregunta que
 // trae a alguien aquí: dónde compro cada cosa y cuánto me sale.
 const outfit = useOutfitStore()
-const { desglose, total, tiendasImplicadas, mejorTiendaUnica, ahorroRepartiendo } =
-  storeToRefs(outfit)
+const {
+  desglose,
+  total,
+  tiendasImplicadas,
+  mejorTiendaUnica,
+  ahorroRepartiendo,
+  tallaRopa,
+  tallaCalzado,
+} = storeToRefs(outfit)
 
 const { nombreTienda, colorTienda } = useTiendas()
 
@@ -29,7 +36,17 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
 
 <template>
   <BaseTicket class="resumen">
-    <h2 class="display resumen__titulo">Tu outfit</h2>
+    <div class="resumen__cabecera">
+      <div>
+        <p class="eyebrow resumen__eyebrow">Resumen de compra</p>
+        <h2 class="display resumen__titulo">Tu outfit</h2>
+      </div>
+
+      <span v-if="tallaRopa || tallaCalzado" class="resumen__tallas">
+        <span v-if="tallaRopa" class="mono resumen__talla">Ropa {{ tallaRopa }}</span>
+        <span v-if="tallaCalzado" class="mono resumen__talla">Calzado {{ tallaCalzado }}</span>
+      </span>
+    </div>
 
     <p v-if="desglose.length === 0" class="muted resumen__vacio">
       Ve eligiendo prendas y aquí verás cuánto cuesta y dónde comprar cada una.
@@ -131,10 +148,36 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
 .resumen {
   position: sticky;
   top: var(--cep-sp-4);
+  border-top: 3px solid var(--cep-accent);
+}
+.resumen__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--cep-sp-3);
+  margin-bottom: var(--cep-sp-4);
+}
+.resumen__eyebrow {
+  margin-bottom: var(--cep-sp-05);
 }
 .resumen__titulo {
-  margin: 0 0 var(--cep-sp-4);
+  margin: 0;
   font-size: var(--cep-fs-xl);
+}
+.resumen__talla {
+  padding: var(--cep-sp-1) var(--cep-sp-2);
+  background: var(--cep-wash);
+  border: 1px solid var(--cep-line-media);
+  border-radius: var(--cep-r-sm);
+  color: var(--cep-muted);
+  font-size: var(--cep-fs-xs);
+  white-space: nowrap;
+}
+.resumen__tallas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--cep-sp-1);
 }
 .resumen__vacio {
   margin: 0;

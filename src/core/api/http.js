@@ -9,8 +9,8 @@ import axios from 'axios'
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 // El Product Service ASP.NET Core versiona mediante la cabecera `Version`.
-// El gateway también la fija al reenviar, pero enviarla desde aquí mantiene
-// explícito el contrato y permite hablar directamente con el servicio.
+// Cada operación puede elegirla; el valor de entorno queda como respaldo para
+// las llamadas que no declaran una versión de forma explícita.
 export const API_VERSION = import.meta.env.VITE_API_VERSION ?? '1.0'
 
 // Sin URL base no hay backend contra el que hablar: los servicios lo consultan
@@ -92,14 +92,15 @@ http.interceptors.response.use(
         429: 'Demasiadas consultas seguidas. Espera un momento.',
       }
 
-      return Promise.reject(
-        new Error(
-          mensajes[status] ??
-            (status >= 500
-              ? 'Estamos con problemas. Inténtalo en un rato.'
-              : 'Algo no salió bien. Vuelve a intentarlo.'),
-        ),
+      const traducido = new Error(
+        mensajes[status] ??
+          (status >= 500
+            ? 'Estamos con problemas. Inténtalo en un rato.'
+            : 'Algo no salió bien. Vuelve a intentarlo.'),
       )
+      traducido.status = status
+
+      return Promise.reject(traducido)
     }
 
     if (error.code === 'ECONNABORTED') {

@@ -33,9 +33,9 @@ const route = useRoute()
 // todas por defecto, incluidas las que se añadan mañana, y se gestiona desde
 // un solo sitio.
 //
-// Se excluyen las rutas marcadas con `sinAnuncios`. Hoy es sólo el 404: las
-// políticas de AdSense prohíben anuncios en páginas de error y en páginas sin
-// contenido propio, y saltárselo es motivo de suspensión de la cuenta.
+// Se excluyen las rutas marcadas con `sinAnuncios`: 404, retorno OAuth y
+// pantallas de sesión. No tienen contenido editorial donde un anuncio aporte
+// contexto y no deben convertirse en inventario publicitario accidental.
 const BLOQUE_CIERRE = import.meta.env.VITE_ADSENSE_SLOT_CIERRE ?? ''
 
 const conAnuncios = computed(() => route.meta.sinAnuncios !== true)

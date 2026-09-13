@@ -97,7 +97,10 @@ try {
     // sobresale y la tarjeta se hunde, que es justo al revés de lo que dicen.
     const lumDe = (n, oscuro) => lum(rgb(token(n, oscuro)))
 
-    for (const [tema, oscuro] of [['claro', false], ['oscuro', true]]) {
+    for (const [tema, oscuro] of [
+      ['claro', false],
+      ['oscuro', true],
+    ]) {
       console.log(`  · tema ${tema}`)
 
       for (const [fg, bg, min, etiqueta] of PARES) {
@@ -129,88 +132,233 @@ try {
     // más una fila plana para cubrir el despliegue gradual desde el contrato
     // anterior.
     const FILAS = [
-      { id: 2, canonicalKey: 'polera-basica', name: 'Polera básica', brand: 'Basement', category: 'Poleras', description: 'Algodón', image: null, visits: 17, createdAt: '2026-09-01T00:00:00Z', offers: [
-        { externalId: 'rip-2', store: 'Ripley', price: 9990, sizes: ['XS', 'S'], url: 'https://example.com/2', image: 'https://example.com/2.jpg', active: true, updatedAt: '2026-09-08T00:00:00Z' },
-        { externalId: 'par-2', store: 'Paris', price: 10990, sizes: ['36', '37.5'], url: 'https://example.com/par-2', image: null, active: true, updatedAt: '2026-09-09T00:00:00Z' },
-      ] },
-      { id: 4, canonicalKey: 'polera-manga-larga', name: 'Polera manga larga', brand: 'Basement', category: 'Poleras', offers: [
-        { externalId: 'rip-4', store: 'Ripley', price: 15990, sizes: ['M'], active: false },
-      ] },
-      { id: 5, canonicalKey: 'jeans-slim', name: 'Jeans slim', brand: 'Zara', category: ' Pantalones ', offers: [
-        { externalId: 'zar-5', store: 'Zara', price: 29990, sizes: ['L', 'XL'], active: true },
-      ] },
-      { id: 8, store: null, name: 'Sin tienda', brand: '', category: '', price: 100, sizes: {}, active: true },
-      { id: 9, name: '', brand: 'X', category: 'Poleras', offers: [{ store: 'Paris', price: 100 }] },
-      { id: 10, name: 'Rota', brand: 'X', category: 'Poleras', offers: [{ store: 'Paris', price: 'x' }] },
+      {
+        id: 2,
+        slug: 'polera-basica',
+        canonicalKey: 'polera-basica',
+        name: 'Polera básica',
+        brand: 'Basement',
+        category: 'Poleras',
+        bodyArea: 'Torso',
+        gender: 'Mujer',
+        layer: 'Base',
+        description: 'Algodón',
+        image: null,
+        visits: 17,
+        createdAt: '2026-09-01T00:00:00Z',
+        offers: [
+          {
+            externalId: 'rip-2',
+            store: 'Ripley',
+            price: 9990,
+            sizes: ['XS', 'S'],
+            url: 'https://example.com/2',
+            image: 'https://example.com/2.jpg',
+            active: true,
+            updatedAt: '2026-09-08T00:00:00Z',
+          },
+          {
+            externalId: 'par-2',
+            store: 'Paris',
+            price: 10990,
+            sizes: ['36', '37.5'],
+            url: 'https://example.com/par-2',
+            image: null,
+            active: true,
+            updatedAt: '2026-09-09T00:00:00Z',
+          },
+          {
+            externalId: 'rip-2-xl',
+            store: 'ripley',
+            price: 8990,
+            sizes: ['XL'],
+            url: 'https://example.com/2-xl',
+            image: null,
+            active: true,
+            updatedAt: '2026-09-09T00:00:00Z',
+          },
+        ],
+      },
+      {
+        id: 4,
+        canonicalKey: 'polera-manga-larga',
+        name: 'Polera manga larga',
+        brand: 'Basement',
+        category: 'Poleras',
+        offers: [
+          {
+            externalId: 'rip-4',
+            store: 'Ripley',
+            price: 15990,
+            sizes: ['M'],
+            active: false,
+          },
+        ],
+      },
+      {
+        id: 5,
+        canonicalKey: 'jeans-slim',
+        name: 'Jeans slim',
+        brand: 'Zara',
+        category: ' Pantalones ',
+        offers: [
+          {
+            externalId: 'zar-5',
+            store: 'Zara',
+            price: 29990,
+            sizes: ['L', 'XL'],
+            active: true,
+          },
+        ],
+      },
+      {
+        id: 8,
+        store: null,
+        name: 'Sin tienda',
+        brand: '',
+        category: '',
+        price: 100,
+        sizes: {},
+        active: true,
+      },
+      {
+        id: 9,
+        name: '',
+        brand: 'X',
+        category: 'Poleras',
+        offers: [{ store: 'Paris', price: 100 }],
+      },
+      {
+        id: 10,
+        name: 'Rota',
+        brand: 'X',
+        category: 'Poleras',
+        offers: [{ store: 'Paris', price: 'x' }],
+      },
     ]
 
     const adaptados = adaptarProductos(FILAS)
 
-    check('una fila de la API es un producto', adaptados.length === 4, `${adaptados.length} productos`)
-    check('  conserva la categoría del contrato',
-      adaptados.find((p) => p.id === '2').categoria === 'Poleras')
-    check('  recorta los espacios del nombre de la categoría',
-      adaptados.find((p) => p.id === '5').categoria === 'Pantalones')
-    check('  una categoría ausente queda vacía, no "undefined"',
-      adaptados.find((p) => p.id === '8').categoria === '')
-    check('  active=false se traduce a sin stock',
-      adaptados.find((p) => p.id === '4').precios[0].stock === false)
-    check('  adapta marca y canonicalKey',
+    check(
+      'una fila de la API es un producto',
+      adaptados.length === 4,
+      `${adaptados.length} productos`,
+    )
+    check(
+      '  conserva la categoría del contrato',
+      adaptados.find((p) => p.id === '2').categoria === 'Poleras',
+    )
+    check(
+      '  conserva zona corporal y género del contrato',
+      adaptados.find((p) => p.id === '2').zona === 'Torso' &&
+        adaptados.find((p) => p.id === '2').genero === 'Mujer',
+    )
+    check('  conserva la capa del contrato', adaptados.find((p) => p.id === '2').capa === 'Base')
+    check(
+      '  recorta los espacios del nombre de la categoría',
+      adaptados.find((p) => p.id === '5').categoria === 'Pantalones',
+    )
+    check(
+      '  una categoría ausente queda vacía, no "undefined"',
+      adaptados.find((p) => p.id === '8').categoria === '',
+    )
+    check(
+      '  active=false se traduce a sin stock',
+      adaptados.find((p) => p.id === '4').precios[0].stock === false,
+    )
+    check(
+      '  adapta marca y canonicalKey',
       adaptados.find((p) => p.id === '2').marca === 'Basement' &&
-      adaptados.find((p) => p.id === '2').codigo === 'polera-basica')
-    check('  conserva tallas de ropa y numéricas',
-      adaptados.find((p) => p.id === '2').precios[0].tallas.join(',') === 'XS,S')
-    check('  conserva tallas numéricas con decimal',
-      adaptados.find((p) => p.id === '2').precios[1].tallas.join(',') === '36,37.5')
-    check('  usa la imagen de una oferta cuando falta en el producto',
-      adaptados.find((p) => p.id === '2').imagen === 'https://example.com/2.jpg')
-    check('  conserva las visitas del producto',
-      adaptados.find((p) => p.id === '2').vistas === 17)
-    check('  sin precio de lista no inventa descuento',
-      adaptados.every((p) => p.precios[0].precioLista === null))
-    check('  historial vacío, no undefined',
-      adaptados.every((p) => Array.isArray(p.historial) && p.historial.length === 0))
+        adaptados.find((p) => p.id === '2').codigo === 'polera-basica',
+    )
+    check(
+      '  reúne las tallas de los SKU de una misma tienda',
+      adaptados.find((p) => p.id === '2').precios[0].tallas.join(',') === 'XS,S,XL',
+    )
+    check(
+      '  conserva tallas numéricas con decimal',
+      adaptados.find((p) => p.id === '2').precios[1].tallas.join(',') === '36,37.5',
+    )
+    check(
+      '  usa la imagen de una oferta cuando falta en el producto',
+      adaptados.find((p) => p.id === '2').imagen === 'https://example.com/2.jpg',
+    )
+    check('  conserva las visitas del producto', adaptados.find((p) => p.id === '2').vistas === 17)
+    check(
+      '  sin precio de lista no inventa descuento',
+      adaptados.every((p) => p.precios[0].precioLista === null),
+    )
+    check(
+      '  historial vacío, no undefined',
+      adaptados.every((p) => Array.isArray(p.historial) && p.historial.length === 0),
+    )
 
     check('descarta filas sin nombre', !adaptados.some((p) => p.nombre === ''))
     check('descarta precios que no son números', !adaptados.some((p) => p.nombre === 'Rota'))
 
-    check('un mismo producto conserva varias ofertas',
-      adaptados.find((p) => p.id === '2').precios.length === 2)
-    check('cada oferta queda asociada a su tienda',
+    check(
+      'un mismo producto conserva una oferta por tienda',
+      adaptados.find((p) => p.id === '2').precios.length === 2,
+    )
+    check(
+      '  elige el SKU disponible más barato de la tienda',
+      adaptados.find((p) => p.id === '2').precios[0].precio === 8990,
+    )
+    check(
+      'cada oferta queda asociada a su tienda',
       adaptados.find((p) => p.id === '2').precios[0].tienda === 'ripley' &&
-      adaptados.find((p) => p.id === '5').precios[0].tienda === 'zara')
-    check('sin tienda usa una fuente neutra',
-      adaptados.find((p) => p.id === '8').precios[0].tienda === FUENTE_UNICA.id)
+        adaptados.find((p) => p.id === '5').precios[0].tienda === 'zara',
+    )
+    check(
+      'conserva el slug canónico del backend',
+      adaptados.find((p) => p.id === '2').slug === 'polera-basica',
+    )
+    check(
+      'sin tienda usa una fuente neutra',
+      adaptados.find((p) => p.id === '8').precios[0].tienda === FUENTE_UNICA.id,
+    )
 
     const cats = adaptarCategorias(FILAS)
-    check('deriva categorías únicas desde los productos',
-      cats.map((c) => c.nombre).join(',') === 'Pantalones,Poleras')
+    check(
+      'deriva categorías únicas desde los productos',
+      cats.map((c) => c.nombre).join(',') === 'Pantalones,Poleras',
+    )
     const tiendas = adaptarTiendas(FILAS)
-    check('deriva tiendas únicas desde los productos',
-      tiendas.map((t) => t.id).join(',') === 'catalogo,paris,ripley,zara')
+    check(
+      'deriva tiendas únicas desde los productos',
+      tiendas.map((t) => t.id).join(',') === 'catalogo,paris,ripley,zara',
+    )
 
     const { precioMasBajo: pmb, ahorroMaximo: am } = await load('/src/shared/utils/precios.js')
     const polera = adaptados.find((p) => p.id === '2')
-    check('el cálculo elige la oferta más barata',
-      pmb(polera).precio === 9990)
-    check('  y calcula el ahorro entre tiendas', am(polera) === 1000)
-    check('  un producto sin stock no tiene precio más bajo',
-      pmb(adaptados.find((p) => p.id === '4')) === null)
+    check('el cálculo elige la oferta más barata', pmb(polera).precio === 8990)
+    check('  y calcula el ahorro entre tiendas', am(polera) === 2000)
+    check(
+      '  un producto sin stock no tiene precio más bajo',
+      pmb(adaptados.find((p) => p.id === '4')) === null,
+    )
   }
 
   console.log('\n=== capa de servicios ===')
   const svc = await load('/src/modules/comparador/services/comparador.service.js')
   const lista = await svc.obtenerProductos()
-  const TOTAL_MOCK = (
-    await load('/src/modules/comparador/data/productos.mock.js')
-  ).PRODUCTOS_MOCK.length
+  const TOTAL_MOCK = (await load('/src/modules/comparador/data/productos.mock.js')).PRODUCTOS_MOCK
+    .length
 
-  check('obtenerProductos() devuelve el catálogo',
-    Array.isArray(lista) && lista.length === TOTAL_MOCK, `${lista.length} productos`)
+  check(
+    'obtenerProductos() devuelve el catálogo',
+    Array.isArray(lista) && lista.length === TOTAL_MOCK,
+    `${lista.length} productos`,
+  )
 
-  const uno = await svc.obtenerProducto('2')
-  check('obtenerProducto(id) devuelve el producto', uno?.nombre?.includes('Jeans'), uno?.nombre)
-  check('obtenerProducto(id inexistente) devuelve null', (await svc.obtenerProducto('nope')) === null)
+  const utilSlugServicio = await load('/src/shared/utils/slug.js')
+  const jeans = lista.find((producto) => producto.id === '2')
+  const uno = await svc.obtenerProducto(utilSlugServicio.slugProducto(jeans))
+  check('obtenerProducto(slug) devuelve el producto', uno?.nombre?.includes('Jeans'), uno?.nombre)
+  check(
+    'obtenerProducto(slug inexistente) devuelve null',
+    (await svc.obtenerProducto('nope')) === null,
+  )
 
   // ——— la caché comparte la petición, pero `forzar` la descarta ———
   //
@@ -222,9 +370,32 @@ try {
   {
     const { createServer: crearHttp } = await import('node:http')
     let peticiones = 0
+    const recibidas = []
 
-    const servidor = crearHttp((_, res) => {
+    const servidor = crearHttp((req, res) => {
       peticiones++
+      recibidas.push({ ruta: req.url, version: req.headers.version })
+
+      if (req.url === '/productos/polera-basica') {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(
+          JSON.stringify({
+            id: 2,
+            slug: 'polera-basica',
+            name: 'Polera básica',
+            category: 'Poleras',
+            offers: [{ store: 'Paris', price: 9990, active: true }],
+          }),
+        )
+        return
+      }
+
+      if (req.url === '/productos/no-existe') {
+        res.writeHead(404, { 'Content-Type': 'application/json' })
+        res.end('{}')
+        return
+      }
+
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end('[]')
     })
@@ -243,18 +414,35 @@ try {
     })
 
     try {
-      const s = await conApi.ssrLoadModule(
-        '/src/modules/comparador/services/comparador.service.js',
+      const s = await conApi.ssrLoadModule('/src/modules/comparador/services/comparador.service.js')
+
+      await s.obtenerProductos()
+      await s.obtenerProductos()
+      check(
+        'dos cargas seguidas comparten una sola petición',
+        peticiones === 1,
+        `${peticiones} petición(es)`,
       )
 
-      await s.obtenerProductos()
-      await s.obtenerProductos()
-      check('dos cargas seguidas comparten una sola petición',
-        peticiones === 1, `${peticiones} petición(es)`)
-
       await s.obtenerProductos({ forzar: true })
-      check('  y `forzar` sí vuelve a salir a la red',
-        peticiones === 2, `${peticiones} petición(es)`)
+      check(
+        '  y `forzar` sí vuelve a salir a la red',
+        peticiones === 2,
+        `${peticiones} petición(es)`,
+      )
+
+      const detalleV2 = await s.obtenerProducto('polera-basica')
+      check(
+        'el detalle pide el slug con Version 2.0',
+        detalleV2?.slug === 'polera-basica' &&
+          recibidas.at(-1)?.ruta === '/productos/polera-basica' &&
+          recibidas.at(-1)?.version === '2.0',
+        JSON.stringify(recibidas.at(-1)),
+      )
+      check(
+        'un 404 de detalle se traduce a null',
+        (await s.obtenerProducto('no-existe')) === null,
+      )
     } finally {
       await conApi.close()
       await new Promise((listo) => servidor.close(listo))
@@ -264,8 +452,22 @@ try {
   console.log('\n=== utilidades de precio ===')
   const { precioMasBajo, ahorroMaximo, descuento } = await load('/src/shared/utils/precios.js')
   const p1 = lista.find((p) => p.id === '1')
-  check('el más barato entre las disponibles', precioMasBajo(p1).tienda === 'hym', precioMasBajo(p1).tienda)
-  check('ahorro = más caro − más barato, con stock', ahorroMaximo(p1) === 12990 - 8990, String(ahorroMaximo(p1)))
+  check(
+    'el más barato entre las disponibles',
+    precioMasBajo(p1).tienda === 'hym',
+    precioMasBajo(p1).tienda,
+  )
+  check(
+    'la talla limita qué oferta puede ganar',
+    precioMasBajo(p1, 'S').tienda === 'ripley',
+    precioMasBajo(p1, 'S').tienda,
+  )
+  check('una talla sin stock devuelve null', precioMasBajo(p1, 'XXL') === null)
+  check(
+    'ahorro = más caro − más barato, con stock',
+    ahorroMaximo(p1) === 12990 - 8990,
+    String(ahorroMaximo(p1)),
+  )
 
   // La oferta de menor precio está agotada: si la regla del stock se cae, esto
   // devolvería 'zara'. El caso anterior no lo detectaba porque su agotada era
@@ -277,10 +479,26 @@ try {
       { tienda: 'mango', precio: 9000, stock: true },
     ],
   }
-  check('la más barata agotada no gana', precioMasBajo(conAgotado).tienda === 'paris', precioMasBajo(conAgotado).tienda)
-  check('y tampoco cuenta para el ahorro', ahorroMaximo(conAgotado) === 4000, String(ahorroMaximo(conAgotado)))
-  check('todo agotado devuelve null', precioMasBajo({ precios: [{ tienda: 'zara', precio: 1, stock: false }] }) === null)
-  check('descuento sobre el precio de lista', descuento({ precio: 9990, precioLista: 14990 }) === 33)
+  check(
+    'la más barata agotada no gana',
+    precioMasBajo(conAgotado).tienda === 'paris',
+    precioMasBajo(conAgotado).tienda,
+  )
+  check(
+    'y tampoco cuenta para el ahorro',
+    ahorroMaximo(conAgotado) === 4000,
+    String(ahorroMaximo(conAgotado)),
+  )
+  check(
+    'todo agotado devuelve null',
+    precioMasBajo({
+      precios: [{ tienda: 'zara', precio: 1, stock: false }],
+    }) === null,
+  )
+  check(
+    'descuento sobre el precio de lista',
+    descuento({ precio: 9990, precioLista: 14990 }) === 33,
+  )
   check('sin producto no revienta', precioMasBajo(null) === null && ahorroMaximo(undefined) === 0)
 
   console.log('\n=== store ===')
@@ -290,38 +508,47 @@ try {
   const store = useComparadorStore()
 
   await store.cargarProductos()
-  check('carga y deja de cargar',
-    store.productos.length === TOTAL_MOCK && store.cargando === false)
+  check('carga y deja de cargar', store.productos.length === TOTAL_MOCK && store.cargando === false)
   // El primero es el más barato del catálogo, sea cual sea: la prueba mira el
   // orden, no una prenda concreta.
-  check('ordena por precio más bajo primero',
+  check(
+    'ordena por precio más bajo primero',
     store.productosFiltrados
       .map((p) => precioMasBajo(p)?.precio ?? Infinity)
       .every((precio, i, todos) => i === 0 || todos[i - 1] <= precio),
-    store.productosFiltrados[0].nombre)
+    store.productosFiltrados[0].nombre,
+  )
 
   store.busqueda = 'jeans'
-  check('filtra por texto', store.totalResultados === 1 && store.productosFiltrados[0].id === '2', `${store.totalResultados} resultado(s)`)
+  check(
+    'filtra por texto',
+    store.totalResultados === 1 && store.productosFiltrados[0].id === '2',
+    `${store.totalResultados} resultado(s)`,
+  )
   store.busqueda = ''
 
   store.alternarTienda('hym')
   const sinHym = store.productosFiltrados.find((p) => p.id === '1')
   check('quitar una tienda la saca de las ofertas', !sinHym.precios.some((o) => o.tienda === 'hym'))
-  check('y recalcula el más barato', precioMasBajo(sinHym).tienda === 'ripley', precioMasBajo(sinHym).tienda)
+  check(
+    'y recalcula el más barato',
+    precioMasBajo(sinHym).tienda === 'ripley',
+    precioMasBajo(sinHym).tienda,
+  )
   check('hayFiltros se activa', store.hayFiltros === true)
 
   store.limpiarFiltros()
-  check('limpiar deja todo como al principio',
-    store.hayFiltros === false && store.totalResultados === TOTAL_MOCK)
+  check(
+    'limpiar deja todo como al principio',
+    store.hayFiltros === false && store.totalResultados === TOTAL_MOCK,
+  )
 
-  await store.cargarProducto('3')
+  await store.cargarProducto(utilSlugServicio.slugProducto(store.productoById('3')))
   check('carga el detalle', store.producto?.id === '3')
 
   // Las rutas salen del router real, no del módulo suelto: así el catch-all
   // del 404 entra en la prueba.
-  const { useOutfitStore } = await load(
-    '/src/modules/outfits/store/outfit.store.js',
-  )
+  const { useOutfitStore } = await load('/src/modules/outfits/store/outfit.store.js')
   const { routes } = await load('/src/core/router/routes.js')
   const App = (await load('/src/App.vue')).default
 
@@ -342,7 +569,10 @@ try {
   }
 
   console.log('\n=== derivados de la portada ===')
-  const st = (() => { setActivePinia(createPinia()); return useComparadorStore() })()
+  const st = (() => {
+    setActivePinia(createPinia())
+    return useComparadorStore()
+  })()
   await st.cargarProductos()
 
   // ——— cómo se pide la ficha de un producto en las pruebas ———
@@ -354,50 +584,85 @@ try {
   const { slugProducto } = await load('/src/shared/utils/slug.js')
   const rutaProducto = (id) => `/producto/${slugProducto(st.productoById(id))}`
 
-  // La vista resuelve slug -> id contra el catálogo del store y con ese id
-  // llama a `cargarProducto`. Sustituirlo por un no-op deja la ficha vacía:
-  // el doble tiene que dejar el producto puesto. Lee del catálogo ya cargado,
-  // así que no toca la red y da siempre lo mismo.
+  // El doble de la API V2 resuelve el slug contra el catálogo ya cargado. Así
+  // no toca la red y deja la ficha puesta como lo haría Product Service.
   const sinRed = (store) => {
-    store.cargarProducto = async (id) => {
-      store.producto = store.productoById(id)
+    store.cargarProducto = async (slug) => {
+      store.producto =
+        store.productos.find(
+          (producto) =>
+            slugProducto(producto) === slug ||
+            utilSlugServicio.slugProductoAnterior(producto) === slug ||
+            producto.id === slug,
+        ) ?? null
     }
   }
 
-  check('lo más reciente ordena por antigüedad', st.masRecientes[0].id === '3', `${st.masRecientes[0].nombre} (${st.masRecientes[0].agregadoHace}d)`)
-  check('lo más visto ordena por visitas', st.masVistos[0].id === '5', `${st.masVistos[0].vistas} visitas`)
-  check('ofertas del día ordena por ahorro', st.ofertasDelDia[0].ahorro >= st.ofertasDelDia[1].ahorro, `top ${st.ofertasDelDia[0].ahorro}`)
-  check('ofertas del día excluye los de ahorro cero', st.ofertasDelDia.every((o) => o.ahorro > 0))
-  check('categorías populares cuenta y ordena',
+  check(
+    'lo más reciente ordena por antigüedad',
+    st.masRecientes[0].id === '3',
+    `${st.masRecientes[0].nombre} (${st.masRecientes[0].agregadoHace}d)`,
+  )
+  check(
+    'lo más visto ordena por visitas',
+    st.masVistos[0].id === '5',
+    `${st.masVistos[0].vistas} visitas`,
+  )
+  check(
+    'ofertas del día ordena por ahorro',
+    st.ofertasDelDia[0].ahorro >= st.ofertasDelDia[1].ahorro,
+    `top ${st.ofertasDelDia[0].ahorro}`,
+  )
+  check(
+    'ofertas del día excluye los de ahorro cero',
+    st.ofertasDelDia.every((o) => o.ahorro > 0),
+  )
+  check(
+    'categorías populares cuenta y ordena',
     st.categoriasPopulares.length > 1 &&
       st.categoriasPopulares.every((c) => c.cantidad >= 1) &&
-      st.categoriasPopulares.every(
-        (c, i, todas) => i === 0 || todas[i - 1].cantidad >= c.cantidad,
-      ))
+      st.categoriasPopulares.every((c, i, todas) => i === 0 || todas[i - 1].cantidad >= c.cantidad),
+  )
   check('el destacado es la mayor oferta', st.destacado.id === st.ofertasDelDia[0].producto.id)
 
   // La portada es un escaparate: un filtro puesto antes no debe encogerla.
   st.busqueda = 'jeans'
-  check('la portada ignora los filtros activos', st.masRecientes.length === 6 && st.totalResultados === 1)
+  check(
+    'la portada ignora los filtros activos',
+    st.masRecientes.length === 6 && st.totalResultados === 1,
+  )
   st.limpiarFiltros()
 
   // La preferencia de tiendas SÍ afecta a la portada: es una elección
   // deliberada sobre qué se quiere ver en toda la web.
   st.tiendasActivas = ['zara']
-  check('la portada respeta la preferencia de tiendas',
+  check(
+    'la portada respeta la preferencia de tiendas',
     st.masVistos.every((p) => p.precios.every((o) => o.tienda === 'zara')),
-    `${st.masVistos.length} productos`)
-  check('  y descarta los que esa tienda no vende',
+    `${st.masVistos.length} productos`,
+  )
+  check(
+    '  y descarta los que esa tienda no vende',
     st.masVistos.length < st.productos.length,
-    `${st.masVistos.length} de ${st.productos.length}`)
+    `${st.masVistos.length} de ${st.productos.length}`,
+  )
   st.marcarTodasLasTiendas()
 
-  check('el filtro por categoría acota', (() => { st.categoria = 'Camisas'; const n = st.totalResultados; st.limpiarFiltros(); return n === 1 })())
+  check(
+    'el filtro por categoría acota',
+    (() => {
+      st.categoria = 'Camisas'
+      const n = st.totalResultados
+      st.limpiarFiltros()
+      return n === 1
+    })(),
+  )
 
   console.log('\n=== carrusel ===')
   {
-    const { estadoDesplazamiento, indiceActivo, pasoDeFlecha, fueArrastre } =
-      await load('/src/shared/utils/carrusel.js')
+    const { estadoDesplazamiento, indiceActivo, pasoDeFlecha, fueArrastre } = await load(
+      '/src/shared/utils/carrusel.js',
+    )
 
     // El caso que estaba roto, con números de verdad: 6 tarjetas de 288px con
     // 16px de hueco en un carril de 1000px. Caben ~3 a la vez.
@@ -424,36 +689,57 @@ try {
       .map((x, i) => [Math.abs(x - tope), i])
       .sort((a, b) => a[0] - b[0])[0][1]
 
-    check('  al final la última tarjeta no llega al borde izquierdo',
+    check(
+      '  al final la última tarjeta no llega al borde izquierdo',
       indiceMasCercanoAlFinal < posiciones.length - 1,
-      `la más cercana es la ${indiceMasCercanoAlFinal + 1} de ${posiciones.length}`)
-    check('  aun así, la flecha derecha se apaga al llegar al tope',
+      `la más cercana es la ${indiceMasCercanoAlFinal + 1} de ${posiciones.length}`,
+    )
+    check(
+      '  aun así, la flecha derecha se apaga al llegar al tope',
       alFinal.puedeDerecha === false,
-      'con índices en vez de píxeles se quedaba encendida y no hacía nada')
+      'con índices en vez de píxeles se quedaba encendida y no hacía nada',
+    )
     check('  y la izquierda se enciende', alFinal.puedeIzquierda === true)
 
     // Y el punto correspondiente: los últimos tienen que poder encenderse.
-    check('  el último punto se enciende al llegar al final',
-      indiceActivo({ posiciones, scrollLeft: tope, ...alFinal }) === posiciones.length - 1)
-    check('  el primero, al volver al principio',
-      indiceActivo({ posiciones, scrollLeft: 0, ...en(0) }) === 0)
-    check('  y por el medio manda el más cercano',
-      indiceActivo({ posiciones, scrollLeft: PASO * 2 + 10, ...en(PASO * 2 + 10) }) === 2)
+    check(
+      '  el último punto se enciende al llegar al final',
+      indiceActivo({ posiciones, scrollLeft: tope, ...alFinal }) === posiciones.length - 1,
+    )
+    check(
+      '  el primero, al volver al principio',
+      indiceActivo({ posiciones, scrollLeft: 0, ...en(0) }) === 0,
+    )
+    check(
+      '  y por el medio manda el más cercano',
+      indiceActivo({
+        posiciones,
+        scrollLeft: PASO * 2 + 10,
+        ...en(PASO * 2 + 10),
+      }) === 2,
+    )
 
     // Medio píxel de más por el zoom no puede dejar la flecha encendida.
-    check('  medio píxel de redondeo no reactiva la flecha',
-      en(tope - 0.5).puedeDerecha === false)
+    check('  medio píxel de redondeo no reactiva la flecha', en(tope - 0.5).puedeDerecha === false)
 
     // Si cabe todo, no hay flechas ni puntos que enseñar.
-    const cabeTodo = estadoDesplazamiento({ scrollWidth: 900, clientWidth: 1000, scrollLeft: 0 })
-    check('sin desbordamiento no se enseñan los controles',
-      cabeTodo.hayDesbordamiento === false && cabeTodo.desplazable === 0)
+    const cabeTodo = estadoDesplazamiento({
+      scrollWidth: 900,
+      clientWidth: 1000,
+      scrollLeft: 0,
+    })
+    check(
+      'sin desbordamiento no se enseñan los controles',
+      cabeTodo.hayDesbordamiento === false && cabeTodo.desplazable === 0,
+    )
     check('  con desbordamiento sí', en(0).hayDesbordamiento === true)
 
     // ——— la flecha avanza una tarjeta ———
     check('la flecha avanza una tarjeta y su hueco', pasoDeFlecha(ANCHO, HUECO, 1000) === PASO)
-    check('  y si aún no hay tarjetas, una ventana entera',
-      pasoDeFlecha(0, HUECO, 1000) === 1000 + HUECO)
+    check(
+      '  y si aún no hay tarjetas, una ventana entera',
+      pasoDeFlecha(0, HUECO, 1000) === 1000 + HUECO,
+    )
 
     // ——— arrastrar no puede abrir una ficha ———
     check('un temblor de mano sigue siendo un clic', fueArrastre(3) === false)
@@ -464,19 +750,29 @@ try {
     // alguien quita un manejador, esto lo caza.
     const fuente = readFileSync('src/shared/components/BaseCarousel.vue', 'utf8')
 
-    check('el carril escucha el puntero para poder arrastrarlo',
-      ['@pointerdown', '@pointermove', '@pointerup', '@pointercancel']
-        .every((ev) => fuente.includes(ev)))
-    check('  el táctil se queda con su desplazamiento nativo',
-      /pointerType === 'touch'/.test(fuente))
-    check('  suelta la captura del puntero al terminar',
-      /releasePointerCapture/.test(fuente))
-    check('  y el clic de después del arrastre se anula en captura',
-      /@click\.capture/.test(fuente) && /fueArrastre\(recorrido\)/.test(fuente))
-    check('  mientras se arrastra se apaga el anclaje',
-      /\.carrusel__carril--arrastrando \{[^}]*scroll-snap-type: none/.test(fuente))
-    check('  y no se selecciona el texto de las tarjetas',
-      /\.carrusel__carril--arrastrando \{[^}]*user-select: none/.test(fuente))
+    check(
+      'el carril escucha el puntero para poder arrastrarlo',
+      ['@pointerdown', '@pointermove', '@pointerup', '@pointercancel'].every((ev) =>
+        fuente.includes(ev),
+      ),
+    )
+    check(
+      '  el táctil se queda con su desplazamiento nativo',
+      /pointerType === 'touch'/.test(fuente),
+    )
+    check('  suelta la captura del puntero al terminar', /releasePointerCapture/.test(fuente))
+    check(
+      '  y el clic de después del arrastre se anula en captura',
+      /@click\.capture/.test(fuente) && /fueArrastre\(recorrido\)/.test(fuente),
+    )
+    check(
+      '  mientras se arrastra se apaga el anclaje',
+      /\.carrusel__carril--arrastrando \{[^}]*scroll-snap-type: none/.test(fuente),
+    )
+    check(
+      '  y no se selecciona el texto de las tarjetas',
+      /\.carrusel__carril--arrastrando \{[^}]*user-select: none/.test(fuente),
+    )
 
     // ——— dónde vive la botonera ———
     //
@@ -484,24 +780,31 @@ try {
     // sentaba justo encima del título de la primera. Con estas tarjetas el
     // texto empieza pegado al borde, así que cualquier control flotando ahí
     // tapa contenido.
-    check('las flechas van en una botonera, no flotando sobre las tarjetas',
+    check(
+      'las flechas van en una botonera, no flotando sobre las tarjetas',
       /class="carrusel__mando"/.test(fuente) &&
         !/carrusel__flecha--izq/.test(fuente) &&
-        !/carrusel__flecha--der/.test(fuente))
-    check('  y no están posicionadas en absoluto',
-      !/\.carrusel__flecha \{[^}]*position: absolute/.test(fuente))
-    check('  la botonera va después del carril en el marcado',
-      fuente.indexOf('carrusel__mando') > fuente.indexOf('ref="carril"'))
+        !/carrusel__flecha--der/.test(fuente),
+    )
+    check(
+      '  y no están posicionadas en absoluto',
+      !/\.carrusel__flecha \{[^}]*position: absolute/.test(fuente),
+    )
+    check(
+      '  la botonera va después del carril en el marcado',
+      fuente.indexOf('carrusel__mando') > fuente.indexOf('ref="carril"'),
+    )
 
     // La regla global que da 44px de ancho a todo botón convertía el punto de
     // 7px en un óvalo, y la hilera empujaba las flechas fuera de la pantalla.
-    check('  los puntos se libran del ancho mínimo global',
+    check(
+      '  los puntos se libran del ancho mínimo global',
       /\.carrusel__punto \{\s*min-width: 0/.test(fuente),
-      'su zona tocable ya la pone el ::after')
+      'su zona tocable ya la pone el ::after',
+    )
 
     // ——— la tarjeta de novedades ———
-    const banner = readFileSync(
-      'src/modules/comparador/components/RecienteBanner.vue', 'utf8')
+    const banner = readFileSync('src/modules/comparador/components/RecienteBanner.vue', 'utf8')
 
     // El epígrafe decía «Recién agregado · hace 1 día», que repite el título de
     // la sección y no cabía en una línea: rompía en dos y dejaba el título de
@@ -514,22 +817,31 @@ try {
     // elemento lleve `truncar` y contenga solo la antigüedad, no en qué orden
     // están escritos sus atributos. Exigir `class` primero hacía fallar la
     // prueba por una mejora del componente.
-    check('el epígrafe de la tarjeta cabe en una línea',
-      /<p [^>]*class="mono banner__eyebrow truncar"[^>]*>\{\{ antiguedad \}\}<\/p>/.test(banner))
-    check('  la tarjeta no recorta en silencio lo que crezca',
-      /min-height: 168px/.test(banner) && !/^\s*height: 168px/m.test(banner))
-    check('  el botón queda al fondo, alineado con el de al lado',
-      /\.banner__cta \{[^}]*margin-top: auto/.test(banner))
-    check('  y el hueco de la percha se reserva sólo donde estorba',
+    check(
+      'el epígrafe de la tarjeta cabe en una línea',
+      /<p [^>]*class="mono banner__eyebrow truncar"[^>]*>\{\{ antiguedad \}\}<\/p>/.test(banner),
+    )
+    check(
+      '  la tarjeta no recorta en silencio lo que crezca',
+      /min-height: 168px/.test(banner) && !/^\s*height: 168px/m.test(banner),
+    )
+    check(
+      '  el botón queda al fondo, alineado con el de al lado',
+      /\.banner__cta \{[^}]*margin-top: auto/.test(banner),
+    )
+    check(
+      '  y el hueco de la percha se reserva sólo donde estorba',
       /\.banner__sub \{[^}]*padding-right/.test(banner) &&
         !/\.banner__texto \{[^}]*padding-right/.test(banner),
-      'reservarlo en todo el bloque dejaba el título en 152px')
+      'reservarlo en todo el bloque dejaba el título en 152px',
+    )
 
     // Las flechas NO pueden volver a decidirse por índice.
-    check('las flechas se apagan por posición, no por índice',
-      /:disabled="!puedeIzquierda"/.test(fuente) &&
-        /:disabled="!puedeDerecha"/.test(fuente),
-      'con índices, la derecha nunca se apagaba')
+    check(
+      'las flechas se apagan por posición, no por índice',
+      /:disabled="!puedeIzquierda"/.test(fuente) && /:disabled="!puedeDerecha"/.test(fuente),
+      'con índices, la derecha nunca se apagaba',
+    )
   }
 
   console.log('\n=== preferencias de interfaz ===')
@@ -566,31 +878,47 @@ try {
     const cabeza = indice.slice(0, indice.indexOf('</head>'))
     const guion = /<script>([\s\S]*?)<\/script>/.exec(cabeza)?.[1] ?? ''
 
-    check('el tema se pinta antes del primer render',
-      guion.includes('documentElement.dataset.tema'))
-    check('  y el guion va en el <head>, no al final del body',
-      cabeza.includes('documentElement.dataset.tema'))
+    check(
+      'el tema se pinta antes del primer render',
+      guion.includes('documentElement.dataset.tema'),
+    )
+    check(
+      '  y el guion va en el <head>, no al final del body',
+      cabeza.includes('documentElement.dataset.tema'),
+    )
 
     // El guion duplica la lógica del store por necesidad: tiene que correr
     // antes que cualquier módulo. Lo que no puede es divergir.
     const fuenteStore = readFileSync('src/shared/stores/ui.store.js', 'utf8')
     const claveStore = /const CLAVE = '([^']+)'/.exec(fuenteStore)?.[1]
-    check('  usa la MISMA clave de almacenamiento que el store',
-      claveStore !== undefined && guion.includes(`'${claveStore}'`), claveStore)
-    check('  y respeta la preferencia del sistema, no asume claro',
-      guion.includes('prefers-color-scheme: dark'))
-    check('  con el localStorage capado sigue funcionando',
-      /try\s*\{[\s\S]*?localStorage[\s\S]*?\}\s*catch/.test(guion))
+    check(
+      '  usa la MISMA clave de almacenamiento que el store',
+      claveStore !== undefined && guion.includes(`'${claveStore}'`),
+      claveStore,
+    )
+    check(
+      '  y respeta la preferencia del sistema, no asume claro',
+      guion.includes('prefers-color-scheme: dark'),
+    )
+    check(
+      '  con el localStorage capado sigue funcionando',
+      /try\s*\{[\s\S]*?localStorage[\s\S]*?\}\s*catch/.test(guion),
+    )
 
     // La barra del navegador en móvil se pinta con este meta. Si se queda con
     // el color viejo, el móvil enmarca la página en un tono que ya no existe.
-    const metaOscuro = /theme-color" content="(#[0-9a-f]{6})" media="\(prefers-color-scheme: dark\)/
-      .exec(indice)?.[1]
-    const bgOscuro = /\[data-tema='oscuro'\][\s\S]*?--cep-bg: *(#[0-9a-f]{6})/
-      .exec(readFileSync('src/assets/base.css', 'utf8'))?.[1]
-    check('  el theme-color oscuro es el fondo oscuro de verdad',
+    const metaOscuro =
+      /theme-color" content="(#[0-9a-f]{6})" media="\(prefers-color-scheme: dark\)/.exec(
+        indice,
+      )?.[1]
+    const bgOscuro = /\[data-tema='oscuro'\][\s\S]*?--cep-bg: *(#[0-9a-f]{6})/.exec(
+      readFileSync('src/assets/base.css', 'utf8'),
+    )?.[1]
+    check(
+      '  el theme-color oscuro es el fondo oscuro de verdad',
       metaOscuro !== undefined && metaOscuro === bgOscuro,
-      `meta ${metaOscuro} vs token ${bgOscuro}`)
+      `meta ${metaOscuro} vs token ${bgOscuro}`,
+    )
   }
 
   console.log('\n=== cuenta (Google OAuth 2.0 + PKCE) ===')
@@ -604,11 +932,16 @@ try {
     // Sin el App Client de Cognito configurado no se puede entrar, y hay que
     // decirlo sin nombrar la variable de entorno.
     await cuenta.entrarConGoogle()
-    check('sin cliente configurado avisa y no rompe',
+    check(
+      'sin cliente configurado avisa y no rompe',
       cuenta.autenticado === false && typeof cuenta.error === 'string',
-      cuenta.error)
-    check('  el aviso no menciona nada técnico',
-      !/VITE_|client_id|env/i.test(cuenta.error ?? ''), cuenta.error)
+      cuenta.error,
+    )
+    check(
+      '  el aviso no menciona nada técnico',
+      !/VITE_|client_id|env/i.test(cuenta.error ?? ''),
+      cuenta.error,
+    )
 
     // ——— el `state` es la defensa contra CSRF ———
     const oauth = await load('/src/modules/cuenta/services/google.oauth.js')
@@ -629,28 +962,41 @@ try {
 
     sessionStorage.setItem('cep:estado', 'ESTADO-BUENO')
     sessionStorage.setItem('cep:pkce', 'VERIFICADOR')
-    check('  el state correcto devuelve el verificador',
-      oauth.verificarEstado('ESTADO-BUENO') === 'VERIFICADOR')
-    check('  y se consume: no vale dos veces',
-      oauth.verificarEstado('ESTADO-BUENO') === null)
+    check(
+      '  el state correcto devuelve el verificador',
+      oauth.verificarEstado('ESTADO-BUENO') === 'VERIFICADOR',
+    )
+    check('  y se consume: no vale dos veces', oauth.verificarEstado('ESTADO-BUENO') === null)
 
-    check('sin state guardado no se acepta nada',
-      oauth.verificarEstado(null) === null && oauth.verificarEstado('x') === null)
+    check(
+      'sin state guardado no se acepta nada',
+      oauth.verificarEstado(null) === null && oauth.verificarEstado('x') === null,
+    )
 
     // ——— la vuelta de Google ———
     const cancelado = await cuenta.procesarRetorno({ error: 'access_denied' })
-    check('cancelar en Google no se presenta como un fallo',
-      cancelado === null && /cancelaste/i.test(cuenta.error), cuenta.error)
+    check(
+      'cancelar en Google no se presenta como un fallo',
+      cancelado === null && /cancelaste/i.test(cuenta.error),
+      cuenta.error,
+    )
 
-    const sinState = await cuenta.procesarRetorno({ code: 'abc', state: 'falso' })
-    check('un código sin state válido se rechaza',
-      sinState === null && cuenta.autenticado === false)
+    const sinState = await cuenta.procesarRetorno({
+      code: 'abc',
+      state: 'falso',
+    })
+    check(
+      'un código sin state válido se rechaza',
+      sinState === null && cuenta.autenticado === false,
+    )
 
-    check('cerrar sesión limpia usuario y token',
+    check(
+      'cerrar sesión limpia usuario y token',
       (() => {
         cuenta.cerrarSesion()
         return cuenta.autenticado === false && sessionStorage.getItem('cep:token') === null
-      })())
+      })(),
+    )
 
     delete globalThis.sessionStorage
   }
@@ -659,10 +1005,16 @@ try {
   const home = await render('/comparador', (s) => s.cargarProductos())
   check('ComparadorView renderiza', home.length > 400, `${home.length} bytes`)
   check('  lista los productos', home.includes('Polera b') && home.includes('Blazer'))
-  check('  pinta el filtro de las 5 tiendas', ['Ripley','Paris','Zara','H&amp;M','Mango'].every((t) => home.includes(t)))
+  check(
+    '  pinta el filtro de las 5 tiendas',
+    ['Ripley', 'Paris', 'Zara', 'H&amp;M', 'Mango'].every((t) => home.includes(t)),
+  )
   // La primera tarjeta es la más barata del catálogo: polera a $8.990 en H&M.
   check('  la tarjeta anuncia dónde está más barato', /tarjeta__en[^>]*>\s*en H&amp;M/.test(home))
-  check('  y marca esa fila como la mejor', /tarjeta__oferta--mejor[\s\S]{0,220}?tarjeta__tienda[^>]*>H&amp;M/.test(home))
+  check(
+    '  y marca esa fila como la mejor',
+    /tarjeta__oferta--mejor[\s\S]{0,220}?tarjeta__tienda[^>]*>H&amp;M/.test(home),
+  )
   check('  con el precio correcto', home.includes('$8.990'))
 
   const detalle = await render(rutaProducto('1'), async (s) => {
@@ -674,10 +1026,16 @@ try {
     sinRed(s)
   })
   check('ProductoDetailView renderiza', detalle.length > 400, `${detalle.length} bytes`)
-  check('  muestra dónde comprarla',
-    detalle.includes('Elige tu tienda') || detalle.includes('Dónde comprarla'))
+  check(
+    '  muestra dónde comprarla',
+    detalle.includes('Elige tu tienda') || detalle.includes('Dónde comprarla'),
+  )
   check('  muestra el historial', detalle.includes('Historial de precios'))
-  check('  dibuja una polilínea por tienda', (detalle.match(/<polyline/g) ?? []).length === 3, `${(detalle.match(/<polyline/g) ?? []).length} series`)
+  check(
+    '  dibuja una polilínea por tienda',
+    (detalle.match(/<polyline/g) ?? []).length === 3,
+    `${(detalle.match(/<polyline/g) ?? []).length} series`,
+  )
 
   const portada = await render('/', (s) => s.cargarProductos())
   check('InicioView renderiza', portada.length > 4000, `${portada.length} bytes`)
@@ -692,42 +1050,61 @@ try {
   // El de cierre lo pone ahora el layout, para todas las vistas a la vez; la
   // portada conserva el suyo propio arriba. Que aparezcan de verdad se
   // comprueba en "anuncios en todas las vistas".
-  check('  la portada conserva su espacio de anuncio propio',
-    (readFileSync('src/modules/comparador/views/InicioView.vue', 'utf8')
-      .match(/<AdSlot/g) ?? []).length === 1)
-  check('  y el de cierre vive en el layout, no repetido en cada vista',
-    readFileSync('src/layouts/DefaultLayout.vue', 'utf8').includes('<AdSlot'))
+  check(
+    '  la portada conserva su espacio de anuncio propio',
+    (readFileSync('src/modules/comparador/views/InicioView.vue', 'utf8').match(/<AdSlot/g) ?? [])
+      .length === 1,
+  )
+  check(
+    '  y el de cierre vive en el layout, no repetido en cada vista',
+    readFileSync('src/layouts/DefaultLayout.vue', 'utf8').includes('<AdSlot'),
+  )
   check('  el ticket de portada muestra el ahorro', portada.includes('AHORRAS'))
   check('  las muescas del ticket se dibujan', portada.includes('ticket__muescas'))
 
   console.log('\n=== pie de página ===')
-  check('sale en todas las vistas', portada.includes('pie__interior') && home.includes('pie__interior'))
-  check('  lista las 5 tiendas que seguimos', ['Ripley','Paris','Zara','H&amp;M','Mango'].every((t) => portada.includes(`pie__punto`) && portada.includes(t)))
-  check('  cada tienda enlaza al comparador filtrado', /href="\/comparador\?tienda=zara"/.test(portada))
+  check(
+    'sale en todas las vistas',
+    portada.includes('pie__interior') && home.includes('pie__interior'),
+  )
+  check(
+    '  lista las 5 tiendas que seguimos',
+    ['Ripley', 'Paris', 'Zara', 'H&amp;M', 'Mango'].every(
+      (t) => portada.includes(`pie__punto`) && portada.includes(t),
+    ),
+  )
+  check(
+    '  cada tienda enlaza al comparador filtrado',
+    /href="\/comparador\?tienda=zara"/.test(portada),
+  )
   // El aviso de datos de ejemplo es para quien desarrolla. Lo que importa
   // comprobar no es que salga, sino que NO llegue a producción: eso se
   // verifica sobre el bundle, más abajo.
-  const hayPatrocinados = readFileSync(
-    'src/shared/components/EnlaceTienda.vue',
-    'utf8',
-  ).includes('sponsored')
+  const hayPatrocinados = readFileSync('src/shared/components/EnlaceTienda.vue', 'utf8').includes(
+    'sponsored',
+  )
 
-  check('  si hay enlaces con comisión, el pie lo declara',
+  check(
+    '  si hay enlaces con comisión, el pie lo declara',
     !hayPatrocinados || /comisi[óo]n/i.test(portada),
-    hayPatrocinados ? 'hay enlaces patrocinados' : 'no hay enlaces con comisión')
+    hayPatrocinados ? 'hay enlaces patrocinados' : 'no hay enlaces con comisión',
+  )
 
-  check('  y no se contradice diciendo que no hay afiliación',
-    !/no est[áa] afiliad/i.test(portada))
+  check('  y no se contradice diciendo que no hay afiliación', !/no est[áa] afiliad/i.test(portada))
   // La ciudad se lee de la configuración, NO escrita a mano aquí: estaba
   // fijada a «Santiago de Chile» y la prueba se rompió sola en cuanto el
   // proyecto la cambió, sin que hubiera ningún defecto.
   const { CIUDAD } = await load('/src/shared/config/sitio.js')
 
-  check('  lleva el año en curso y la ciudad',
+  check(
+    '  lleva el año en curso y la ciudad',
     portada.includes(String(new Date().getFullYear())) && portada.includes(CIUDAD),
-    CIUDAD)
-  check('  dice cada cuánto se miden los precios y cuál manda',
-    portada.includes('una vez al') && portada.includes('al pagar'))
+    CIUDAD,
+  )
+  check(
+    '  dice cada cuánto se miden los precios y cuál manda',
+    portada.includes('una vez al') && portada.includes('al pagar'),
+  )
 
   // Las cinco columnas de la referencia, más las nuestras.
   for (const columna of ['Navega', 'Tiendas', 'Legal', 'Contacto']) {
@@ -740,16 +1117,21 @@ try {
     readFileSync('src/shared/config/sitio.js', 'utf8'),
   )?.[1]
 
-  check('  el pie da una dirección de contacto',
-    Boolean(correo) && portada.includes(`mailto:${correo}`), correo)
+  check(
+    '  el pie da una dirección de contacto',
+    Boolean(correo) && portada.includes(`mailto:${correo}`),
+    correo,
+  )
 
   for (const ruta of ['/terminos', '/privacidad', '/preguntas']) {
     const html = await render(ruta, () => {})
     check(`  ${ruta} dice a dónde escribir`, html.includes(correo))
   }
 
-  check('  la misión no es la de cualquier comparador',
-    portada.includes('todos los días') && portada.includes('vitrina'))
+  check(
+    '  la misión no es la de cualquier comparador',
+    portada.includes('todos los días') && portada.includes('vitrina'),
+  )
 
   // El enlace del pie tiene que dejar el comparador con esa única tienda: si
   // fuera decorativo, la vista se abriría con las cinco marcadas igual.
@@ -766,7 +1148,11 @@ try {
     await router.isReady()
     await renderToString(app)
 
-    check('  y el filtro se aplica al llegar', st.tiendasActivas.join() === 'zara', st.tiendasActivas.join())
+    check(
+      '  y el filtro se aplica al llegar',
+      st.tiendasActivas.join() === 'zara',
+      st.tiendasActivas.join(),
+    )
     st.soloTienda('inventada')
     check('  una tienda inexistente no deja la lista vacía', st.tiendasActivas.length === 5)
   }
@@ -779,42 +1165,63 @@ try {
   // El contenido del menú sólo existe cuando está abierto, así que aquí se
   // comprueba la pantalla de sesión, que es donde vive el botón de verdad.
   const entrar = await render('/login', () => {})
-  check('  /login ofrece el botón de Google',
-    entrar.includes('Continuar con Google') && entrar.includes('google__logo'))
-  check('  /registro es la misma pantalla, con otra copia',
-    (await render('/registro', () => {})).includes('Registrarme con Google'))
-  check('  enlaza a términos y privacidad antes de entrar',
-    entrar.includes('href="/terminos"') && entrar.includes('href="/privacidad"'))
+  check(
+    '  /login ofrece el botón de Google',
+    entrar.includes('Continuar con Google') && entrar.includes('google__logo'),
+  )
+  check(
+    '  /registro es la misma pantalla, con otra copia',
+    (await render('/registro', () => {})).includes('Registrarme con Google'),
+  )
+  check(
+    '  enlaza a términos y privacidad antes de entrar',
+    entrar.includes('href="/terminos"') && entrar.includes('href="/privacidad"'),
+  )
 
   // ——— /login lleva el marco completo ———
-  check('  /login lleva la cabecera completa, con buscador y filtro de tiendas',
-    entrar.includes('buscar-cabecera') && entrar.includes('Elegir tiendas'))
-  check('  y el pie completo, no el reducido',
+  check(
+    '  /login lleva la cabecera completa, con buscador y filtro de tiendas',
+    entrar.includes('buscar-cabecera') && entrar.includes('Elegir tiendas'),
+  )
+  check(
+    '  y el pie completo, no el reducido',
     entrar.includes('acceso__barra') === false &&
-      entrar.includes('pie__') && entrar.includes('href="/preguntas"'))
-  check('  la tarjeta va centrada, no pegada a la izquierda',
-    /\.acceso__tarjeta \{[^}]*margin:[^;]*auto/
-      .test(readFileSync('src/assets/acceso.css', 'utf8')))
+      entrar.includes('pie__') &&
+      entrar.includes('href="/preguntas"'),
+  )
+  check(
+    '  la tarjeta va centrada, no pegada a la izquierda',
+    /\.acceso__tarjeta \{[^}]*margin:[^;]*auto/.test(readFileSync('src/assets/acceso.css', 'utf8')),
+  )
   // Con la cabecera y el pie puestos, una tarjeta de 400px pegada arriba deja
   // un vacío de varios cientos de píxeles hasta el pie en pantallas altas.
-  check('  y también en vertical, que si no queda un hueco enorme',
+  check(
+    '  y también en vertical, que si no queda un hueco enorme',
     entrar.includes('marco__contenido--centrado') &&
-      /\.marco__contenido--centrado \{[^}]*justify-content: center/
-        .test(readFileSync('src/layouts/DefaultLayout.vue', 'utf8')))
+      /\.marco__contenido--centrado \{[^}]*justify-content: center/.test(
+        readFileSync('src/layouts/DefaultLayout.vue', 'utf8'),
+      ),
+  )
 
   // El enlace vive dentro del menú de cuenta, que en SSR está cerrado y no
   // renderiza. Así que se comprueba en el origen y en el router, no en el HTML.
   {
     const r = createRouter({ history: createMemoryHistory(), routes })
-    check('  el nombre de ruta «login» resuelve a /login',
-      r.resolve({ name: 'login' }).path === '/login')
+    check(
+      '  el nombre de ruta «login» resuelve a /login',
+      r.resolve({ name: 'login' }).path === '/login',
+    )
 
-    const conEntrar = ['src/shared/components/AppHeader.vue',
+    const conEntrar = [
+      'src/shared/components/AppHeader.vue',
       'src/core/router/index.js',
-      'src/modules/cuenta/views/RetornoGoogleView.vue']
-      .filter((f) => readFileSync(f, 'utf8').includes("name: 'entrar'"))
-    check('  no queda ningún enlace apuntando al nombre viejo',
-      conEntrar.length === 0, conEntrar.join(' '))
+      'src/modules/cuenta/views/RetornoGoogleView.vue',
+    ].filter((f) => readFileSync(f, 'utf8').includes("name: 'entrar'"))
+    check(
+      '  no queda ningún enlace apuntando al nombre viejo',
+      conEntrar.length === 0,
+      conEntrar.join(' '),
+    )
   }
 
   // La URL vieja estuvo publicada: si deja de redirigir, se pierden los
@@ -822,65 +1229,92 @@ try {
   {
     const r = createRouter({ history: createMemoryHistory(), routes })
     await r.push('/entrar')
-    check('  /entrar sigue redirigiendo a /login', r.currentRoute.value.path === '/login',
-      r.currentRoute.value.path)
+    check(
+      '  /entrar sigue redirigiendo a /login',
+      r.currentRoute.value.path === '/login',
+      r.currentRoute.value.path,
+    )
   }
 
   // /auth/google se queda desnuda a propósito: es una pantalla de paso de dos
   // segundos y cualquier enlace ahí interrumpe el proceso a medias.
   const retorno = await render('/auth/google', () => {})
-  check('  la vuelta de Google sí se queda sin cabecera',
-    retorno.includes('acceso__barra') && !retorno.includes('buscar-cabecera'))
+  check(
+    '  la vuelta de Google sí se queda sin cabecera',
+    retorno.includes('acceso__barra') && !retorno.includes('buscar-cabecera'),
+  )
 
-  check('  el logo de la cabecera es el mismo que el favicon',
+  check(
+    '  el logo de la cabecera es el mismo que el favicon',
     portada.includes('M5 16 15 5h10v10L14 27Z') &&
-      readFileSync('public/favicon.svg', 'utf8').includes('M5 16 15 5h10v10L14 27Z'))
+      readFileSync('public/favicon.svg', 'utf8').includes('M5 16 15 5h10v10L14 27Z'),
+  )
 
   // ——— el nombre de la marca ———
   const fuenteCabecera = readFileSync('src/shared/components/AppHeader.vue', 'utf8')
   const marcaHtml = portada.slice(
-    portada.indexOf('barra__marca'), portada.indexOf('barra__buscador'))
+    portada.indexOf('barra__marca'),
+    portada.indexOf('barra__buscador'),
+  )
 
   const posA = marcaHtml.indexOf('barra__nombre-a')
   const posB = marcaHtml.indexOf('barra__nombre-b')
-  check('el nombre sale entero y partido en dos piezas',
-    posA !== -1 && posB > posA &&
-      marcaHtml.includes('cacha') && marcaHtml.includes('el precio'))
+  check(
+    'el nombre sale entero y partido en dos piezas',
+    posA !== -1 && posB > posA && marcaHtml.includes('cacha') && marcaHtml.includes('el precio'),
+  )
 
-  check('  el ° va en color de acento, que es lo que distingue la marca',
+  check(
+    '  el ° va en color de acento, que es lo que distingue la marca',
     /barra__nombre-a[^>]*>[^<]*<em[^>]*>°<\/em>/.test(marcaHtml) &&
-      /\.barra__marca em \{[^}]*color: var\(--cep-accent\)/.test(fuenteCabecera))
+      /\.barra__marca em \{[^}]*color: var\(--cep-accent\)/.test(fuenteCabecera),
+  )
 
   // El ojo tiene que agarrar «cacha°» antes que «el precio». Si las dos mitades
   // acaban con el mismo peso y el mismo color, deja de ser un logotipo.
   const pesoA = /\.barra__nombre-a \{[^}]*font-weight: (\d+)/.exec(fuenteCabecera)?.[1]
   const pesoB = /\.barra__nombre-b \{[^}]*font-weight: (\d+)/.exec(fuenteCabecera)?.[1]
-  check('  la primera palabra pesa más que la segunda',
+  check(
+    '  la primera palabra pesa más que la segunda',
     pesoA !== undefined && pesoB !== undefined && Number(pesoA) > Number(pesoB),
-    `${pesoA} vs ${pesoB}`)
-  check('  y la segunda va en otro tono',
-    /\.barra__nombre-b \{[^}]*color: var\(--cep-muted\)/.test(fuenteCabecera))
+    `${pesoA} vs ${pesoB}`,
+  )
+  check(
+    '  y la segunda va en otro tono',
+    /\.barra__nombre-b \{[^}]*color: var\(--cep-muted\)/.test(fuenteCabecera),
+  )
 
   // Vue se come el salto de línea entre los dos <span>, así que en el HTML no
   // queda espacio entre las palabras. Si alguien quita el gap del CSS, el
   // nombre se lee «cacha°el precio».
-  const entre = /barra__nombre-a[\s\S]*?<\/span>([\s\S]*?)<span class="barra__nombre-b/
-    .exec(marcaHtml)?.[1]
+  const entre = /barra__nombre-a[\s\S]*?<\/span>([\s\S]*?)<span class="barra__nombre-b/.exec(
+    marcaHtml,
+  )?.[1]
   const espacioEnMarcado = entre !== undefined && /\s/.test(entre)
-  check('  las dos palabras no se pegan',
+  check(
+    '  las dos palabras no se pegan',
     espacioEnMarcado || /\.barra__nombre \{[^}]*gap:/.test(fuenteCabecera),
-    espacioEnMarcado ? 'espacio en el marcado' : 'hueco por gap en el CSS')
+    espacioEnMarcado ? 'espacio en el marcado' : 'hueco por gap en el CSS',
+  )
 
-  check('  va a tamaño de titular, no de etiqueta de menú',
-    /\.barra__nombre \{[^}]*font-size: var\(--cep-fs-2xl\)/.test(fuenteCabecera))
-  check('  con el interletraje apretado, como un logotipo',
-    /\.barra__nombre \{[^}]*letter-spacing: -/.test(fuenteCabecera))
-  check('  baja un escalón cuando comparte fila con el buscador',
-    /min-width: 900px\) and \(max-width: 1099px\)[\s\S]{0,140}?--cep-fs-xl/
-      .test(fuenteCabecera))
-  check('  y bajo 480px desaparece: ahí identifica el símbolo',
-    /max-width: 479px\)[\s\S]{0,200}?\.barra__nombre[\s\S]{0,120}?display: none/
-      .test(fuenteCabecera))
+  check(
+    '  va a tamaño de titular, no de etiqueta de menú',
+    /\.barra__nombre \{[^}]*font-size: var\(--cep-fs-2xl\)/.test(fuenteCabecera),
+  )
+  check(
+    '  con el interletraje apretado, como un logotipo',
+    /\.barra__nombre \{[^}]*letter-spacing: -/.test(fuenteCabecera),
+  )
+  check(
+    '  baja un escalón cuando comparte fila con el buscador',
+    /min-width: 900px\) and \(max-width: 1099px\)[\s\S]{0,140}?--cep-fs-xl/.test(fuenteCabecera),
+  )
+  check(
+    '  y bajo 480px desaparece: ahí identifica el símbolo',
+    /max-width: 479px\)[\s\S]{0,200}?\.barra__nombre[\s\S]{0,120}?display: none/.test(
+      fuenteCabecera,
+    ),
+  )
 
   console.log('\n=== páginas legales ===')
   for (const [ruta, titulo, marca] of [
@@ -893,36 +1327,51 @@ try {
   }
 
   const terminos = await render('/terminos', () => {})
-  check('las páginas legales van a ancho de lectura',
-    terminos.includes('marco__contenido--lectura'))
-  check('  y no llevan ninguna marca de trabajo interno',
+  check(
+    'las páginas legales van a ancho de lectura',
+    terminos.includes('marco__contenido--lectura'),
+  )
+  check(
+    '  y no llevan ninguna marca de trabajo interno',
     // Sin la bandera `i` para TODO/FIXME: con ella, "todo" y "todos" —palabras
     // normales en español— daban falso positivo.
-    !/borrador|pendiente de revisión/i.test(terminos) &&
-      !/\b(TODO|FIXME|XXX)\b/.test(terminos))
+    !/borrador|pendiente de revisión/i.test(terminos) && !/\b(TODO|FIXME|XXX)\b/.test(terminos),
+  )
 
-  check('el pie enlaza a las tres páginas legales',
-    ['/terminos', '/privacidad', '/preguntas'].every((r) => portada.includes(`href="${r}"`)))
+  check(
+    'el pie enlaza a las tres páginas legales',
+    ['/terminos', '/privacidad', '/preguntas'].every((r) => portada.includes(`href="${r}"`)),
+  )
 
   console.log('\n=== ficha de producto con datos de la API real ===')
   {
-    const { adaptarProductos } = await load(
-      '/src/modules/comparador/services/producto.adapter.js',
-    )
-    const real = adaptarProductos(
-      [{ id: 2, store: null, name: 'Polera básica', brand: '', category: 'Poleras', description: 'Cuello redondo', price: 9990, sizes: {}, active: true }],
-    )[0]
+    const { adaptarProductos } = await load('/src/modules/comparador/services/producto.adapter.js')
+    const real = adaptarProductos([
+      {
+        id: 2,
+        slug: 'polera-basica',
+        store: null,
+        name: 'Polera básica',
+        brand: '',
+        category: 'Poleras',
+        description: 'Cuello redondo',
+        price: 9990,
+        sizes: {},
+        active: true,
+      },
+    ])[0]
 
     const p = createPinia()
     setActivePinia(p)
     const st = useComparadorStore()
-    // El producto va también en el catálogo: la vista resuelve el slug de la
-    // URL contra `productos`, no contra `producto`. Si solo estuviera en el
-    // segundo, no lo encontraría y pintaría la ficha como "ya no está".
+    // El producto va también en el catálogo para cubrir el guard cuando la
+    // navegación ocurre después de haber cargado el listado.
     st.productos = [real]
     st.producto = real
     st.tiendas = [{ id: 'catalogo', nombre: 'Precio publicado', color: '#0b5cad' }]
-    st.cargarProducto = async () => { st.producto = real }
+    st.cargarProducto = async () => {
+      st.producto = real
+    }
 
     const router = createRouter({ history: createMemoryHistory(), routes })
     const app = createSSRApp(App)
@@ -931,18 +1380,24 @@ try {
     await router.isReady()
     const html = await renderToString(app)
 
-    check('resuelve el nombre de la fuente, no el id crudo',
-      html.includes('Precio publicado') && !/>\s*catalogo\s*</.test(html))
-    check('  sin marca no deja el separador colgando',
-      !html.includes('> · ') && html.includes('Poleras'))
+    check(
+      'resuelve el nombre de la fuente, no el id crudo',
+      html.includes('Precio publicado') && !/>\s*catalogo\s*</.test(html),
+    )
+    check(
+      '  sin marca no deja el separador colgando',
+      !html.includes('> · ') && html.includes('Poleras'),
+    )
     check('  muestra la descripción del producto', html.includes('Cuello redondo'))
-    check('  con una sola fuente no dice "Más barato en"',
-      !html.includes('Más barato en'))
-    check('  y el bloque se titula "Dónde comprarla", sin prometer elección',
-      html.includes('Dónde comprarla') && !html.includes('Elige tu tienda'))
-    check('  el historial se anuncia aunque no haya datos todavía',
-      html.includes('Historial de precios') &&
-        html.includes('Todavía no tenemos historial'))
+    check('  con una sola fuente no dice "Más barato en"', !html.includes('Más barato en'))
+    check(
+      '  y el bloque se titula "Dónde comprarla", sin prometer elección',
+      html.includes('Dónde comprarla') && !html.includes('Elige tu tienda'),
+    )
+    check(
+      '  el historial se anuncia aunque no haya datos todavía',
+      html.includes('Historial de precios') && html.includes('Todavía no tenemos historial'),
+    )
     check('  la ficha tiene ilustración', html.includes('detalle__marco'))
   }
 
@@ -956,18 +1411,15 @@ try {
     })
 
     check('el titular sigue en pie sin datos', rota.includes('hero__titulo'))
-    for (const seccion of [
-      'Lo más reciente',
-      'Lo más visto',
-      'Categorías populares',
-    ]) {
+    for (const seccion of ['Lo más reciente', 'Lo más visto', 'Categorías populares']) {
       check(`  la sección "${seccion}" sigue ahí`, rota.includes(seccion))
     }
     check('  el pie sigue ahí', rota.includes('pie__interior'))
-    check('  y se avisa con salida para reintentar',
-      rota.includes('role="status"') && rota.includes('Reintentar'))
-    check('  sin tapar la página con un error a pantalla completa',
-      !rota.includes('aviso__titulo'))
+    check(
+      '  y se avisa con salida para reintentar',
+      rota.includes('role="status"') && rota.includes('Reintentar'),
+    )
+    check('  sin tapar la página con un error a pantalla completa', !rota.includes('aviso__titulo'))
 
     // Con datos cargados y un fallo posterior, los precios NO desaparecen.
     const vieja = await render('/', async (st) => {
@@ -976,10 +1428,8 @@ try {
       st.actualizadoEn = Date.now() - 10 * 60 * 1000
     })
 
-    check('con datos viejos los productos siguen visibles',
-      vieja.includes('Polera b'))
-    check('  y el aviso dice de cuándo son',
-      /hace 10 minutos/.test(vieja), 'hace 10 minutos')
+    check('con datos viejos los productos siguen visibles', vieja.includes('Polera b'))
+    check('  y el aviso dice de cuándo son', /hace 10 minutos/.test(vieja), 'hace 10 minutos')
 
     // Cargando: esqueletos con la forma real.
     const cargando = await render('/', (st) => {
@@ -987,10 +1437,11 @@ try {
       st.cargando = true
     })
 
-    check('mientras carga se ven siluetas de tarjeta',
-      cargando.includes('silueta'), 'silueta')
-    check('  marcadas como decorativas para el lector de pantalla',
-      cargando.includes('aria-hidden="true"'))
+    check('mientras carga se ven siluetas de tarjeta', cargando.includes('silueta'), 'silueta')
+    check(
+      '  marcadas como decorativas para el lector de pantalla',
+      cargando.includes('aria-hidden="true"'),
+    )
   }
 
   console.log('\n=== el store no borra lo que ya tenías ===')
@@ -1018,8 +1469,22 @@ try {
 
       // Se simula que ya había datos en pantalla de una carga anterior.
       st.productos = [
-        { id: '1', nombre: 'Polera', categoria: '', marca: '', precios: [], historial: [] },
-        { id: '2', nombre: 'Jeans', categoria: '', marca: '', precios: [], historial: [] },
+        {
+          id: '1',
+          nombre: 'Polera',
+          categoria: '',
+          marca: '',
+          precios: [],
+          historial: [],
+        },
+        {
+          id: '2',
+          nombre: 'Jeans',
+          categoria: '',
+          marca: '',
+          precios: [],
+          historial: [],
+        },
       ]
       const marcaPrevia = Date.now() - 60_000
       st.actualizadoEn = marcaPrevia
@@ -1027,11 +1492,13 @@ try {
       await st.cargarProductos({ forzar: true })
 
       check('tras un fallo real de red hay error', st.error !== null, st.error)
-      check('  y los productos NO se borraron',
-        st.productos.length === 2, `${st.productos.length} productos`)
+      check(
+        '  y los productos NO se borraron',
+        st.productos.length === 2,
+        `${st.productos.length} productos`,
+      )
       check('  se marcan como desactualizados', st.datosDesactualizados === true)
-      check('  la marca de actualización no se movió',
-        st.actualizadoEn === marcaPrevia)
+      check('  la marca de actualización no se movió', st.actualizadoEn === marcaPrevia)
       check('  y deja de estar cargando', st.cargando === false)
     } finally {
       await muerto.close()
@@ -1055,8 +1522,11 @@ try {
       'silueta--compacta',
     )
 
-    check('la silueta compacta mide lo mismo que la tarjeta compacta',
-      Boolean(tarjeta) && tarjeta === silueta, `tarjeta=${tarjeta} silueta=${silueta}`)
+    check(
+      'la silueta compacta mide lo mismo que la tarjeta compacta',
+      Boolean(tarjeta) && tarjeta === silueta,
+      `tarjeta=${tarjeta} silueta=${silueta}`,
+    )
   }
 
   console.log('\n=== bloques de anuncio ===')
@@ -1070,36 +1540,52 @@ try {
     // Sin id de bloque no se pinta NADA. Es lo que evita la caja vacía en
     // producción mientras los bloques no estén creados en AdSense.
     const vacio = await render({ bloque: '' })
-    check('sin id de bloque no renderiza nada', vacio.trim() === '<!---->',
-      JSON.stringify(vacio.slice(0, 60)))
+    check(
+      'sin id de bloque no renderiza nada',
+      vacio.trim() === '<!---->',
+      JSON.stringify(vacio.slice(0, 60)),
+    )
     check('  ni la etiqueta "Publicidad"', !vacio.includes('Publicidad'))
     check('  ni el <ins> de AdSense', !vacio.includes('adsbygoogle'))
 
     // La portada no debe llevar huecos mientras no haya bloques configurados.
-    check('la portada no muestra huecos sin configurar',
-      !portada.includes('adsbygoogle') && !portada.includes('>Publicidad<'))
+    check(
+      'la portada no muestra huecos sin configurar',
+      !portada.includes('adsbygoogle') && !portada.includes('>Publicidad<'),
+    )
 
     // Con id de bloque sí se pinta, con los atributos que espera AdSense.
     const lleno = await render({ bloque: '1234567890', alto: 96 })
 
-    check('con id de bloque renderiza el <ins> de AdSense',
-      lleno.includes('class="adsbygoogle'), 'ins presente')
-    check('  con el data-ad-slot correcto',
-      lleno.includes('data-ad-slot="1234567890"'))
-    check('  con el data-ad-client del editor',
-      /data-ad-client="ca-pub-\d+"/.test(lleno))
+    check(
+      'con id de bloque renderiza el <ins> de AdSense',
+      lleno.includes('class="adsbygoogle'),
+      'ins presente',
+    )
+    check('  con el data-ad-slot correcto', lleno.includes('data-ad-slot="1234567890"'))
+    check('  con el data-ad-client del editor', /data-ad-client="ca-pub-\d+"/.test(lleno))
     check('  y etiquetado como publicidad', lleno.includes('Publicidad'))
-    check('  reservando el alto para que no salte la página',
-      lleno.includes('min-height:96px'), 'min-height')
+    check(
+      '  reservando el alto para que no salte la página',
+      lleno.includes('min-height:96px'),
+      'min-height',
+    )
 
     // El script de AdSense no puede colarse cuando no hay nada que mostrar.
     const adsense = await load('/src/shared/services/adsense.js')
-    check('el script de AdSense no se inyecta en el <head> de index.html',
-      !readFileSync('index.html', 'utf8').includes('adsbygoogle.js'))
-    check('  y cargarAdsense rechaza si no hay editor configurado',
+    check(
+      'el script de AdSense no se inyecta en el <head> de index.html',
+      !readFileSync('index.html', 'utf8').includes('adsbygoogle.js'),
+    )
+    check(
+      '  y cargarAdsense rechaza si no hay editor configurado',
       adsense.ADSENSE_ACTIVO === false
-        ? await adsense.cargarAdsense().then(() => false, () => true)
-        : true)
+        ? await adsense.cargarAdsense().then(
+            () => false,
+            () => true,
+          )
+        : true,
+    )
   }
 
   console.log('\n=== armador de outfits ===')
@@ -1114,33 +1600,117 @@ try {
     const sinParte = [...new Set(cat.productos.map((p) => p.categoria))].filter(
       (c) => partes.parteDeCategoria(c) === null,
     )
-    check('todas las categorías del catálogo tienen su parte',
-      sinParte.length === 0, sinParte.join(', ') || 'ninguna suelta')
+    check(
+      'todas las categorías del catálogo tienen su parte',
+      sinParte.length === 0,
+      sinParte.join(', ') || 'ninguna suelta',
+    )
 
-    check('una categoría desconocida no rompe nada',
+    check(
+      'una categoría desconocida no rompe nada',
       partes.parteDeCategoria('Paraguas') === null &&
-        partes.partesQueOcupa({ categoria: 'Paraguas' }).length === 0)
+        partes.partesQueOcupa({ categoria: 'Paraguas' }).length === 0,
+    )
 
-    check('un vestido ocupa torso y piernas',
-      partes.partesQueOcupa({ categoria: 'Vestidos' }).join() === 'torso,piernas')
+    check(
+      'un vestido ocupa torso base y piernas',
+      partes.partesQueOcupa({ categoria: 'Vestidos' }).join() === 'torso-base,piernas',
+    )
+    check(
+      'la zona explícita manda sobre una categoría desconocida',
+      partes.parteDeProducto({ categoria: 'Nueva prenda', zona: 'Pies' }) === 'calzado',
+    )
+    check(
+      'polerones y calcetines conservan capas distintas',
+      partes.parteDeCategoria('Polerones') === 'torso-abrigo' &&
+        partes.parteDeCategoria('Calcetines') === 'calcetines',
+    )
+    check(
+      'la capa explícita distingue prendas en la misma zona',
+      partes.parteDeProducto({
+        categoria: 'Nueva prenda',
+        zona: 'Torso',
+        capa: 'Abrigo',
+      }) === 'torso-abrigo' &&
+        partes.parteDeProducto({
+          categoria: 'Nueva prenda',
+          zona: 'Pies',
+          capa: 'Calcetería',
+        }) === 'calcetines',
+    )
 
     const { useOutfitStore } = await load('/src/modules/outfits/store/outfit.store.js')
+    almacen.delete('cep:outfit:talla-ropa')
+    almacen.delete('cep:outfit:talla-calzado')
     const outfit = useOutfitStore()
 
-    // ——— las cuatro ranuras tienen de dónde elegir ———
-    for (const parte of partes.IDS_PARTES) {
-      check(`  hay prendas para ${parte}`, outfit.opcionesPara(parte).length > 0,
-        `${outfit.opcionesPara(parte).length} opciones`)
+    // Las capas presentes en el catálogo de prueba tienen de dónde elegir;
+    // las opcionales sin datos siguen visibles en la interfaz.
+    for (const parte of ['cabeza', 'torso-base', 'torso-abrigo', 'piernas', 'calzado']) {
+      check(
+        `  hay prendas para ${parte}`,
+        outfit.opcionesPara(parte).length > 0,
+        `${outfit.opcionesPara(parte).length} opciones`,
+      )
     }
+
+    check(
+      'separa las tallas de ropa de las de calzado',
+      outfit.tallasRopa.includes('M') &&
+        !outfit.tallasRopa.includes('39') &&
+        outfit.tallasCalzado.includes('39') &&
+        !outfit.tallasCalzado.includes('M'),
+    )
+
+    outfit.tallaRopa = 'M'
+    outfit.tallaCalzado = '39'
+    check(
+      'la talla de ropa filtra ofertas con stock',
+      outfit
+        .opcionesPara('torso-base')
+        .every((producto) =>
+          producto.precios.some((oferta) => oferta.stock && oferta.tallas.includes('M')),
+        ),
+    )
+    check(
+      'la talla de calzado se aplica sólo a los pies',
+      outfit
+        .opcionesPara('calzado')
+        .every((producto) =>
+          producto.precios.some((oferta) => oferta.stock && oferta.tallas.includes('39')),
+        ),
+    )
+
+    outfit.tallaRopa = ''
+    outfit.limpiar()
+    outfit.completarConMasBarato()
+    check(
+      'puede completar automáticamente el outfit comprable más barato',
+      outfit.completo === true &&
+        outfit.desglose.every(
+          ({ parte, oferta }) => parte !== 'calzado' || oferta.tallas.includes('39'),
+        ),
+      `${outfit.partesListas} partes`,
+    )
+
+    outfit.tallaCalzado = ''
 
     // ——— el dinero ———
     outfit.limpiar()
     outfit.ponerPrenda('cabeza', '7')
-    outfit.ponerPrenda('torso', '1')
+    outfit.ponerPrenda('torso-base', '1')
+    outfit.ponerPrenda('torso-abrigo', '3')
     outfit.ponerPrenda('piernas', '2')
-    outfit.ponerPrenda('pies', '9')
+    outfit.ponerPrenda('calzado', '9')
 
     check('el outfit se completa', outfit.completo === true)
+
+    outfit.tallaRopa = 'XXL'
+    check(
+      'cambiar a una talla agotada invalida el avance anterior',
+      outfit.completo === false && outfit.partesListas < partes.IDS_PARTES.length,
+    )
+    outfit.tallaRopa = ''
 
     // El total se compara contra un cálculo INDEPENDIENTE —el mínimo real de
     // cada prenda— y no contra una suma del propio desglose: eso último era
@@ -1150,62 +1720,88 @@ try {
         t + Math.min(...producto.precios.filter((o) => o.stock).map((o) => o.precio)),
       0,
     )
-    check('  el total es la suma de los precios más bajos',
-      outfit.total === minimoReal, `${outfit.total} vs ${minimoReal}`)
+    check(
+      '  el total es la suma de los precios más bajos',
+      outfit.total === minimoReal,
+      `${outfit.total} vs ${minimoReal}`,
+    )
 
     // Ninguna pieza puede venir de una oferta agotada.
-    check('  ninguna pieza sale de una tienda sin stock',
-      outfit.desglose.every(({ producto, oferta }) =>
-        producto.precios.find((o) => o.tienda === oferta.tienda)?.stock === true))
+    check(
+      '  ninguna pieza sale de una tienda sin stock',
+      outfit.desglose.every(
+        ({ producto, oferta }) =>
+          producto.precios.find((o) => o.tienda === oferta.tienda)?.stock === true,
+      ),
+    )
 
     // "Todo en una tienda" sólo vale si esa tienda tiene TODO con stock.
     const unica = outfit.mejorTiendaUnica
-    check('  la tienda única tiene todas las piezas con stock',
+    check(
+      '  la tienda única tiene todas las piezas con stock',
       unica !== null &&
         outfit.piezas.every(({ producto }) =>
-          producto.precios.some((o) => o.tienda === unica.tienda && o.stock)),
-      unica ? `${unica.tienda} · ${unica.total}` : 'ninguna')
+          producto.precios.some((o) => o.tienda === unica.tienda && o.stock),
+        ),
+      unica ? `${unica.tienda} · ${unica.total}` : 'ninguna',
+    )
 
-    check('  y el ahorro es la diferencia entre las dos formas',
+    check(
+      '  y el ahorro es la diferencia entre las dos formas',
       outfit.ahorroRepartiendo === Math.max(0, unica.total - outfit.total),
-      String(outfit.ahorroRepartiendo))
+      String(outfit.ahorroRepartiendo),
+    )
 
     // ——— vestido: no se puede llevar con pantalón ———
     outfit.limpiar()
     outfit.ponerPrenda('piernas', '2')
-    outfit.ponerPrenda('torso', '4')
+    outfit.ponerPrenda('torso-base', '4')
 
-    check('un vestido cubre las piernas y bloquea esa ranura',
+    check(
+      'un vestido cubre las piernas y bloquea esa ranura',
       outfit.partesBloqueadas.includes('piernas') &&
-        outfit.prendas.piernas?.id === outfit.prendas.torso?.id)
-    check('  y no se cuenta dos veces en el total',
+        outfit.prendas.piernas?.id === outfit.prendas['torso-base']?.id,
+    )
+    check(
+      '  y no se cuenta dos veces en el total',
       outfit.piezas.length === 1 && outfit.total === outfit.desglose[0].oferta.precio,
-      String(outfit.total))
+      String(outfit.total),
+    )
 
     // ——— outfit a medias ———
     outfit.limpiar()
-    outfit.ponerPrenda('pies', '9')
-    check('con el outfit a medias sólo cuenta lo que hay',
-      outfit.completo === false && outfit.piezas.length === 1)
+    outfit.ponerPrenda('calzado', '9')
+    check(
+      'con el outfit a medias sólo cuenta lo que hay',
+      outfit.completo === false && outfit.piezas.length === 1,
+    )
 
     // ——— plantillas ———
     const { AUTOMATICAS, FIJAS } = await load('/src/modules/outfits/data/plantillas.js')
-    const { useOutfitArmado } = await load(
-      '/src/modules/outfits/composables/useOutfitArmado.js',
-    )
+    const { useOutfitArmado } = await load('/src/modules/outfits/composables/useOutfitArmado.js')
     const { armar, resumir } = useOutfitArmado()
 
     for (const plantilla of AUTOMATICAS) {
       const armado = armar(plantilla)
       const resumen = resumir(armado)
 
-      check(`la plantilla "${plantilla.nombre}" trae prendas reales`,
-        resumen.piezas.length > 0, `${resumen.piezas.length} piezas · ${resumen.total}`)
+      check(
+        `la plantilla "${plantilla.nombre}" trae prendas reales`,
+        resumen.piezas.length > 0,
+        `${resumen.piezas.length} piezas · ${resumen.total}`,
+      )
     }
 
-    check('las plantillas fijas descartan lo que ya no existe',
-      resumir(armar({ ...FIJAS[0], prendas: { ...FIJAS[0].prendas, pies: 'no-existe' } }))
-        .piezas.length === Object.keys(FIJAS[0].prendas).length - 1)
+    check(
+      'las plantillas fijas descartan lo que ya no existe',
+      resumir(
+        armar({
+          ...FIJAS[0],
+          prendas: { ...FIJAS[0].prendas, calzado: 'no-existe' },
+        }),
+      ).piezas.length ===
+        Object.keys(FIJAS[0].prendas).length - 1,
+    )
   }
 
   console.log('\n=== vistas del armador ===')
@@ -1216,30 +1812,54 @@ try {
 
     const armar = await render('/armar', (st) => st.cargarProductos())
 
-    check('/armar renderiza las cuatro ranuras',
-      ['Cabeza', 'Torso', 'Piernas', 'Pies'].every((p) => armar.includes(p)))
+    check(
+      '/armar renderiza las capas combinables',
+      [
+        'Cabeza',
+        'Torso · capa base',
+        'Torso · abrigo',
+        'Ropa interior',
+        'Piernas',
+        'Calcetines',
+        'Calzado',
+      ].every((p) => armar.includes(p)),
+    )
+    check(
+      '  permite separar talla de ropa y calzado',
+      armar.includes('Talla de ropa') && armar.includes('Talla de calzado'),
+    )
+    check(
+      '  ofrece completar el outfit automáticamente',
+      armar.includes('Completar con lo más barato') && armar.includes('0 de 5 capas disponibles'),
+    )
     check('  con el resumen al lado', armar.includes('Tu outfit'))
-    check('  y dice qué hacer cuando está vacío',
-      armar.includes('Ve eligiendo prendas'))
+    check('  y dice qué hacer cuando está vacío', armar.includes('Ve eligiendo prendas'))
 
     // Sin catálogo la estructura aguanta, igual que el resto del sitio.
     const vacia = await render('/armar', (st) => {
       st.productos = []
       st.error = 'Sin conexión.'
     })
-    check('sin datos las ranuras siguen en pie',
-      vacia.includes('Cabeza') && vacia.includes('Torso'))
-    check('  y cada una dice que no hay prendas',
-      vacia.includes('Todavía no tenemos prendas para esta parte'))
+    check(
+      'sin datos las ranuras siguen en pie',
+      vacia.includes('Cabeza') && vacia.includes('Torso'),
+    )
+    check(
+      '  y cada una dice que no hay prendas',
+      vacia.includes('Todavía no tenemos prendas para esta parte'),
+    )
 
     const galeria = await render('/outfits', (st) => st.cargarProductos())
 
-    check('/outfits renderiza las plantillas',
-      galeria.includes('Lo más barato') && galeria.includes('Fin de semana'))
-    check('  con precio y número de tiendas',
-      /Desde/.test(galeria) && /\d+ tiendas?/.test(galeria))
-    check('  distingue las automáticas de las elegidas a mano',
-      galeria.includes('Se arma solo') && galeria.includes('Selección propia'))
+    check(
+      '/outfits renderiza las plantillas',
+      galeria.includes('Lo más barato') && galeria.includes('Fin de semana'),
+    )
+    check('  con precio y número de tiendas', /Desde/.test(galeria) && /\d+ tiendas?/.test(galeria))
+    check(
+      '  distingue las automáticas de las elegidas a mano',
+      galeria.includes('Se arma solo') && galeria.includes('Selección propia'),
+    )
 
     // Con una sola fuente de precio no se puede fingir una comparación: el
     // resumen enseñaría el mismo total dos veces, una de ellas como "todo en
@@ -1247,17 +1867,17 @@ try {
     const unaFuente = await render('/armar', async (st, o) => {
       await st.cargarProductos()
       st.tiendas = [{ id: 'catalogo', nombre: 'Precio publicado', color: '#0b5cad' }]
-      o?.ponerPrenda?.('torso', st.productos[0].id)
+      o?.ponerPrenda?.('torso-base', st.productos[0].id)
     })
 
-    check('con una sola fuente no se inventa la comparación',
+    check(
+      'con una sola fuente no se inventa la comparación',
       !unaFuente.includes('Todo en una sola tienda') &&
-        !unaFuente.includes('Cada pieza donde está más barata'))
-    check('  y el total se llama por su nombre',
-      unaFuente.includes('Total del outfit'))
+        !unaFuente.includes('Cada pieza donde está más barata'),
+    )
+    check('  y el total se llama por su nombre', unaFuente.includes('Total del outfit'))
 
-    check('la portada ofrece vestirse completo',
-      portada.includes('Vístete completo por menos'))
+    check('la portada ofrece vestirse completo', portada.includes('Vístete completo por menos'))
     check('la barra lleva al armador', portada.includes('Armar outfit'))
   }
 
@@ -1273,40 +1893,56 @@ try {
 
     // ——— migas de pan ———
     check('hay migas de pan', completa.includes('Dónde estás'))
-    check('  que llevan a la categoría',
-      /href="\/comparador\?categoria=Poleras"/.test(completa))
-    check('  y la última marca dónde estás',
-      /aria-current="page"/.test(completa))
+    check('  que llevan a la categoría', /href="\/comparador\?categoria=Poleras"/.test(completa))
+    check('  y la última marca dónde estás', /aria-current="page"/.test(completa))
 
     // ——— orden de las secciones ———
     const pos = (t) => completa.indexOf(t)
 
-    check('la ficha va en una sola columna',
-      !completa.includes('detalle__columnas'))
-    check('  y "elige tu tienda" va antes que las características',
-      pos('Elige tu tienda') > 0 &&
-        pos('Elige tu tienda') < pos('Características'))
-    check('  la descripción y lo destacado van después',
+    check('la ficha va en una sola columna', !completa.includes('detalle__columnas'))
+    check(
+      '  y "elige tu tienda" va antes que las características',
+      pos('Elige tu tienda') > 0 && pos('Elige tu tienda') < pos('Características'),
+    )
+    check(
+      '  cada tienda muestra las tallas que tiene disponibles',
+      completa.includes('Tallas disponibles') &&
+        completa.includes('>XS<') &&
+        completa.includes('>M<'),
+    )
+    check(
+      '  la descripción y lo destacado van después',
       pos('Descripción') > pos('Elige tu tienda') &&
-        pos('Lo que hay que saber') > pos('Elige tu tienda'))
+        pos('Lo que hay que saber') > pos('Elige tu tienda'),
+    )
 
     // ——— el sello sigue arriba, junto a la prenda ———
-    check('el sello del descuento se estampa',
+    check(
+      'el sello del descuento se estampa',
       /aria-label="Precio de hoy: [^"]+"/.test(completa),
-      /aria-label="(Precio de hoy: [^"]+)"/.exec(completa)?.[1] ?? 'no está')
-    check('  y el mínimo registrado se dice en la cabecera',
-      completa.includes('Mínimo que hemos visto'))
+      /aria-label="(Precio de hoy: [^"]+)"/.exec(completa)?.[1] ?? 'no está',
+    )
+    check(
+      '  y el mínimo registrado se dice en la cabecera',
+      completa.includes('Mínimo que hemos visto'),
+    )
 
     // ——— identidad del prototipo ———
-    check('los tickets conservan sus muescas',
+    check(
+      'los tickets conservan sus muescas',
       (completa.match(/ticket__muescas/g) ?? []).length >= 6,
-      `${(completa.match(/ticket__muescas/g) ?? []).length} muescas`)
+      `${(completa.match(/ticket__muescas/g) ?? []).length} muescas`,
+    )
 
     // ——— características agrupadas ———
-    check('las características van agrupadas por bloque',
-      completa.includes('Materiales y confección') && completa.includes('Cuidado'))
-    check('  con su nota dentro del grupo al que se refiere',
-      completa.includes('encoge algo en el primer lavado'))
+    check(
+      'las características van agrupadas por bloque',
+      completa.includes('Materiales y confección') && completa.includes('Cuidado'),
+    )
+    check(
+      '  con su nota dentro del grupo al que se refiere',
+      completa.includes('encoge algo en el primer lavado'),
+    )
     check('  y lo destacado en viñetas', completa.includes('Algodón peinado'))
 
     // ——— formato plano de specs: lo que daría la API ———
@@ -1316,15 +1952,14 @@ try {
     const { renderToString: pintar } = await import('vue/server-renderer')
     const { createSSRApp: crear } = await import('vue')
 
-    const plano = await pintar(
-      crear(Ficha, { specs: { Material: 'Algodón', Corte: 'Regular' } }),
+    const plano = await pintar(crear(Ficha, { specs: { Material: 'Algodón', Corte: 'Regular' } }))
+    check(
+      'un formato plano de specs también se pinta',
+      plano.includes('Algodón') && plano.includes('Corte'),
     )
-    check('un formato plano de specs también se pinta',
-      plano.includes('Algodón') && plano.includes('Corte'))
 
     const sinSpecs = await pintar(crear(Ficha, { specs: [] }))
-    check('  y sin specs no deja un bloque vacío',
-      sinSpecs.trim() === '<!---->')
+    check('  y sin specs no deja un bloque vacío', sinSpecs.trim() === '<!---->')
 
     // Un producto sin ficha no deja huecos. Se construye el caso en vez de
     // buscar un producto pelado en el catálogo: ahora todos tienen ficha, y una
@@ -1338,23 +1973,30 @@ try {
       // catálogo sino esta versión sin ficha, y el watch de la vista pisaría
       // cualquier cosa que se dejara puesta a mano.
       st.cargarProducto = async () => {
-        st.producto = { ...base, specs: [], pros: [], contras: [], destacadas: [] }
+        st.producto = {
+          ...base,
+          specs: [],
+          pros: [],
+          contras: [],
+          destacadas: [],
+        }
       }
     })
 
-    check('un producto sin características no deja huecos',
-      !pelada.includes('>Características<') &&
-        !pelada.includes('A favor y en contra'),
-      'las secciones vacías no se pintan')
-    check('  pero lo que sí tiene se sigue viendo',
-      pelada.includes('Elige tu tienda') && pelada.includes('Historial de precios'))
+    check(
+      'un producto sin características no deja huecos',
+      !pelada.includes('>Características<') && !pelada.includes('A favor y en contra'),
+      'las secciones vacías no se pintan',
+    )
+    check(
+      '  pero lo que sí tiene se sigue viendo',
+      pelada.includes('Elige tu tienda') && pelada.includes('Historial de precios'),
+    )
   }
 
   console.log('\n=== elige tu tienda ===')
   {
-    const { default: Elige } = await load(
-      '/src/modules/comparador/components/EligeTuTienda.vue',
-    )
+    const { default: Elige } = await load('/src/modules/comparador/components/EligeTuTienda.vue')
     const { renderToString: pintar } = await import('vue/server-renderer')
     const { createSSRApp: crear } = await import('vue')
 
@@ -1369,39 +2011,81 @@ try {
     const html = await pintar(
       crear(Elige, {
         ofertas: [
-          { tienda: 'a', precio: 30000, precioLista: 40000, stock: true, url: 'x', medioPago: 'Tarjeta Ripley', condicion: 'nueva' },
+          {
+            tienda: 'a',
+            precio: 30000,
+            precioLista: 40000,
+            stock: true,
+            url: 'x',
+            medioPago: 'Tarjeta Ripley',
+            condicion: 'nueva',
+            tallas: ['S', 'M', 'L'],
+          },
           // La más barata pero AGOTADA: no puede encabezar la lista.
-          { tienda: 'b', precio: 10000, precioLista: 10000, stock: false, url: 'y', medioPago: 'Con todo medio de pago', condicion: 'ultima-talla' },
-          { tienda: 'c', precio: 20000, precioLista: 18000, stock: true, url: 'z' },
+          {
+            tienda: 'b',
+            precio: 10000,
+            precioLista: 10000,
+            stock: false,
+            url: 'y',
+            medioPago: 'Con todo medio de pago',
+            condicion: 'ultima-talla',
+            tallas: ['S'],
+          },
+          {
+            tienda: 'c',
+            precio: 20000,
+            precioLista: 18000,
+            stock: true,
+            url: 'z',
+            tallas: ['M', 'L'],
+          },
         ],
       }),
     )
 
     const orden = ['Ripley', 'Paris', 'Zara']
-      .map((n) => ({ n, i: html.indexOf(`>\n            ${n}` ) >= 0 ? html.indexOf(n) : html.indexOf(n) }))
+      .map((n) => ({
+        n,
+        i: html.indexOf(`>\n            ${n}`) >= 0 ? html.indexOf(n) : html.indexOf(n),
+      }))
       .sort((x, y) => x.i - y.i)
       .map((x) => x.n)
 
     check('ordena de más barata a más cara', orden[0] === 'Zara', orden.join(' → '))
-    check('  y la agotada va al final aunque sea la más barata',
-      orden[orden.length - 1] === 'Paris', orden.join(' → '))
-    check('  la agotada no ofrece ir a comprar',
-      /Paris[\s\S]{0,600}?Agotado/.test(html))
+    check(
+      '  y la agotada va al final aunque sea la más barata',
+      orden[orden.length - 1] === 'Paris',
+      orden.join(' → '),
+    )
+    check('  la agotada no ofrece ir a comprar', /Paris[\s\S]{0,600}?Agotado/.test(html))
 
-    check('cada tienda muestra su medio de pago',
-      html.includes('Tarjeta Ripley') && html.includes('Con todo medio de pago'))
-    check('  y su condición cuando no es la normal',
-      html.includes('Últimas tallas'))
-    check('  sin dejar hueco cuando la oferta no los trae',
+    check(
+      'cada tienda muestra su medio de pago',
+      html.includes('Tarjeta Ripley') && html.includes('Con todo medio de pago'),
+    )
+    check('  y su condición cuando no es la normal', html.includes('Últimas tallas'))
+    check(
+      '  sin dejar hueco cuando la oferta no los trae',
       (html.match(/class="etiqueta/g) ?? []).length === 3,
-      `${(html.match(/class="etiqueta/g) ?? []).length} etiquetas para 4 posibles`)
+      `${(html.match(/class="etiqueta/g) ?? []).length} etiquetas para 4 posibles`,
+    )
 
     // El precio normal sólo se tacha si de verdad es mayor.
-    check('el precio normal se tacha sólo si es mayor',
+    check(
+      'el precio normal se tacha sólo si es mayor',
       html.includes('−25%') && !html.includes('−-11%') && !/18\.000/.test(html),
-      'Zara tiene precioLista menor: no se tacha')
+      'Zara tiene precioLista menor: no se tacha',
+    )
 
     check('hay control de orden', html.includes('Ordenar por'))
+    check(
+      'muestra las tallas por cada tienda',
+      html.includes('Tallas disponibles') &&
+        html.includes('>S<') &&
+        html.includes('>M<') &&
+        html.includes('>L<'),
+    )
   }
 
   console.log('\n=== gráfico de precios ===')
@@ -1413,30 +2097,35 @@ try {
 
     const trozo = conHistorial.slice(conHistorial.indexOf('Historial de precios'))
 
-    check('dibuja una línea por tienda',
+    check(
+      'dibuja una línea por tienda',
       (trozo.match(/<polyline/g) ?? []).length >= 2,
-      `${(trozo.match(/<polyline/g) ?? []).length} series`)
+      `${(trozo.match(/<polyline/g) ?? []).length} series`,
+    )
 
     // Sin escala de precios sólo se ve la forma de la curva, no cuánto cuesta.
     // Es la parte que faltaba en la versión anterior.
-    check('  con escala de precios legible', /&gt;?\$\d+k?</.test(trozo) || />\$\d+k?</.test(trozo),
-      (trozo.match(/>\$\d+k?</g) ?? []).join(' '))
-    check('  y líneas guía a esa altura',
-      (trozo.match(/<line /g) ?? []).length >= 4)
-    check('  un punto en cada dato',
-      (trozo.match(/<circle/g) ?? []).length >= 6)
+    check(
+      '  con escala de precios legible',
+      /&gt;?\$\d+k?</.test(trozo) || />\$\d+k?</.test(trozo),
+      (trozo.match(/>\$\d+k?</g) ?? []).join(' '),
+    )
+    check('  y líneas guía a esa altura', (trozo.match(/<line /g) ?? []).length >= 4)
+    check('  un punto en cada dato', (trozo.match(/<circle/g) ?? []).length >= 6)
 
-    check('  se puede leer el precio de un día concreto',
-      trozo.includes('lectura__fecha'))
-    check('  con la variación respecto del anterior',
-      /▼|▲/.test(trozo))
-    check('  y se navega con el teclado',
-      trozo.includes('tabindex="0"') && trozo.includes('role="img"'))
+    check('  se puede leer el precio de un día concreto', trozo.includes('lectura__fecha'))
+    check('  con la variación respecto del anterior', /▼|▲/.test(trozo))
+    check(
+      '  y se navega con el teclado',
+      trozo.includes('tabindex="0"') && trozo.includes('role="img"'),
+    )
 
     // Las fechas del eje no pueden salir en crudo.
-    check('  las fechas van legibles, no en ISO',
+    check(
+      '  las fechas van legibles, no en ISO',
       !/>\s*20\d\d-\d\d-\d\d\s*</.test(trozo),
-      (trozo.match(/>\s*\d\d-[a-z]{3}\s*</g) ?? []).slice(0, 3).join(' '))
+      (trozo.match(/>\s*\d\d-[a-z]{3}\s*</g) ?? []).slice(0, 3).join(' '),
+    )
 
     // Y con el día correcto. "2026-08-15" se lee como medianoche UTC; al
     // formatearlo en hora de Chile caía en el 14, y un precio del 15 se
@@ -1444,15 +2133,15 @@ try {
     // "14-ago" tampoco es ISO.
     const { formatearFecha } = await load('/src/shared/utils/formato.js')
 
-    check('  y con el día correcto, sin desfase de huso',
+    check(
+      '  y con el día correcto, sin desfase de huso',
       formatearFecha('2026-08-15').startsWith('15') &&
         formatearFecha('2026-01-01').startsWith('01'),
-      `${formatearFecha('2026-08-15')} · ${formatearFecha('2026-01-01')}`)
+      `${formatearFecha('2026-08-15')} · ${formatearFecha('2026-01-01')}`,
+    )
 
     // El día sin dato de una tienda se salta, no vale 0.
-    const { default: Grafico } = await load(
-      '/src/modules/comparador/components/GraficoPrecios.vue',
-    )
+    const { default: Grafico } = await load('/src/modules/comparador/components/GraficoPrecios.vue')
     const { renderToString: pintar } = await import('vue/server-renderer')
     const { createSSRApp: crear } = await import('vue')
 
@@ -1473,19 +2162,24 @@ try {
     )
     const lineas = [...hueco.matchAll(/<polyline points="([^"]*)"/g)].map((m) => m[1])
 
-    check('un día sin dato de una tienda se salta, no vale 0',
+    check(
+      'un día sin dato de una tienda se salta, no vale 0',
       lineas.some((l) => l.split(' ').length === 1),
-      lineas.map((l) => l.split(' ').length).join(' y ') + ' puntos')
+      lineas.map((l) => l.split(' ').length).join(' y ') + ' puntos',
+    )
 
     // Sin historial se dice, en vez de esconder la sección.
     const vacio = await pintar(crear(Grafico, { historial: [] }))
-    check('sin historial lo dice en vez de desaparecer',
-      vacio.includes('Todavía no tenemos historial'))
-    const unSolo = await pintar(
-      crear(Grafico, { historial: [{ fecha: '2026-07-01', precios: { a: 100 } }] }),
+    check(
+      'sin historial lo dice en vez de desaparecer',
+      vacio.includes('Todavía no tenemos historial'),
     )
-    check('  con un solo día tampoco dibuja una línea falsa',
-      !unSolo.includes('<polyline'))
+    const unSolo = await pintar(
+      crear(Grafico, {
+        historial: [{ fecha: '2026-07-01', precios: { a: 100 } }],
+      }),
+    )
+    check('  con un solo día tampoco dibuja una línea falsa', !unSolo.includes('<polyline'))
   }
 
   console.log('\n=== enlaces a la tienda ===')
@@ -1504,15 +2198,20 @@ try {
       .map((m) => m[0])
       .filter((a) => !a.includes('google'))
 
-    check('  los enlaces salientes van marcados como patrocinados',
+    check(
+      '  los enlaces salientes van marcados como patrocinados',
       enlaces.length > 0 && enlaces.every((a) => a.includes('sponsored')),
-      `${enlaces.length} enlaces`)
-    check('  y con noopener, para que el destino no toque nuestra página',
-      enlaces.every((a) => a.includes('noopener')))
-    check('  se abren en pestaña nueva, sin perder la comparación',
-      enlaces.every((a) => a.includes('_blank')))
-    check('  y se avisa de que abren fuera',
-      detalle.includes('se abre en la tienda'))
+      `${enlaces.length} enlaces`,
+    )
+    check(
+      '  y con noopener, para que el destino no toque nuestra página',
+      enlaces.every((a) => a.includes('noopener')),
+    )
+    check(
+      '  se abren en pestaña nueva, sin perder la comparación',
+      enlaces.every((a) => a.includes('_blank')),
+    )
+    check('  y se avisa de que abren fuera', detalle.includes('se abre en la tienda'))
 
     // Una oferta agotada no lleva a ninguna parte: no se puede comprar.
     //
@@ -1524,22 +2223,33 @@ try {
     // La lista pasó de <tr> a <li class="oferta">: se parte por ahí.
     const filas = detalle.split('<li').filter((f) => f.includes('Agotado'))
 
-    check('  la ficha tiene alguna oferta agotada que comprobar',
-      filas.length > 0, `${filas.length} filas`)
-    check('  y ninguna ofrece ir a comprar',
-      filas.length > 0 && filas.every((f) => !f.includes('Ver en')))
+    check(
+      '  la ficha tiene alguna oferta agotada que comprobar',
+      filas.length > 0,
+      `${filas.length} filas`,
+    )
+    check(
+      '  y ninguna ofrece ir a comprar',
+      filas.length > 0 && filas.every((f) => !f.includes('Ver en')),
+    )
 
     // Sin URL no se pinta el botón: es preferible que falte a mandar a alguien
     // a una dirección adivinada. Es el caso de la API real hoy.
-    const { adaptarProductos } = await load(
-      '/src/modules/comparador/services/producto.adapter.js',
-    )
-    const sinUrl = adaptarProductos(
-      [{ id: 1, store: null, name: 'X', brand: '', category: 'Poleras', price: 100, sizes: {}, active: true }],
-    )[0]
+    const { adaptarProductos } = await load('/src/modules/comparador/services/producto.adapter.js')
+    const sinUrl = adaptarProductos([
+      {
+        id: 1,
+        store: null,
+        name: 'X',
+        brand: '',
+        category: 'Poleras',
+        price: 100,
+        sizes: {},
+        active: true,
+      },
+    ])[0]
 
-    check('  la API sin url deja la oferta sin enlace',
-      sinUrl.precios[0].url === null)
+    check('  la API sin url deja la oferta sin enlace', sinUrl.precios[0].url === null)
 
     const EnlaceTienda = (await load('/src/shared/components/EnlaceTienda.vue')).default
     const { renderToString: pintar } = await import('vue/server-renderer')
@@ -1553,8 +2263,10 @@ try {
   {
     const vista = await render('/comparador', (st) => st.cargarProductos())
 
-    check('la barra lateral ofrece filtrar por categoría',
-      vista.includes('Categoría') && vista.includes('Todas'))
+    check(
+      'la barra lateral ofrece filtrar por categoría',
+      vista.includes('Categoría') && vista.includes('Todas'),
+    )
     check('  con el número de prendas de cada una', /pildora__cuenta/.test(vista))
     check('  y filtrar por presupuesto', vista.includes('Presupuesto'))
     check('hay control de orden', vista.includes('Ordenar por'))
@@ -1566,56 +2278,76 @@ try {
       st.tiendas = [{ id: 'catalogo', nombre: 'Precio publicado', color: '#0b5cad' }]
     })
 
-    check('con una sola tienda la barra lateral NO se queda vacía',
-      unaFuente.includes('Categoría') && unaFuente.includes('Presupuesto'))
-    check('  y no ofrece elegir entre una sola tienda',
-      !unaFuente.includes('Tiendas que quiero ver'))
+    check(
+      'con una sola tienda la barra lateral NO se queda vacía',
+      unaFuente.includes('Categoría') && unaFuente.includes('Presupuesto'),
+    )
+    check(
+      '  y no ofrece elegir entre una sola tienda',
+      !unaFuente.includes('Tiendas que quiero ver'),
+    )
 
     setActivePinia(createPinia())
     const st = useComparadorStore()
     await st.cargarProductos()
 
     // ——— el orden ———
-    const precios = () =>
-      st.productosFiltrados.map((p) => precioMasBajo(p)?.precio ?? Infinity)
+    const precios = () => st.productosFiltrados.map((p) => precioMasBajo(p)?.precio ?? Infinity)
 
     st.orden = 'barato'
-    check('ordena de menor a mayor',
-      precios().every((v, i, t) => i === 0 || t[i - 1] <= v))
+    check(
+      'ordena de menor a mayor',
+      precios().every((v, i, t) => i === 0 || t[i - 1] <= v),
+    )
 
     st.orden = 'caro'
     const caro = precios().filter((v) => v !== Infinity)
-    check('  y de mayor a menor',
-      caro.every((v, i, t) => i === 0 || t[i - 1] >= v))
-    check('  dejando al final los que no tienen precio',
-      precios().indexOf(Infinity) === -1 ||
-        precios().indexOf(Infinity) >= caro.length)
+    check(
+      '  y de mayor a menor',
+      caro.every((v, i, t) => i === 0 || t[i - 1] >= v),
+    )
+    check(
+      '  dejando al final los que no tienen precio',
+      precios().indexOf(Infinity) === -1 || precios().indexOf(Infinity) >= caro.length,
+    )
 
     st.orden = 'nuevo'
     const dias = st.productosFiltrados.map((p) => p.agregadoHace ?? 999)
-    check('  y por lo más reciente',
-      dias.every((v, i, t) => i === 0 || t[i - 1] <= v))
+    check(
+      '  y por lo más reciente',
+      dias.every((v, i, t) => i === 0 || t[i - 1] <= v),
+    )
     st.orden = 'barato'
 
     // ——— el presupuesto ———
     const rango = st.rangoPrecios
-    check('el rango de precios sale del catálogo, no inventado',
-      rango.min > 0 && rango.max > rango.min, `${rango.min}–${rango.max}`)
+    check(
+      'el rango de precios sale del catálogo, no inventado',
+      rango.min > 0 && rango.max > rango.min,
+      `${rango.min}–${rango.max}`,
+    )
 
     st.precioMaximo = rango.min
-    check('el tope de presupuesto acota los resultados',
+    check(
+      'el tope de presupuesto acota los resultados',
       st.productosFiltrados.length < st.productos.length &&
         st.productosFiltrados.every((p) => precioMasBajo(p).precio <= rango.min),
-      `${st.productosFiltrados.length} prendas`)
+      `${st.productosFiltrados.length} prendas`,
+    )
 
     // ——— quitar filtros de uno en uno ———
     st.categoria = st.conteoPorCategoria[0].nombre
-    check('los filtros puestos se listan', st.filtrosActivos.length === 2,
-      st.filtrosActivos.map((f) => f.tipo).join(', '))
+    check(
+      'los filtros puestos se listan',
+      st.filtrosActivos.length === 2,
+      st.filtrosActivos.map((f) => f.tipo).join(', '),
+    )
 
     st.quitarFiltro('precio')
-    check('  y se quitan de uno en uno, sin perder el resto',
-      st.precioMaximo === null && st.categoria !== '')
+    check(
+      '  y se quitan de uno en uno, sin perder el resto',
+      st.precioMaximo === null && st.categoria !== '',
+    )
 
     st.limpiarFiltros()
     check('  limpiar los quita todos', st.hayFiltros === false)
@@ -1636,9 +2368,7 @@ try {
     })
 
     try {
-      const { routes: rutasAnuncio } = await conBloques.ssrLoadModule(
-        '/src/core/router/routes.js',
-      )
+      const { routes: rutasAnuncio } = await conBloques.ssrLoadModule('/src/core/router/routes.js')
       const AppAnuncio = (await conBloques.ssrLoadModule('/src/App.vue')).default
       const { useComparadorStore: usarCat } = await conBloques.ssrLoadModule(
         '/src/modules/comparador/store/comparador.store.js',
@@ -1660,7 +2390,10 @@ try {
           }
         }
 
-        const router = createRouter({ history: createMemoryHistory(), routes: rutasAnuncio })
+        const router = createRouter({
+          history: createMemoryHistory(),
+          routes: rutasAnuncio,
+        })
         const app = createSSRApp(AppAnuncio)
         app.use(p).use(router)
         await router.push(ruta)
@@ -1678,11 +2411,6 @@ try {
         '/terminos',
         '/privacidad',
         '/preguntas',
-        // /login y /registro los pidió el proyecto explícitamente. Ver el aviso
-        // de política justo debajo: son pantallas de sesión y AdSense trata ese
-        // tipo de página como inventario sin valor.
-        '/login',
-        '/registro',
       ]) {
         const html = await pintarRuta(ruta)
         const cuantos = (html.match(/class="adsbygoogle/g) ?? []).length
@@ -1698,17 +2426,13 @@ try {
       for (const [ruta, motivo] of [
         ['/ruta-que-no-existe', 'página de error'],
         ['/auth/google', 'pantalla de paso, sin contenido propio'],
+        ['/login', 'pantalla de sesión'],
+        ['/registro', 'pantalla de sesión'],
       ]) {
         const html = await pintarRuta(ruta)
 
-        check(`${ruta} NO lleva anuncio`,
-          !html.includes('class="adsbygoogle'), motivo)
+        check(`${ruta} NO lleva anuncio`, !html.includes('class="adsbygoogle'), motivo)
       }
-
-      nota('AVISO: /login y /registro llevan anuncio por decisión del proyecto.')
-      nota('  «Valuable Inventory» de AdSense trata las pantallas de sesión como')
-      nota('  páginas sin contenido propio. Para quitarlos: meta.sinAnuncios en')
-      nota('  src/modules/cuenta/routes.js (una línea por ruta).')
     } finally {
       await conBloques.close()
     }
@@ -1725,44 +2449,59 @@ try {
 
     // ——— palabra clave ———
     st.busqueda = 'jeans'
-    check('filtra por palabra clave',
+    check(
+      'filtra por palabra clave',
       st.totalResultados > 0 && st.totalResultados < TODOS,
-      `${st.totalResultados} de ${TODOS}`)
-    check('  buscando también en marca y categoría',
+      `${st.totalResultados} de ${TODOS}`,
+    )
+    check(
+      '  buscando también en marca y categoría',
       (() => {
         st.busqueda = 'Zara'
         const n = st.totalResultados
         st.busqueda = ''
         return n > 0
-      })())
+      })(),
+    )
 
     // ——— marca ———
-    check('las marcas salen del catálogo, no de una lista fija',
+    check(
+      'las marcas salen del catálogo, no de una lista fija',
       st.marcasDisponibles.length > 1,
-      st.marcasDisponibles.map((m) => m.nombre).join(' '))
+      st.marcasDisponibles.map((m) => m.nombre).join(' '),
+    )
 
     st.alternarMarca('Zara')
-    check('  filtra por marca',
+    check(
+      '  filtra por marca',
       st.productosFiltrados.every((p) => p.marca === 'Zara'),
-      `${st.totalResultados} prendas`)
+      `${st.totalResultados} prendas`,
+    )
 
     st.alternarMarca('Mango')
-    check('  y admite varias a la vez',
+    check(
+      '  y admite varias a la vez',
       st.productosFiltrados.every((p) => ['Zara', 'Mango'].includes(p.marca)) &&
-        st.totalResultados > 0)
+        st.totalResultados > 0,
+    )
     st.limpiarFiltros()
 
     // ——— talla ———
-    check('las tallas salen de las ofertas con stock',
+    check(
+      'las tallas salen de las ofertas con stock',
       st.tallasDisponibles.length > 1,
-      st.tallasDisponibles.map((t) => t.nombre).join(' '))
+      st.tallasDisponibles.map((t) => t.nombre).join(' '),
+    )
 
     const unaTalla = st.tallasDisponibles[0].nombre
     st.talla = unaTalla
-    check(`  filtra por talla ${unaTalla}`,
+    check(
+      `  filtra por talla ${unaTalla}`,
       st.productosFiltrados.every((p) =>
-        p.precios.some((o) => o.stock && (o.tallas ?? []).includes(unaTalla))),
-      `${st.totalResultados} prendas`)
+        p.precios.some((o) => o.stock && (o.tallas ?? []).includes(unaTalla)),
+      ),
+      `${st.totalResultados} prendas`,
+    )
 
     // Una talla que sólo está en una tienda AGOTADA no cuenta: no se puede
     // comprar, y ofrecerla sería mandar a alguien a una talla inexistente.
@@ -1780,16 +2519,16 @@ try {
         categoria: '',
         specs: [],
         historial: [],
-        precios: [
-          { tienda: tiendaReal, precio: 1, stock: false, tallas: ['XXXL'] },
-        ],
+        precios: [{ tienda: tiendaReal, precio: 1, stock: false, tallas: ['XXXL'] }],
       },
     ]
 
     st.talla = 'XXXL'
-    check('  una talla sólo disponible en tienda agotada no cuenta',
+    check(
+      '  una talla sólo disponible en tienda agotada no cuenta',
       st.totalResultados === 0,
-      `${st.totalResultados} · tienda ${tiendaReal}`)
+      `${st.totalResultados} · tienda ${tiendaReal}`,
+    )
     st.limpiarFiltros()
     await st.cargarProductos({ forzar: true })
 
@@ -1800,20 +2539,27 @@ try {
     const dePolera = st.atributosDisponibles.map((a) => a.clave)
     st.categoria = ''
 
-    check('los atributos dependen del tipo de prenda',
+    check(
+      'los atributos dependen del tipo de prenda',
       deCalzado.includes('Suela') && !dePolera.includes('Suela'),
-      `calzado: ${deCalzado.join(', ')}`)
-    check('  y sólo se ofrecen los que discriminan',
-      st.atributosDisponibles.every((a) => a.valores.length > 1))
+      `calzado: ${deCalzado.join(', ')}`,
+    )
+    check(
+      '  y sólo se ofrecen los que discriminan',
+      st.atributosDisponibles.every((a) => a.valores.length > 1),
+    )
 
     const attr = st.atributosDisponibles.find((a) => a.clave === 'Material')
     st.ponerAtributo('Material', attr.valores[0].valor)
-    check('  filtra por atributo',
+    check(
+      '  filtra por atributo',
       st.totalResultados > 0 && st.totalResultados < TODOS,
-      `Material=${attr.valores[0].valor} → ${st.totalResultados}`)
+      `Material=${attr.valores[0].valor} → ${st.totalResultados}`,
+    )
 
     // ——— los conteos ———
-    check('los conteos de una faceta excluyen su propio filtro',
+    check(
+      'los conteos de una faceta excluyen su propio filtro',
       (() => {
         st.limpiarFiltros()
         const antes = st.marcasDisponibles.length
@@ -1823,35 +2569,42 @@ try {
         // Si se contaran con el filtro puesto, quedaría 1 y no se podría
         // cambiar de marca sin limpiar antes.
         return despues === antes
-      })())
+      })(),
+    )
 
     // ——— quitar de uno en uno ———
     st.alternarMarca('Zara')
     st.talla = st.tallasDisponibles[0].nombre
-    st.ponerAtributo('Corte', st.atributosDisponibles.find((a) => a.clave === 'Corte')?.valores[0].valor)
+    st.ponerAtributo(
+      'Corte',
+      st.atributosDisponibles.find((a) => a.clave === 'Corte')?.valores[0].valor,
+    )
 
     const puestos = st.filtrosActivos.map((f) => f.tipo)
-    check('cada filtro puesto se lista por separado',
+    check(
+      'cada filtro puesto se lista por separado',
       puestos.some((t) => t.startsWith('marca:')) &&
         puestos.includes('talla') &&
         puestos.some((t) => t.startsWith('atributo:')),
-      puestos.join(' '))
+      puestos.join(' '),
+    )
 
     st.quitarFiltro('marca:Zara')
-    check('  y se quita sin tocar los demás',
-      st.marcas.length === 0 && st.talla !== '')
+    check('  y se quita sin tocar los demás', st.marcas.length === 0 && st.talla !== '')
 
     st.limpiarFiltros()
-    check('limpiar los quita todos',
-      st.hayFiltros === false && st.totalResultados === TODOS)
+    check('limpiar los quita todos', st.hayFiltros === false && st.totalResultados === TODOS)
 
     // ——— en pantalla ———
     const vista = await render('/comparador', (s2) => s2.cargarProductos())
-    check('el panel ofrece marca, talla y atributos',
-      vista.includes('>Marca<') && vista.includes('>Talla<') &&
-        vista.includes('>Material<'))
-    check('  y avisa de que la talla depende de la tienda',
-      vista.includes('puede estar en una y no en otra'))
+    check(
+      'el panel ofrece marca, talla y atributos',
+      vista.includes('>Marca<') && vista.includes('>Talla<') && vista.includes('>Material<'),
+    )
+    check(
+      '  y avisa de que la talla depende de la tienda',
+      vista.includes('puede estar en una y no en otra'),
+    )
   }
 
   console.log('\n=== comparar productos ===')
@@ -1860,44 +2613,50 @@ try {
     const cat = useComparadorStore()
     await cat.cargarProductos()
 
-    const { useCompararStore, MAXIMO } = await load(
-      '/src/modules/comparar/store/comparar.store.js',
-    )
+    const { useCompararStore, MAXIMO } = await load('/src/modules/comparar/store/comparar.store.js')
     const cmp = useCompararStore()
     cmp.vaciar()
 
     check('empieza vacío', cmp.cuantos === 0)
 
-    check('se añade y se quita alternando',
+    check(
+      'se añade y se quita alternando',
       cmp.alternar('1') === 'agregado' &&
         cmp.tiene('1') &&
         cmp.alternar('1') === 'quitado' &&
-        !cmp.tiene('1'))
+        !cmp.tiene('1'),
+    )
 
     // El tope existe porque tres columnas es lo que cabe legible en pantalla.
     ;['1', '2', '3'].forEach((id) => cmp.alternar(id))
     check(`admite hasta ${MAXIMO}`, cmp.cuantos === MAXIMO, `${cmp.cuantos}`)
 
-    check('  el cuarto se rechaza y se avisa',
-      cmp.alternar('9') === 'lleno' &&
-        cmp.cuantos === MAXIMO &&
-        cmp.avisoTope === true)
-    check('  pero los que ya están se pueden quitar',
-      cmp.bloqueado('9') === true && cmp.bloqueado('1') === false)
+    check(
+      '  el cuarto se rechaza y se avisa',
+      cmp.alternar('9') === 'lleno' && cmp.cuantos === MAXIMO && cmp.avisoTope === true,
+    )
+    check(
+      '  pero los que ya están se pueden quitar',
+      cmp.bloqueado('9') === true && cmp.bloqueado('1') === false,
+    )
 
     cmp.quitar('1')
     check('  al hacer hueco el aviso desaparece', cmp.avisoTope === false)
 
     // Un producto que desaparezca del catálogo no puede romper la vista.
     cmp.ids = ['2', 'no-existe']
-    check('un id que ya no está en el catálogo se descarta',
-      cmp.cuantos === 1 && cmp.productos[0].id === '2')
+    check(
+      'un id que ya no está en el catálogo se descarta',
+      cmp.cuantos === 1 && cmp.productos[0].id === '2',
+    )
 
     // ——— la vista ———
     cmp.vaciar()
     const vacia = await render('/comparar', (st) => st.cargarProductos())
-    check('sin selección la vista explica cómo empezar',
-      vacia.includes('Todavía no has elegido nada'))
+    check(
+      'sin selección la vista explica cómo empezar',
+      vacia.includes('Todavía no has elegido nada'),
+    )
 
     const conDos = await render('/comparar', async (st) => {
       await st.cargarProductos()
@@ -1907,14 +2666,20 @@ try {
       c.alternar('2')
     })
 
-    check('con dos prendas se ven las dos columnas',
-      conDos.includes('Polera b') && conDos.includes('Jeans slim'))
-    check('  con las mismas filas en el mismo orden',
+    check(
+      'con dos prendas se ven las dos columnas',
+      conDos.includes('Polera b') && conDos.includes('Jeans slim'),
+    )
+    check(
+      '  con las mismas filas en el mismo orden',
       (conDos.match(/Precio hoy/g) ?? []).length === 2 &&
-        (conDos.match(/Mínimo registrado/g) ?? []).length === 2)
+        (conDos.match(/Mínimo registrado/g) ?? []).length === 2,
+    )
     check('  y la más barata marcada', conDos.includes('columna--mejor'))
-    check('  cada una con su enlace a la tienda y a la ficha',
-      conDos.includes('Ver ficha completa') && conDos.includes('Ver en'))
+    check(
+      '  cada una con su enlace a la tienda y a la ficha',
+      conDos.includes('Ver ficha completa') && conDos.includes('Ver en'),
+    )
 
     // ——— la barra ———
     const conBarra = await render('/comparador', async (st) => {
@@ -1923,8 +2688,7 @@ try {
       c.vaciar()
       c.alternar('1')
     })
-    check('la barra aparece con algo seleccionado',
-      conBarra.includes('aria-label="Comparación"'))
+    check('la barra aparece con algo seleccionado', conBarra.includes('aria-label="Comparación"'))
 
     // En la propia comparación la barra sobra: ya la estás viendo.
     const enComparar = await render('/comparar', async (st) => {
@@ -1933,14 +2697,14 @@ try {
       c.vaciar()
       c.alternar('1')
     })
-    check('  y NO aparece dentro de la propia comparación',
-      !enComparar.includes('aria-label="Comparación"'))
+    check(
+      '  y NO aparece dentro de la propia comparación',
+      !enComparar.includes('aria-label="Comparación"'),
+    )
 
     // El botón se queda pulsable al llegar al tope: deshabilitarlo lo saca del
     // teclado y del lector, justo a quien más falta le hace la explicación.
-    const { default: Boton } = await load(
-      '/src/modules/comparar/components/BotonComparar.vue',
-    )
+    const { default: Boton } = await load('/src/modules/comparar/components/BotonComparar.vue')
     const { renderToString: pintar } = await import('vue/server-renderer')
     const { createSSRApp: crear } = await import('vue')
 
@@ -1952,9 +2716,10 @@ try {
     // Con límite de palabra: `aria-disabled="true"` CONTIENE la subcadena
     // `disabled="`, así que buscarla sin más daba siempre negativo y la
     // comprobación fallaba con el código correcto.
-    check('el botón al tope sigue siendo pulsable, no deshabilitado',
-      topeHtml.includes('aria-disabled="true"') &&
-        !/\s(disabled)(=|\s|>)/.test(topeHtml))
+    check(
+      'el botón al tope sigue siendo pulsable, no deshabilitado',
+      topeHtml.includes('aria-disabled="true"') && !/\s(disabled)(=|\s|>)/.test(topeHtml),
+    )
     c2.vaciar()
   }
 
@@ -1978,27 +2743,39 @@ try {
       123,
       '/'.padEnd(600, 'a'),
     ]) {
-      check(`  rechaza ${JSON.stringify(malo)?.slice(0, 34) ?? malo}`,
-        rutaInternaSegura(malo) === null)
+      check(
+        `  rechaza ${JSON.stringify(malo)?.slice(0, 34) ?? malo}`,
+        rutaInternaSegura(malo) === null,
+      )
     }
 
-    check('  acepta una ruta interna', rutaInternaSegura('/comparador?q=polera') === '/comparador?q=polera')
-    check('  acepta una ruta con ancla', rutaInternaSegura('/producto/2#precio') === '/producto/2#precio')
+    check(
+      '  acepta una ruta interna',
+      rutaInternaSegura('/comparador?q=polera') === '/comparador?q=polera',
+    )
+    check(
+      '  acepta una ruta con ancla',
+      rutaInternaSegura('/producto/2#precio') === '/producto/2#precio',
+    )
 
-    check('id de producto: sólo dígitos',
-      idProductoValido('12') && !idProductoValido('../etc/passwd') &&
-      !idProductoValido('1;DROP') && !idProductoValido(''))
+    check(
+      'id de producto: sólo dígitos',
+      idProductoValido('12') &&
+        !idProductoValido('../etc/passwd') &&
+        !idProductoValido('1;DROP') &&
+        !idProductoValido(''),
+    )
 
-    check('el texto de la URL se recorta a 120',
-      textoDeUrl('x'.repeat(500)).length === 120)
-    check('  y descarta caracteres de control',
-      textoDeUrl('pol\u0000er\u001fa') === 'polera')
+    check('el texto de la URL se recorta a 120', textoDeUrl('x'.repeat(500)).length === 120)
+    check('  y descarta caracteres de control', textoDeUrl('pol\u0000er\u001fa') === 'polera')
 
     // El patrón `:slug` acepta cualquier texto, así que la forma ya no filtra
     // nada: quien decide es el guard de la ruta, comparando contra el catálogo.
     // Por eso hay que cargarlo antes; es lo que ocurre al navegar dentro de la
     // aplicación, que es de donde sale casi todo el tráfico.
-    const cargado = async (st) => { await st.cargarProductos() }
+    const cargado = async (st) => {
+      await st.cargarProductos()
+    }
 
     const basura = await render('/producto/no-soy-un-id', cargado)
     check('  /producto/<basura> cae en el 404', basura.includes('404'))
@@ -2013,21 +2790,31 @@ try {
     const detalle = rutas.find((r) => r.name === 'producto-detalle')
 
     setActivePinia(createPinia())
-    check('  sin catálogo cargado el guard NO afirma que no existe',
-      detalle.beforeEnter({ params: { slug: 'lo-que-sea' } }) === true)
+    check(
+      '  sin catálogo cargado el guard NO afirma que no existe',
+      detalle.beforeEnter({ params: { slug: 'lo-que-sea' } }) === true,
+    )
 
     // Con el catálogo en memoria sí decide, y decide bien.
-    const conCatalogo = (() => { setActivePinia(createPinia()); return useComparadorStore() })()
+    const conCatalogo = (() => {
+      setActivePinia(createPinia())
+      return useComparadorStore()
+    })()
     await conCatalogo.cargarProductos()
-    check('  con catálogo cargado sí redirige',
-      detalle.beforeEnter({ params: { slug: 'no-existe-esta-prenda' } })?.name === 'no-encontrado')
-    check('  y deja pasar un slug real',
-      detalle.beforeEnter({ params: { slug: slugProducto(conCatalogo.productos[0]) } }) === true)
+    check(
+      '  con catálogo cargado sí redirige',
+      detalle.beforeEnter({ params: { slug: 'no-existe-esta-prenda' } })?.name === 'no-encontrado',
+    )
+    check(
+      '  y deja pasar un slug real',
+      detalle.beforeEnter({
+        params: { slug: slugProducto(conCatalogo.productos[0]) },
+      }) === true,
+    )
   }
 
   const s404 = await render('/ruta-que-no-existe', () => {})
   check('una ruta desconocida cae en el 404', s404.includes('404'))
-
 } catch (e) {
   console.log('\nEXCEPCIÓN:', e.message)
   fallos++
@@ -2077,7 +2864,8 @@ try {
   const filas = JSON.parse(conVersion.cuerpo)
   check('la respuesta es un array', Array.isArray(filas), `${filas.length} filas`)
 
-  const { adaptarProductos, adaptarCategorias } = await import('../src/modules/comparador/services/producto.adapter.js')
+  const { adaptarProductos, adaptarCategorias } =
+    await import('../src/modules/comparador/services/producto.adapter.js')
   const adaptados = adaptarProductos(filas)
 
   check(
@@ -2104,8 +2892,10 @@ try {
     )
 
     const categorias = adaptarCategorias(filas)
-    check('  deriva categorías desde la misma respuesta',
-      categorias.every((c) => c.nombre !== ''))
+    check(
+      '  deriva categorías desde la misma respuesta',
+      categorias.every((c) => c.nombre !== ''),
+    )
 
     // Dos tiendas venden la misma prenda con el mismo nombre. Si el slug sale
     // solo del nombre, las dos comparten URL: la ficha resuelve con `find` y
@@ -2121,7 +2911,9 @@ try {
     check(
       '  produce los campos por los que la portada ordena',
       adaptados.every((p) => 'vistas' in p && 'agregadoHace' in p),
-      Object.keys(adaptados[0]).filter((k) => k === 'vistas' || k === 'agregadoHace').join(', ') || 'ninguno',
+      Object.keys(adaptados[0])
+        .filter((k) => k === 'vistas' || k === 'agregadoHace')
+        .join(', ') || 'ninguno',
     )
 
     // Y que esos campos traigan el dato de la API, no un relleno. `vistas`
@@ -2149,7 +2941,9 @@ try {
     check(
       '  cada producto tiene una URL propia',
       repetidos.length === 0,
-      repetidos.length > 0 ? `repetidos: ${[...new Set(repetidos)].join(', ')}` : `${slugs.length} slugs únicos`,
+      repetidos.length > 0
+        ? `repetidos: ${[...new Set(repetidos)].join(', ')}`
+        : `${slugs.length} slugs únicos`,
     )
   }
 
@@ -2220,43 +3014,50 @@ if (!backendVivo) {
   }
 
   try {
-    const svc = await vivo.ssrLoadModule(
-      '/src/modules/comparador/services/comparador.service.js',
-    )
+    const svc = await vivo.ssrLoadModule('/src/modules/comparador/services/comparador.service.js')
 
     const lista = await intentar(() => svc.obtenerProductos())
-    check('obtenerProductos() trae el catálogo',
+    check(
+      'obtenerProductos() trae el catálogo',
       lista.ok && lista.valor.length > 0,
-      lista.ok ? `${lista.valor.length} productos` : lista.error)
+      lista.ok ? `${lista.valor.length} productos` : lista.error,
+    )
 
     const cats = await intentar(() => svc.obtenerCategorias())
-    check('obtenerCategorias() trae los catálogos',
+    check(
+      'obtenerCategorias() trae los catálogos',
       cats.ok && cats.valor.length > 0,
-      cats.ok ? cats.valor.map((c) => c.nombre).join(', ') : cats.error)
+      cats.ok ? cats.valor.map((c) => c.nombre).join(', ') : cats.error,
+    )
 
     if (lista.ok && lista.valor.length > 0) {
       const uno = lista.valor[0]
-      const ficha = await intentar(() => svc.obtenerProducto(uno.id))
+      const ficha = await intentar(() => svc.obtenerProducto(uno.slug))
 
-      check('obtenerProducto(id) trae la ficha',
+      check(
+        'obtenerProducto(slug) trae la ficha V2',
         ficha.ok && ficha.valor !== null,
-        ficha.ok ? (ficha.valor?.nombre ?? 'null') : ficha.error)
+        ficha.ok ? (ficha.valor?.nombre ?? 'null') : ficha.error,
+      )
 
       if (ficha.ok && ficha.valor) {
-        check('  con el mismo id que se pidió', ficha.valor.id === uno.id,
-          `${ficha.valor.id} vs ${uno.id}`)
-        check('  con su categoría resuelta', Boolean(ficha.valor.categoria),
-          ficha.valor.categoria)
-        check('  y con un precio utilizable',
-          Number.isFinite(ficha.valor.precios?.[0]?.precio))
+        check(
+          '  con el mismo id que se pidió',
+          ficha.valor.id === uno.id,
+          `${ficha.valor.id} vs ${uno.id}`,
+        )
+        check('  con su categoría resuelta', Boolean(ficha.valor.categoria), ficha.valor.categoria)
+        check('  y con un precio utilizable', Number.isFinite(ficha.valor.precios?.[0]?.precio))
       }
     }
 
-    // Un id que no existe tiene que dar un mensaje manejable, no reventar.
-    const inexistente = await intentar(() => svc.obtenerProducto('999999'))
-    check('un id inexistente da un error con mensaje, no una excepción cruda',
-      inexistente.ok || typeof inexistente.error === 'string',
-      inexistente.ok ? 'devolvió null' : inexistente.error)
+    // Un slug que no existe tiene que resolverse sin filtrar una excepción.
+    const inexistente = await intentar(() => svc.obtenerProducto('producto-que-no-existe'))
+    check(
+      'un slug inexistente devuelve null',
+      inexistente.ok && inexistente.valor === null,
+      inexistente.ok ? String(inexistente.valor) : inexistente.error,
+    )
   } finally {
     await vivo.close()
   }
@@ -2278,11 +3079,13 @@ console.log('\n=== publicidad (AdSense) ===')
   const enPublic = leerAds('public/ads.txt')
 
   check('public/ads.txt existe', enPublic !== null)
-  check('  con exactamente la línea que pide Google',
-    enPublic?.trim() === LINEA, JSON.stringify(enPublic?.trim()?.slice(0, 40)))
+  check(
+    '  con exactamente la línea que pide Google',
+    enPublic?.trim() === LINEA,
+    JSON.stringify(enPublic?.trim()?.slice(0, 40)),
+  )
   check('  sin BOM al principio', !enPublic?.startsWith('\ufeff'))
-  check('  una sola línea de contenido',
-    enPublic?.trim().split('\n').length === 1)
+  check('  una sola línea de contenido', enPublic?.trim().split('\n').length === 1)
 
   // Lo que de verdad se sirve es la copia del build, no la de public/.
   const enDist = leerAds('dist/ads.txt')
@@ -2293,17 +3096,17 @@ console.log('\n=== publicidad (AdSense) ===')
   // El id de ads.txt y el de la configuración tienen que ser el mismo número.
   // Un desajuste aquí es silencioso: los anuncios no se sirven y nada avisa.
   const idAds = /pub-(\d+)/.exec(enPublic ?? '')?.[1]
-  const idEnv = /VITE_ADSENSE_CLIENT=ca-pub-(\d+)/.exec(
-    leerAds('.env.example') ?? '',
-  )?.[1]
+  const idEnv = /VITE_ADSENSE_CLIENT=ca-pub-(\d+)/.exec(leerAds('.env.example') ?? '')?.[1]
 
-  check('el id de ads.txt coincide con VITE_ADSENSE_CLIENT',
-    Boolean(idAds) && idAds === idEnv, `ads.txt=${idAds} · env=${idEnv}`)
+  check(
+    'el id de ads.txt coincide con VITE_ADSENSE_CLIENT',
+    Boolean(idAds) && idAds === idEnv,
+    `ads.txt=${idAds} · env=${idEnv}`,
+  )
 
   // robots.txt no puede bloquear el rastreo de ads.txt.
   const robots = leerAds('public/robots.txt') ?? ''
-  check('robots.txt no bloquea ads.txt',
-    !/Disallow: *\/(ads\.txt|\s*$)/m.test(robots))
+  check('robots.txt no bloquea ads.txt', !/Disallow: *\/(ads\.txt|\s*$)/m.test(robots))
 }
 
 // ——— disciplina de diseño ———
@@ -2334,26 +3137,37 @@ console.log('\n=== las tarjetas aguantan cualquier contenido ===')
       }
     }
   }
-  check('ninguna rejilla deja que el contenido ensanche su columna',
-    rejillasMalas.length === 0, rejillasMalas.slice(0, 3).join(' | '))
+  check(
+    'ninguna rejilla deja que el contenido ensanche su columna',
+    rejillasMalas.length === 0,
+    rejillasMalas.slice(0, 3).join(' | '),
+  )
 
   // ——— 2. la red de seguridad del texto ———
-  check('ninguna palabra puede salirse de su caja',
-    /body \{[^}]*overflow-wrap: break-word/.test(baseCss))
+  check(
+    'ninguna palabra puede salirse de su caja',
+    /body \{[^}]*overflow-wrap: break-word/.test(baseCss),
+  )
 
   // ——— 3. la columna del ticket ———
   //
   // Dos trampas que ya mordieron una vez, las dos silenciosas.
   const reglaColumna = /\.ticket\.ticket--columna \{([^}]*)\}/.exec(baseCss)?.[1]
-  check('la tarjeta en columna gana a la tarjeta-enlace',
+  check(
+    'la tarjeta en columna gana a la tarjeta-enlace',
     reglaColumna !== undefined,
-    'hace falta la doble clase .ticket.ticket--columna: si no, el '
-      + 'display:block de .ticket--enlace la anula por ir después')
-  check('  y no se da el alto con un porcentaje',
+    'hace falta la doble clase .ticket.ticket--columna: si no, el ' +
+      'display:block de .ticket--enlace la anula por ir después',
+  )
+  check(
+    '  y no se da el alto con un porcentaje',
     reglaColumna !== undefined && !/height:\s*100%/.test(reglaColumna),
-    'un alto en % anula el align-self:stretch de la rejilla')
-  check('  el cuerpo del ticket crece para llenarla',
-    /\.ticket--columna > \.ticket__contenido \{[^}]*flex: 1/.test(baseCss))
+    'un alto en % anula el align-self:stretch de la rejilla',
+  )
+  check(
+    '  el cuerpo del ticket crece para llenarla',
+    /\.ticket--columna > \.ticket__contenido \{[^}]*flex: 1/.test(baseCss),
+  )
 
   // ——— 4. las utilidades de recorte reservan el alto ———
   //
@@ -2364,57 +3178,64 @@ console.log('\n=== las tarjetas aguantan cualquier contenido ===')
     // propia con el número de líneas. Hay que sumar las dos, y por eso no vale
     // buscar `.recorte-N {`: ese patrón también engancha el selector agrupado.
     const declaraciones = [...baseCss.matchAll(/([^{}]+)\{([^}]*)\}/g)]
-      .filter(([, selector]) =>
-        selector.split(',').some((sel) => sel.trim() === `.recorte-${n}`))
+      .filter(([, selector]) => selector.split(',').some((sel) => sel.trim() === `.recorte-${n}`))
       .map(([, , cuerpo]) => cuerpo)
       .join(' ')
 
-    check(`  .recorte-${n} recorta Y reserva el alto`,
+    check(
+      `  .recorte-${n} recorta Y reserva el alto`,
       /line-clamp/.test(declaraciones) && /min-height/.test(declaraciones),
-      declaraciones === '' ? 'no se encontró la regla' : '')
+      declaraciones === '' ? 'no se encontró la regla' : '',
+    )
   }
 
   // ——— 5. la tarjeta de producto, que es la que más se repite ———
-  const tarjeta = readFileSync(
-    'src/modules/comparador/components/ProductoCard.vue', 'utf8')
+  const tarjeta = readFileSync('src/modules/comparador/components/ProductoCard.vue', 'utf8')
 
   check('la tarjeta de producto se estira a la celda', /\bcolumna\b/.test(tarjeta))
   check('  el nombre se recorta a dos líneas', /tarjeta__nombre recorte-2/.test(tarjeta))
-  check('  y deja el nombre entero en el title',
-    /:title="producto\.nombre"/.test(tarjeta))
-  check('  la marca y la categoría no desbordan',
-    /tarjeta__marca truncar/.test(tarjeta))
-  check('  el nombre de la tienda cede antes que el precio',
-    /tarjeta__tienda truncar/.test(tarjeta) &&
-      /\.tarjeta__monto \{[^}]*flex: none/.test(tarjeta))
-  check('  el pie queda pegado abajo, alineado con el de al lado',
-    /\.tarjeta__pie \{[^}]*margin-top: auto/.test(tarjeta))
+  check('  y deja el nombre entero en el title', /:title="producto\.nombre"/.test(tarjeta))
+  check('  la marca y la categoría no desbordan', /tarjeta__marca truncar/.test(tarjeta))
+  check(
+    '  el nombre de la tienda cede antes que el precio',
+    /tarjeta__tienda truncar/.test(tarjeta) && /\.tarjeta__monto \{[^}]*flex: none/.test(tarjeta),
+  )
+  check(
+    '  el pie queda pegado abajo, alineado con el de al lado',
+    /\.tarjeta__pie \{[^}]*margin-top: auto/.test(tarjeta),
+  )
 
   // La silueta tiene que medir lo mismo que la tarjeta real, o al llegar los
   // datos la rejilla pega un salto.
-  check('  la silueta se estira igual que la tarjeta',
-    /\bcolumna\b/.test(readFileSync(
-      'src/modules/comparador/components/ProductoCardSkeleton.vue', 'utf8')))
+  check(
+    '  la silueta se estira igual que la tarjeta',
+    /\bcolumna\b/.test(
+      readFileSync('src/modules/comparador/components/ProductoCardSkeleton.vue', 'utf8'),
+    ),
+  )
 
   // ——— 6. las pastillas del filtro ———
-  const panel = readFileSync(
-    'src/modules/comparador/components/PanelFiltros.vue', 'utf8')
-  check('las pastillas del filtro no se salen del panel',
-    /\.pildora \{[^}]*max-width: 100%/.test(panel))
-  check('  y su cuenta no se recorta nunca',
-    /\.pildora__cuenta \{[^}]*flex: none/.test(panel))
-  check('  el nombre de cada pastilla sí',
+  const panel = readFileSync('src/modules/comparador/components/PanelFiltros.vue', 'utf8')
+  check(
+    'las pastillas del filtro no se salen del panel',
+    /\.pildora \{[^}]*max-width: 100%/.test(panel),
+  )
+  check('  y su cuenta no se recorta nunca', /\.pildora__cuenta \{[^}]*flex: none/.test(panel))
+  check(
+    '  el nombre de cada pastilla sí',
     (panel.match(/<span class="truncar">/g) ?? []).length >= 4,
-    `${(panel.match(/<span class="truncar">/g) ?? []).length} de 4`)
+    `${(panel.match(/<span class="truncar">/g) ?? []).length} de 4`,
+  )
 
   // ——— 7. el banner del carrusel ———
   //
   // Tiene alto fijo y `overflow: hidden`: un título de cuatro líneas empujaba
   // el botón «Ver ficha» fuera de la tarjeta y desaparecía sin dejar rastro.
-  const banner = readFileSync(
-    'src/modules/comparador/components/RecienteBanner.vue', 'utf8')
-  check('el banner de novedades no se traga su propio botón',
-    /banner__titulo recorte-2/.test(banner) && /banner__sub truncar/.test(banner))
+  const banner = readFileSync('src/modules/comparador/components/RecienteBanner.vue', 'utf8')
+  check(
+    'el banner de novedades no se traga su propio botón',
+    /banner__titulo recorte-2/.test(banner) && /banner__sub truncar/.test(banner),
+  )
 
   // ——— 8. la columna de precios de «Elige tu tienda» ———
   //
@@ -2422,17 +3243,22 @@ console.log('\n=== las tarjetas aguantan cualquier contenido ===')
   // medía por su cuenta: un botón «Ver en Mango» y otro «Ver en Ripley» daban
   // anchos distintos y los precios bailaban de fila en fila. En un comparador
   // esa columna es justo lo que la gente recorre con la vista.
-  const elige = readFileSync(
-    'src/modules/comparador/components/EligeTuTienda.vue', 'utf8')
-  const anchaEnFila = /@media \(min-width: 560px\) \{\s*\.oferta \{[\s\S]*?grid-template-columns:([^;]+);/
-    .exec(elige)?.[1] ?? ''
-  check('los precios de las ofertas caen todos en la misma vertical',
+  const elige = readFileSync('src/modules/comparador/components/EligeTuTienda.vue', 'utf8')
+  const anchaEnFila =
+    /@media \(min-width: 560px\) \{\s*\.oferta \{[\s\S]*?grid-template-columns:([^;]+);/.exec(
+      elige,
+    )?.[1] ?? ''
+  check(
+    'los precios de las ofertas caen todos en la misma vertical',
     anchaEnFila.includes('minmax') && !/\bauto\s+auto\b/.test(anchaEnFila),
-    anchaEnFila.trim())
+    anchaEnFila.trim(),
+  )
 
   // ——— 9. .truncar sólo funciona si puede encoger ———
-  check('.truncar lleva el min-width que lo hace funcionar dentro de un flex',
-    /\.truncar \{[^}]*min-width: 0/.test(baseCss))
+  check(
+    '.truncar lleva el min-width que lo hace funcionar dentro de un flex',
+    /\.truncar \{[^}]*min-width: 0/.test(baseCss),
+  )
 }
 
 console.log('\n=== móvil: dedos y no punteros ===')
@@ -2444,34 +3270,51 @@ console.log('\n=== móvil: dedos y no punteros ===')
   // comparador estaban por debajo de 44x44. El bloque (pointer: coarse) es lo
   // que lo arregla sin engordar la interfaz de ratón.
   check('los controles crecen con el dedo', coarse !== '')
-  check('  a los 44px de mínimo',
-    /--cep-control-h: 44px/.test(coarse) && /--cep-control-h-sm: 44px/.test(coarse))
-  check('  y también de ancho, no sólo de alto',
-    /min-width: 44px/.test(coarse), 'un botón de icono de 39px falla igual')
-  check('  los enlaces sueltos ganan altura',
-    ['.migas__enlace', '.pie__enlace', '.barra__enlace'].every((c) => coarse.includes(c)))
-  check('  el deslizador y las casillas dejan de ser imposibles',
-    /input\[type='range'\]/.test(coarse) && /input\[type='checkbox'\]/.test(coarse))
-  check('  y la letra más pequeña sube a 12px',
-    /--cep-fs-2xs: 0\.75rem/.test(coarse), '11px en un móvil no se lee')
+  check(
+    '  a los 44px de mínimo',
+    /--cep-control-h: 44px/.test(coarse) && /--cep-control-h-sm: 44px/.test(coarse),
+  )
+  check(
+    '  y también de ancho, no sólo de alto',
+    /min-width: 44px/.test(coarse),
+    'un botón de icono de 39px falla igual',
+  )
+  check(
+    '  los enlaces sueltos ganan altura',
+    ['.migas__enlace', '.pie__enlace', '.barra__enlace'].every((c) => coarse.includes(c)),
+  )
+  check(
+    '  el deslizador y las casillas dejan de ser imposibles',
+    /input\[type='range'\]/.test(coarse) && /input\[type='checkbox'\]/.test(coarse),
+  )
+  check(
+    '  y la letra más pequeña sube a 12px',
+    /--cep-fs-2xs: 0\.75rem/.test(coarse),
+    '11px en un móvil no se lee',
+  )
 
   // El botón usaba píxeles a pelo, así que el aumento táctil no le llegaba.
   const boton = readFileSync('src/shared/components/BaseButton.vue', 'utf8')
-  check('el botón toma su altura del token, no en píxeles fijos',
-    /min-height: var\(--cep-control-h\)/.test(boton) &&
-      !/min-height: 40px/.test(boton))
+  check(
+    'el botón toma su altura del token, no en píxeles fijos',
+    /min-height: var\(--cep-control-h\)/.test(boton) && !/min-height: 40px/.test(boton),
+  )
 
   // El campo medía 24px dentro de una caja de 44: los bordes de arriba y abajo
   // parecían buscador pero al tocarlos no pasaba nada.
   const buscador = readFileSync('src/shared/components/BaseSearchInput.vue', 'utf8')
-  check('el campo de búsqueda llena su caja',
-    /\.buscador__campo \{[^}]*align-self: stretch/.test(buscador))
+  check(
+    'el campo de búsqueda llena su caja',
+    /\.buscador__campo \{[^}]*align-self: stretch/.test(buscador),
+  )
 
   // Los puntos del carrusel miden 7px y así deben verse: la zona tocable se
   // amplía con un pseudo-elemento, comprobado con elementFromPoint.
   const carrusel = readFileSync('src/shared/components/BaseCarousel.vue', 'utf8')
-  check('los puntos del carrusel se tocan aunque midan 7px',
-    /\.carrusel__punto::after \{/.test(carrusel) && /height: 44px/.test(carrusel))
+  check(
+    'los puntos del carrusel se tocan aunque midan 7px',
+    /\.carrusel__punto::after \{/.test(carrusel) && /height: 44px/.test(carrusel),
+  )
 
   // ——— el desplome del comparador en móvil ———
   //
@@ -2479,20 +3322,27 @@ console.log('\n=== móvil: dedos y no punteros ===')
   // ver el primer producto. En escritorio se ven a los 323px.
   const comp = readFileSync('src/modules/comparador/views/ComparadorView.vue', 'utf8')
 
-  check('en móvil los filtros van plegados tras un botón',
-    /class="filtros-movil"/.test(comp) && /aria-expanded="filtrosAbiertos"/.test(comp))
-  check('  el botón dice cuántos filtros hay puestos',
-    /filtros-movil__cuenta/.test(comp))
-  check('  y a partir de 900px el panel se enseña siempre',
-    /@media \(min-width: 900px\)[\s\S]*?\.comparador__lateral--plegado \{\s*display: flex/
-      .test(comp))
+  check(
+    'en móvil los filtros van plegados tras un botón',
+    /class="filtros-movil"/.test(comp) && /aria-expanded="filtrosAbiertos"/.test(comp),
+  )
+  check('  el botón dice cuántos filtros hay puestos', /filtros-movil__cuenta/.test(comp))
+  check(
+    '  y a partir de 900px el panel se enseña siempre',
+    /@media \(min-width: 900px\)[\s\S]*?\.comparador__lateral--plegado \{\s*display: flex/.test(
+      comp,
+    ),
+  )
 
   // Las dos reglas son de una sola clase: gana la última. Con --plegado ANTES,
   // el display:flex de la base lo anulaba y el panel no se plegaba nunca.
   const iBase = comp.search(/^\.comparador__lateral \{/m)
   const iPlegado = comp.search(/^\.comparador__lateral--plegado \{/m)
-  check('  la regla de plegado va después de la base, o no gana',
-    iBase !== -1 && iPlegado > iBase, `base ${iBase} / plegado ${iPlegado}`)
+  check(
+    '  la regla de plegado va después de la base, o no gana',
+    iBase !== -1 && iPlegado > iBase,
+    `base ${iBase} / plegado ${iPlegado}`,
+  )
 
   // ——— los puntos de corte ———
   //
@@ -2511,8 +3361,7 @@ console.log('\n=== móvil: dedos y no punteros ===')
   }
 
   const nuevos = [...usados].filter((v) => !CONOCIDOS.has(v))
-  check('no aparecen puntos de corte nuevos sin querer',
-    nuevos.length === 0, nuevos.join(', '))
+  check('no aparecen puntos de corte nuevos sin querer', nuevos.length === 0, nuevos.join(', '))
 }
 
 console.log('\n=== disciplina de diseño ===')
@@ -2526,19 +3375,23 @@ console.log('\n=== disciplina de diseño ===')
   // 1 · jerarquía por color y peso, no por tamaño
   const pesos = [...fuentes.matchAll(/font-weight: *(\d{3})/g)].map((m) => Number(m[1]))
 
-  check('1 · ningún peso por debajo de 400',
+  check(
+    '1 · ningún peso por debajo de 400',
     pesos.every((p) => p >= 400),
-    `pesos: ${[...new Set(pesos)].sort().join(', ')}`)
-  check('  y como mucho dos pesos de énfasis',
-    new Set(pesos.filter((p) => p >= 600)).size <= 2)
+    `pesos: ${[...new Set(pesos)].sort().join(', ')}`,
+  )
+  check('  y como mucho dos pesos de énfasis', new Set(pesos.filter((p) => p >= 600)).size <= 2)
 
   // El escalón de 11px es para etiquetas: si la mayoría del texto vive ahí, se
   // está usando el tamaño para lo que debería hacer el color.
   const dosXs = (fuentes.match(/var\(--cep-fs-2xs\)/g) ?? []).length
   const total = (fuentes.match(/var\(--cep-fs-[a-z0-9]+\)/g) ?? []).length
 
-  check('  el tamaño más pequeño es minoritario',
-    dosXs / total < 0.2, `${dosXs} de ${total} (${Math.round((dosXs / total) * 100)}%)`)
+  check(
+    '  el tamaño más pequeño es minoritario',
+    dosXs / total < 0.2,
+    `${dosXs} de ${total} (${Math.round((dosXs / total) * 100)}%)`,
+  )
 
   // 2 · nada de gris sobre fondos de color
   const grisSobreColor = [...fuentes.matchAll(/\.[a-z0-9_-]+\s*\{[^}]*\}/g)]
@@ -2549,45 +3402,68 @@ console.log('\n=== disciplina de diseño ===')
         /color: var\(--cep-muted\)/.test(regla),
     )
 
-  check('2 · no hay gris sobre fondos de color', grisSobreColor.length === 0,
-    grisSobreColor.length ? grisSobreColor[0].slice(0, 60) : 'ninguno')
+  check(
+    '2 · no hay gris sobre fondos de color',
+    grisSobreColor.length === 0,
+    grisSobreColor.length ? grisSobreColor[0].slice(0, 60) : 'ninguno',
+  )
 
   // 3 · las sombras van desplazadas hacia abajo, no sólo difuminadas
   const sombras = [...css.matchAll(/--cep-shadow-\d: *0 (\d+)px (\d+)px/g)]
 
-  check('3 · todas las sombras tienen desplazamiento vertical',
+  check(
+    '3 · todas las sombras tienen desplazamiento vertical',
     sombras.length > 0 && sombras.every((m) => Number(m[1]) > 0),
-    sombras.map((m) => `${m[1]}px`).join(' '))
+    sombras.map((m) => `${m[1]}px`).join(' '),
+  )
 
   // 4 · pocos bordes: la tarjeta no puede separarse de tres formas a la vez
   const ticket = /\.ticket \{[^}]*\}/.exec(css)?.[0] ?? ''
 
-  check('4 · la tarjeta no usa borde, sombra y fondo a la vez',
+  check(
+    '4 · la tarjeta no usa borde, sombra y fondo a la vez',
     ticket.includes('var(--cep-borde-tarjeta)'),
-    'el borde queda sólo donde el fondo no basta (tema oscuro)')
+    'el borde queda sólo donde el fondo no basta (tema oscuro)',
+  )
 
   // 5 · los iconos no se amplían: se meten en una forma con fondo
-  check('5 · ningún icono ampliado a un tamaño absurdo',
-    !/\.[a-z_-]*icono[a-z_-]*\s*\{[^}]*font-size: [4-9]\dpx/.test(fuentes))
-  check('  el aviso de error encierra su icono en una forma',
-    fuentes.includes('fallo__marca') && /\.fallo__marca\s*\{[^}]*border-radius: 50%/.test(fuentes))
+  check(
+    '5 · ningún icono ampliado a un tamaño absurdo',
+    !/\.[a-z_-]*icono[a-z_-]*\s*\{[^}]*font-size: [4-9]\dpx/.test(fuentes),
+  )
+  check(
+    '  el aviso de error encierra su icono en una forma',
+    fuentes.includes('fallo__marca') && /\.fallo__marca\s*\{[^}]*border-radius: 50%/.test(fuentes),
+  )
 
   // 6 · bordes de acento para dar color
-  const acentos = (fuentes.match(/border-(left|top)(-color)?: *[23]px solid var\(--cep-(accent|alerta|exito|rate)\)/g) ?? []).length
+  const acentos = (
+    fuentes.match(
+      /border-(left|top)(-color)?: *[23]px solid var\(--cep-(accent|alerta|exito|rate)\)/g,
+    ) ?? []
+  ).length
 
   check('6 · hay bordes de acento repartidos', acentos >= 4, `${acentos} usos`)
-  check('  incluida la franja superior de la página',
-    /\.barra \{[^}]*border-top: 3px solid var\(--cep-accent\)/.test(fuentes))
-  check('  y el elemento activo de la navegación',
-    /router-link-active \{[^}]*border-bottom-color: var\(--cep-accent\)/.test(fuentes))
+  check(
+    '  incluida la franja superior de la página',
+    /\.barra \{[^}]*border-top: 3px solid var\(--cep-accent\)/.test(fuentes),
+  )
+  check(
+    '  y el elemento activo de la navegación',
+    /router-link-active \{[^}]*border-bottom-color: var\(--cep-accent\)/.test(fuentes),
+  )
 
   // 7 · jerarquía de botones: no todos llevan fondo
   const variantes = ['primario', 'secundario', 'texto']
 
-  check('7 · hay tres niveles de botón',
-    variantes.every((v) => fuentes.includes(`btn--${v}`)))
-  check('  el terciario no lleva fondo ni borde',
-    /\.btn--texto \{[^}]*background: none[^}]*border-color: transparent/s.test(fuentes))
+  check(
+    '7 · hay tres niveles de botón',
+    variantes.every((v) => fuentes.includes(`btn--${v}`)),
+  )
+  check(
+    '  el terciario no lleva fondo ni borde',
+    /\.btn--texto \{[^}]*background: none[^}]*border-color: transparent/s.test(fuentes),
+  )
 }
 
 // ——— sitemap y preparación para publicar ———
@@ -2614,21 +3490,27 @@ console.log('\n=== listo para publicar ===')
   // mismo: un buscador que encuentra un sitemap de otro dominio lo descarta.
   const dominioRobots = /Sitemap: *(https?:\/\/[^/\s]+)/.exec(robots)?.[1]
 
-  check('  el dominio coincide con el que anuncia robots.txt',
+  check(
+    '  el dominio coincide con el que anuncia robots.txt',
     urls.every((u) => u.startsWith(dominioRobots ?? '\u0000')),
-    dominioRobots ?? 'robots.txt no anuncia sitemap')
+    dominioRobots ?? 'robots.txt no anuncia sitemap',
+  )
 
   // Lo que robots.txt bloquea no puede estar en el sitemap: mandar a un
   // buscador a una URL que le prohibimos rastrear es contradictorio.
   const bloqueadas = [...robots.matchAll(/Disallow: *(\S+)/g)].map((m) => m[1])
 
-  check('  no incluye ninguna ruta bloqueada en robots.txt',
+  check(
+    '  no incluye ninguna ruta bloqueada en robots.txt',
     !urls.some((u) => bloqueadas.some((b) => new URL(u).pathname.startsWith(b))),
-    bloqueadas.join(' '))
+    bloqueadas.join(' '),
+  )
 
   // Un patrón de ruta no es una URL.
-  check('  no incluye patrones de ruta con :parámetro',
-    !urls.some((u) => u.includes(':') && !u.startsWith('http')))
+  check(
+    '  no incluye patrones de ruta con :parámetro',
+    !urls.some((u) => u.includes(':') && !u.startsWith('http')),
+  )
 
   // Cada URL del sitemap tiene que existir de verdad en el router. Es lo que
   // caza una página renombrada cuyo sitemap quedó apuntando a la anterior.
@@ -2644,27 +3526,34 @@ console.log('\n=== listo para publicar ===')
       ?.map((m) => m.slice(7, -1)) ?? [],
   )
 
-  const coincideConRuta = (pathname) => [...rutasDelRouter].some((patron) => {
-    if (patron.includes('pathMatch')) return false
-    if (!patron.includes(':')) return patron === pathname
+  const coincideConRuta = (pathname) =>
+    [...rutasDelRouter].some((patron) => {
+      if (patron.includes('pathMatch')) return false
+      if (!patron.includes(':')) return patron === pathname
 
-    const expresion = patron
-      .split('/')
-      .map((segmento) => (segmento.startsWith(':') ? '[^/]+' : segmento))
-      .join('/')
+      const expresion = patron
+        .split('/')
+        .map((segmento) => (segmento.startsWith(':') ? '[^/]+' : segmento))
+        .join('/')
 
-    return new RegExp(`^${expresion}$`).test(pathname)
-  })
+      return new RegExp(`^${expresion}$`).test(pathname)
+    })
 
-  check('  todas sus URLs son rutas reales del router',
+  check(
+    '  todas sus URLs son rutas reales del router',
     urls.every((u) => coincideConRuta(new URL(u).pathname)),
-    urls.filter((u) => !coincideConRuta(new URL(u).pathname))
-      .map((u) => new URL(u).pathname).join(' ') || `${urls.length} rutas válidas`)
+    urls
+      .filter((u) => !coincideConRuta(new URL(u).pathname))
+      .map((u) => new URL(u).pathname)
+      .join(' ') || `${urls.length} rutas válidas`,
+  )
 
   // El script de despliegue tiene que existir y ser ejecutable.
   check('existe el script de despliegue', leer('scripts/desplegar.sh') !== null)
-  check('  y sube ads.txt con tipo de contenido explícito',
-    (leer('scripts/desplegar.sh') ?? '').includes('text/plain'))
+  check(
+    '  y sube ads.txt con tipo de contenido explícito',
+    (leer('scripts/desplegar.sh') ?? '').includes('text/plain'),
+  )
 }
 
 // ——— el bundle de producción no lleva texto de desarrollador ———

@@ -2,10 +2,16 @@
 // un futuro módulo de alertas necesita exactamente el mismo cálculo de "cuál es
 // el más barato": duplicarlo es garantizar que un día digan cosas distintas.
 
-// Oferta más barata entre las tiendas con stock. Devuelve null si no hay ninguna.
-export function precioMasBajo(producto) {
+// Oferta más barata entre las tiendas con stock. Si se indica una talla, sólo
+// compiten las ofertas que declaran esa talla disponible. Devuelve null si no
+// hay ninguna; así el armador no promete un precio que no sirve para quien lo
+// está usando.
+export function precioMasBajo(producto, talla = '') {
   const disponibles = (producto?.precios ?? []).filter(
-    (p) => p.stock && typeof p.precio === 'number',
+    (p) =>
+      p.stock &&
+      typeof p.precio === 'number' &&
+      (talla === '' || (p.tallas ?? []).includes(talla)),
   )
 
   if (disponibles.length === 0) return null
