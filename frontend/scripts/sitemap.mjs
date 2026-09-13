@@ -105,8 +105,9 @@ try {
   // que además no corresponde a ningún producto. Verificado con el backend
   // levantado: 3 productos, 3 entradas idénticas.
   //
-  // Adaptando, el slug es exactamente el que construye la aplicación en el
-  // navegador, porque sale de la misma función sobre los mismos datos.
+  // Adaptando, el slug es exactamente el canónico que Product Service incluye
+  // en la fila y que la aplicación usa en el navegador. Para respuestas
+  // antiguas sin ese campo se conserva el generador anterior como respaldo.
   const urlsProductos = adaptarProductos(productos)
     .map((producto) =>
       [

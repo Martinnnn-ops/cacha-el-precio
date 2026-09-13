@@ -36,8 +36,7 @@ class Settings(BaseSettings):
     # --- cliente HTTP ---
     http_timeout: float = 30.0
     http_max_retries: int = 3
-    # Identificarse es lo correcto donde el sitio lo permite, y ademas
-    # funciona: Falabella, Paris y Ripley sirven con este User-Agent.
+    # Identificarse es lo correcto donde el sitio lo permite.
     # Ojo: converse.cl devuelve 403 a cualquier UA que no sea de
     # navegador, y su robots.txt bloquea a todos los bots menos Google,
     # Bing, WhatsApp y Facebook. Ver la nota en el README.
@@ -96,6 +95,12 @@ class Settings(BaseSettings):
     # 1P = productos propios de Ripley. Hay tambien _3P (marketplace).
     ripley_sitemap: str = "https://simple.ripley.cl/sitemap_ripley_productos_1P.xml"
     hites_sitemap: str = "https://www.hites.com/sitemap_0-product.xml"
+    # H&M publica varios sitemaps de productos. Se usa uno directo para
+    # mantener cada barrido acotado y no recorrer el índice completo.
+    hym_sitemap: str = "https://cl.hm.com/sitemap/product-0.xml"
+    # lapolar.cl publica en robots.txt este índice de abc.cl; el catálogo
+    # comercial y sus fichas están actualmente bajo ese dominio.
+    lapolar_sitemap: str = "https://www.abc.cl/sitemap_0-product.xml"
     # Sparta mezcla fichas y paginas normales en el mismo sitemap; las
     # que no son producto se reportan como "sin producto", no como fallo.
     # De los tres sub-sitemaps de Sparta, el -1-2 es 99% fichas; el
@@ -105,11 +110,7 @@ class Settings(BaseSettings):
     @property
     def falabella_listing_urls(self) -> list[str]:
         """Paginas de listado a barrer, sin duplicar la primera pagina."""
-        bases = [
-            url.strip()
-            for url in self.falabella_listing_categories.split(",")
-            if url.strip()
-        ]
+        bases = [url.strip() for url in self.falabella_listing_categories.split(",") if url.strip()]
         return [
             base if pagina == 1 else f"{base}?page={pagina}"
             for base in bases

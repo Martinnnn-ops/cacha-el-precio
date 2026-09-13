@@ -158,9 +158,6 @@ onMounted(() => store.cargarProductos())
       </BaseTicket>
     </section>
 
-    <!-- ═══ anuncio, entre la portada y el contenido ═══ -->
-    <AdSlot :bloque="BLOQUE_PORTADA" :alto="96" />
-
     <!-- ═══ lo más reciente ═══ -->
     <section class="seccion">
       <header class="seccion__cabecera">
@@ -204,6 +201,10 @@ onMounted(() => store.cargarProductos())
         />
       </div>
     </section>
+
+    <!-- El anuncio aparece después de contenido útil, en una pausa natural.
+         La portada y la primera recomendación quedan libres para orientarse. -->
+    <AdSlot :bloque="BLOQUE_PORTADA" :alto="96" class="inicio__anuncio" />
 
     <!-- ═══ lo más visto ═══ -->
     <section class="seccion">
@@ -290,6 +291,9 @@ onMounted(() => store.cargarProductos())
   display: flex;
   flex-direction: column;
   gap: var(--cep-sp-12);
+}
+.inicio__anuncio {
+  margin-block: calc(var(--cep-sp-4) * -1);
 }
 
 /* ——— portada ——— */

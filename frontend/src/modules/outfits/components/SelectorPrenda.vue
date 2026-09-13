@@ -14,12 +14,22 @@ const props = defineProps({
   parte: { type: Object, required: true },
   opciones: { type: Array, default: () => [] },
   elegido: { type: String, default: null },
+  talla: { type: String, default: '' },
 })
 
 defineEmits(['elegir', 'cerrar'])
 
 const { nombreTienda } = useTiendas()
 const busqueda = ref('')
+const orden = ref('precio')
+
+function tallasDe(producto) {
+  return [...new Set(
+    producto.precios
+      .filter((oferta) => oferta.stock)
+      .flatMap((oferta) => oferta.tallas ?? []),
+  )]
+}
 
 const listadas = computed(() => {
   const texto = busqueda.value.trim().toLowerCase()
@@ -30,11 +40,12 @@ const listadas = computed(() => {
         texto === '' ||
         `${p.marca} ${p.nombre} ${p.categoria}`.toLowerCase().includes(texto),
     )
-    .map((producto) => ({ producto, oferta: precioMasBajo(producto) }))
+    .map((producto) => ({ producto, oferta: precioMasBajo(producto, props.talla) }))
+    .filter(({ oferta }) => oferta !== null)
     .sort((a, b) => {
-      // Las que no se pueden comprar, al final.
-      if (!a.oferta) return 1
-      if (!b.oferta) return -1
+      if (orden.value === 'nombre') {
+        return a.producto.nombre.localeCompare(b.producto.nombre, 'es')
+      }
 
       return a.oferta.precio - b.oferta.precio
     })
@@ -60,12 +71,22 @@ const listadas = computed(() => {
       </BaseButton>
     </header>
 
-    <BaseSearchInput
-      v-model="busqueda"
-      :id="`buscar-${parte.id}`"
-      :etiqueta="`Buscar en ${parte.nombre.toLowerCase()}`"
-      placeholder="Buscar por nombre o marca…"
-    />
+    <div class="selector__filtros">
+      <BaseSearchInput
+        v-model="busqueda"
+        :id="`buscar-${parte.id}`"
+        :etiqueta="`Buscar en ${parte.nombre.toLowerCase()}`"
+        placeholder="Buscar por nombre o marca…"
+      />
+
+      <label class="selector__orden">
+        <span class="mono selector__orden-etiqueta">Ordenar</span>
+        <select v-model="orden" class="selector__orden-control">
+          <option value="precio">Menor precio</option>
+          <option value="nombre">Nombre</option>
+        </select>
+      </label>
+    </div>
 
     <ul class="selector__lista">
       <li v-for="{ producto, oferta } in listadas" :key="producto.id">
@@ -88,6 +109,10 @@ const listadas = computed(() => {
           <span class="opcion__datos">
             <span class="opcion__nombre">{{ producto.nombre }}</span>
             <span class="mono muted opcion__meta">{{ producto.categoria }}</span>
+            <span v-if="talla" class="mono opcion__talla">Talla {{ talla }} disponible</span>
+            <span v-else-if="tallasDe(producto).length" class="mono muted opcion__tallas">
+              Tallas {{ tallasDe(producto).slice(0, 5).join(' · ') }}
+            </span>
           </span>
 
           <span v-if="oferta" class="mono opcion__precio">
@@ -125,6 +150,38 @@ const listadas = computed(() => {
 .selector__conteo {
   margin: var(--cep-sp-1) 0 0;
   font-size: var(--cep-fs-xs);
+}
+
+.selector__filtros {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--cep-sp-3);
+}
+@media (min-width: 620px) {
+  .selector__filtros {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+}
+.selector__orden {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cep-sp-1);
+}
+.selector__orden-etiqueta {
+  font-size: var(--cep-fs-2xs);
+  color: var(--cep-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.selector__orden-control {
+  min-height: var(--cep-control-h);
+  padding: 0 var(--cep-sp-3);
+  background: var(--cep-surface);
+  color: var(--cep-ink);
+  border: 1px solid var(--cep-line-fuerte);
+  border-radius: var(--cep-r-md);
+  cursor: pointer;
 }
 
 .selector__lista {
@@ -181,6 +238,14 @@ const listadas = computed(() => {
 }
 .opcion__meta {
   font-size: var(--cep-fs-xs);
+}
+.opcion__talla,
+.opcion__tallas {
+  margin-top: var(--cep-sp-05);
+  font-size: var(--cep-fs-2xs);
+}
+.opcion__talla {
+  color: var(--cep-exito);
 }
 .opcion__precio {
   display: flex;

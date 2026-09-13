@@ -1,6 +1,6 @@
 // Traducción entre el Product Service y el modelo del comparador.
 //
-//   API   Product { id, canonicalKey, name, brand, category, description,
+//   API   Product { id, canonicalKey, name, brand, category, bodyArea, gender, layer, description,
 //                   image, visits, createdAt, offers[] }
 //         Offer   { id, externalId, store, price, sizes[], url, image,
 //                   active, updatedAt }
@@ -28,11 +28,28 @@ function diasDesde(fecha) {
 }
 
 const COLORES_CONOCIDOS = {
+  falabella: '#1676b8',
+  hites: '#d71920',
+  lapolar: '#e31b23',
   ripley: '#6b2d8c',
   paris: '#0b5cad',
+  sparta: '#e4572e',
+  converse: '#111111',
   zara: '#2b2b2b',
   hym: '#c0392b',
   mango: '#8a6a2f',
+}
+const NOMBRES_CONOCIDOS = {
+  falabella: 'Falabella',
+  hites: 'Hites',
+  lapolar: 'La Polar',
+  ripley: 'Ripley',
+  paris: 'Paris',
+  sparta: 'Sparta',
+  converse: 'Converse',
+  zara: 'Zara',
+  hym: 'H&M',
+  mango: 'Mango',
 }
 const COLORES_TIENDA = ['#0b5cad', '#a8325e', '#1f7a4d', '#8a5a14', '#5d4bb7']
 
@@ -71,6 +88,47 @@ function ofertasDe(producto) {
   return Array.isArray(producto?.offers) ? producto.offers : [producto]
 }
 
+function consolidarOfertas(ofertas) {
+  const porTienda = new Map()
+
+  ofertas
+    .filter((oferta) => Number.isFinite(Number(oferta?.price)))
+    .forEach((oferta) => {
+      const tienda = idTienda(oferta.store) || FUENTE_UNICA.id
+      const actual = porTienda.get(tienda)
+      const candidata = {
+        id: oferta.id == null ? null : String(oferta.id),
+        codigo: texto(oferta.externalId),
+        tienda,
+        precio: Number(oferta.price),
+        precioLista: null,
+        stock: oferta.active !== false,
+        url: texto(oferta.url) || null,
+        tallas: tallasDisponibles(oferta.sizes),
+        imagen: texto(oferta.image) || null,
+      }
+
+      if (!actual) {
+        porTienda.set(tienda, candidata)
+        return
+      }
+
+      const tallas = [...new Set([...actual.tallas, ...candidata.tallas])]
+      const reemplaza =
+        (!actual.stock && candidata.stock) ||
+        (actual.stock === candidata.stock && candidata.precio < actual.precio)
+      const elegida = reemplaza ? candidata : actual
+
+      porTienda.set(tienda, {
+        ...elegida,
+        tallas,
+        imagen: elegida.imagen ?? actual.imagen ?? candidata.imagen,
+      })
+    })
+
+  return [...porTienda.values()]
+}
+
 export function adaptarCategorias(productos = []) {
   return [...new Set(productos.map((p) => texto(p?.category)).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'es'))
@@ -98,7 +156,7 @@ export function adaptarTiendas(productos = []) {
     .sort(([, a], [, b]) => a.localeCompare(b, 'es'))
     .map(([id, nombre], indice) => ({
       id,
-      nombre,
+      nombre: NOMBRES_CONOCIDOS[id] ?? nombre,
       color: COLORES_CONOCIDOS[id] ?? COLORES_TIENDA[indice % COLORES_TIENDA.length],
     }))
 
@@ -110,18 +168,10 @@ export function adaptarProductos(filas = []) {
     .filter((fila) => texto(fila?.name))
     .map((fila) => {
       const ofertasOriginales = ofertasDe(fila)
-      const ofertas = ofertasOriginales
-        .filter((oferta) => Number.isFinite(Number(oferta?.price)))
-        .map((oferta) => ({
-          tienda: idTienda(oferta.store) || FUENTE_UNICA.id,
-          precio: Number(oferta.price),
-          // El backend aún no conserva precio de lista ni historial.
-          precioLista: null,
-          stock: oferta.active !== false,
-          url: texto(oferta.url) || null,
-          tallas: tallasDisponibles(oferta.sizes),
-          imagen: texto(oferta.image) || null,
-        }))
+      // Una tienda puede mantener varios SKU del mismo modelo. La API nueva
+      // ya los consolida, pero esta segunda barrera evita tarjetas gigantes
+      // mientras haya instancias antiguas sirviendo el contrato anterior.
+      const ofertas = consolidarOfertas(ofertasOriginales)
 
       const primera = ofertasOriginales[0] ?? {}
       const ultimaActualizacion = ofertasOriginales
@@ -132,10 +182,14 @@ export function adaptarProductos(filas = []) {
 
       return {
         id: String(fila.id),
+        slug: texto(fila.slug) || null,
         nombre: fila.name.trim(),
         descripcion: texto(fila.description),
         marca: texto(fila.brand),
         categoria: texto(fila.category),
+        zona: texto(fila.bodyArea),
+        genero: texto(fila.gender),
+        capa: texto(fila.layer),
         imagen: texto(fila.image) || ofertas.find((oferta) => oferta.imagen)?.imagen || null,
         vistas: Number(fila.visits ?? 0) || 0,
         agregadoHace: diasDesde(fila.createdAt ?? ultimaActualizacion),

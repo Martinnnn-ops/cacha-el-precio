@@ -25,7 +25,7 @@ def sin_base(monkeypatch):
 def test_tiendas_funciona_sin_base(sin_base, capsys):
     assert main(["tiendas"]) == 0
     salida = capsys.readouterr().out
-    for t in ("falabella", "paris", "ripley", "hites", "sparta", "converse"):
+    for t in ("falabella", "paris", "ripley", "hites", "hym", "lapolar", "sparta", "converse"):
         assert t in salida
 
 

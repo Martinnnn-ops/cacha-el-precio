@@ -32,14 +32,16 @@ class ProductImageService:
             and previous.image_card_key
             and previous.image_detail_key
         ):
-            return product.model_copy(update={
-                "image_url": previous.image_detail_url or previous.image_url,
-                "image_card_url": previous.image_card_url,
-                "image_detail_url": previous.image_detail_url,
-                "image_card_key": previous.image_card_key,
-                "image_detail_key": previous.image_detail_key,
-                "image_hash": previous.image_hash,
-            })
+            return product.model_copy(
+                update={
+                    "image_url": previous.image_detail_url or previous.image_url,
+                    "image_card_url": previous.image_card_url,
+                    "image_detail_url": previous.image_detail_url,
+                    "image_card_key": previous.image_card_key,
+                    "image_detail_key": previous.image_detail_key,
+                    "image_hash": previous.image_hash,
+                }
+            )
 
         downloaded = self._downloader.download(source)
         processed = self._processor.process(downloaded.content)
@@ -56,14 +58,16 @@ class ProductImageService:
 
         card_url = self._storage.public_url(card_key)
         detail_url = self._storage.public_url(detail_key)
-        return product.model_copy(update={
-            "image_url": detail_url,
-            "image_card_url": card_url,
-            "image_detail_url": detail_url,
-            "image_card_key": card_key,
-            "image_detail_key": detail_key,
-            "image_hash": processed.content_hash,
-        })
+        return product.model_copy(
+            update={
+                "image_url": detail_url,
+                "image_card_url": card_url,
+                "image_detail_url": detail_url,
+                "image_card_key": card_key,
+                "image_detail_key": detail_key,
+                "image_hash": processed.content_hash,
+            }
+        )
 
     @staticmethod
     def _safe(value: str) -> str:

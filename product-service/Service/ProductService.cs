@@ -21,6 +21,19 @@ public sealed class ProductService(IProductRepository repository)
         return product?.ToResponse();
     }
 
+    public async Task<string?> GetProductSlugByIdAsync(int id)
+    {
+        ProductEntity? product = await repository.GetProductByIdAsync(id);
+        return product?.Slug;
+    }
+
+    public async Task<ProductResponse?> GetProductBySlugAsync(string slug)
+    {
+        string normalizedSlug = ProductIdentity.CreateSlug(slug);
+        ProductEntity? product = await repository.GetProductBySlugAsync(normalizedSlug);
+        return product?.ToResponse();
+    }
+
     public async Task<ProductResponse> UpsertProductAsync(ProductRequest request)
     {
         ValidatedProduct input = Validate(request);
@@ -30,10 +43,14 @@ public sealed class ProductService(IProductRepository repository)
         {
             product = new ProductEntity
             {
+                Slug = await CreateUniqueSlugAsync(input.Name),
                 CanonicalKey = input.CanonicalKey,
                 ProductName = input.Name,
                 ProductBrand = input.Brand,
                 ProductCategory = input.Category,
+                BodyArea = input.BodyArea,
+                Gender = input.Gender,
+                Layer = input.Layer,
                 Description = input.Description,
                 ProductImage = input.Image,
                 CreatedAt = DateTimeOffset.UtcNow,
@@ -56,6 +73,9 @@ public sealed class ProductService(IProductRepository repository)
         }
 
         product.ProductCategory = input.Category;
+        product.BodyArea = input.BodyArea;
+        product.Gender = input.Gender;
+        product.Layer = input.Layer;
         product.Description = Prefer(product.Description, input.Description);
         product.ProductImage = Prefer(product.ProductImage, input.Image);
         await repository.SaveChangesAsync();
@@ -78,6 +98,9 @@ public sealed class ProductService(IProductRepository repository)
         product.ProductName = input.Name;
         product.ProductBrand = input.Brand;
         product.ProductCategory = input.Category;
+        product.BodyArea = input.BodyArea;
+        product.Gender = input.Gender;
+        product.Layer = input.Layer;
         product.Description = input.Description;
         product.ProductImage = input.Image;
 
@@ -150,6 +173,9 @@ public sealed class ProductService(IProductRepository repository)
             name,
             brand,
             ProductIdentity.Required(request.Category, "category"),
+            string.IsNullOrWhiteSpace(request.BodyArea) ? "Cuerpo" : request.BodyArea.Trim(),
+            string.IsNullOrWhiteSpace(request.Gender) ? "Unisex" : request.Gender.Trim(),
+            string.IsNullOrWhiteSpace(request.Layer) ? "General" : request.Layer.Trim(),
             request.Price,
             ProductIdentity.NormalizeSizes(request.Sizes),
             string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
@@ -185,6 +211,22 @@ public sealed class ProductService(IProductRepository repository)
         return candidate.Length > current.Length ? candidate : current;
     }
 
+    private async Task<string> CreateUniqueSlugAsync(string name)
+    {
+        const int maxLength = 180;
+        string root = ProductIdentity.CreateSlug(name);
+        string candidate = root;
+        int suffix = 2;
+
+        while (await repository.SlugExistsAsync(candidate))
+        {
+            string ending = $"-{suffix++}";
+            candidate = $"{root[..Math.Min(root.Length, maxLength - ending.Length)].TrimEnd('-')}{ending}";
+        }
+
+        return candidate;
+    }
+
     private sealed record ValidatedProduct(
         string CanonicalKey,
         string ExternalId,
@@ -192,6 +234,9 @@ public sealed class ProductService(IProductRepository repository)
         string Name,
         string Brand,
         string Category,
+        string BodyArea,
+        string Gender,
+        string Layer,
         int Price,
         string[] Sizes,
         string? Description,

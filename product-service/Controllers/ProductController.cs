@@ -8,6 +8,8 @@ using Product_Service.Service;
 namespace Product_Service.Controllers;
 
 [ApiController]
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]
 [Route("api/products")]
 public class ProductController : ControllerBase
 {
@@ -30,6 +32,35 @@ public class ProductController : ControllerBase
     public async Task<ActionResult<ProductResponse>> GetProductById(int id)
     {
         ProductResponse? response = await _service.GetProductByIdAsync(id);
+        return response switch
+        {
+            null => NotFound(),
+            _ => Ok(response)
+        };
+    }
+
+    /// <summary>
+    /// Conserva la entrada histórica por ID en v2, pero dirige al cliente a
+    /// la URL canónica legible del producto.
+    /// </summary>
+    [HttpGet("{id:int}")]
+    [MapToApiVersion("2.0")]
+    public async Task<ActionResult> GetProductByIdV2(int id)
+    {
+        string? slug = await _service.GetProductSlugByIdAsync(id);
+
+        return slug switch
+        {
+            null => NotFound(),
+            _ => RedirectToAction(nameof(GetProductBySlug), new { slug })
+        };
+    }
+
+    [HttpGet("{slug:regex(^(?![0-9]+$)[a-z0-9]+(?:-[a-z0-9]+)*$)}")]
+    [MapToApiVersion("2.0")]
+    public async Task<ActionResult<ProductResponse>> GetProductBySlug(string slug)
+    {
+        ProductResponse? response = await _service.GetProductBySlugAsync(slug);
         return response switch
         {
             null => NotFound(),

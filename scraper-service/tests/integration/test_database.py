@@ -46,14 +46,19 @@ def repo():
 
 def producto(precio=79990, disponible=True, minutos=0) -> Product:
     return Product(
-        external_id="TEST-1", store="pruebas", name="Zapatilla de prueba",
-        brand="Marca", price=precio, product_url="https://ejemplo.cl/1",
-        available=disponible, scraped_at=datetime.now(UTC) + timedelta(minutes=minutos),
+        external_id="TEST-1",
+        store="pruebas",
+        name="Zapatilla de prueba",
+        brand="Marca",
+        price=precio,
+        product_url="https://ejemplo.cl/1",
+        available=disponible,
+        scraped_at=datetime.now(UTC) + timedelta(minutes=minutos),
     )
 
 
 def test_crear_esquema_es_idempotente(repo):
-    repo.crear_esquema()          # segunda vez: no debe fallar
+    repo.crear_esquema()  # segunda vez: no debe fallar
     repo.crear_esquema()
 
 
@@ -65,15 +70,17 @@ def test_guardar_y_recuperar(repo):
 
 
 def test_guarda_referencias_de_imagen_procesada(repo):
-    p = producto().model_copy(update={
-        "source_image_url": "https://cdn.example/original.jpg",
-        "image_url": "https://bucket.example/products/test/detail.webp",
-        "image_card_url": "https://bucket.example/products/test/card.webp",
-        "image_detail_url": "https://bucket.example/products/test/detail.webp",
-        "image_card_key": "products/test/card.webp",
-        "image_detail_key": "products/test/detail.webp",
-        "image_hash": "a" * 64,
-    })
+    p = producto().model_copy(
+        update={
+            "source_image_url": "https://cdn.example/original.jpg",
+            "image_url": "https://bucket.example/products/test/detail.webp",
+            "image_card_url": "https://bucket.example/products/test/card.webp",
+            "image_detail_url": "https://bucket.example/products/test/detail.webp",
+            "image_card_key": "products/test/card.webp",
+            "image_detail_key": "products/test/detail.webp",
+            "image_hash": "a" * 64,
+        }
+    )
     repo.guardar(p)
 
     stored = repo.obtener("pruebas", "TEST-1")
@@ -88,12 +95,12 @@ def test_upsert_no_duplica_el_producto(repo):
     repo.guardar(producto(79990, minutos=0))
     repo.guardar(producto(69990, minutos=1))
     p = repo.obtener("pruebas", "TEST-1")
-    assert p.price == 69990       # se actualizo, no se inserto otro
+    assert p.price == 69990  # se actualizo, no se inserto otro
 
 
 def test_historial_solo_con_cambios(repo):
     repo.guardar(producto(79990, minutos=0))
-    repo.guardar(producto(79990, minutos=1))     # mismo precio: no aporta fila
+    repo.guardar(producto(79990, minutos=1))  # mismo precio: no aporta fila
     repo.guardar(producto(59990, minutos=2))
     assert [o.price for o in repo.historial("pruebas", "TEST-1")] == [59990, 79990]
 

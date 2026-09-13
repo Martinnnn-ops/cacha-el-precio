@@ -87,16 +87,19 @@ verifica (`test_el_precio_es_el_del_producto_y_no_el_de_un_recomendado`).
 
 ## Tiendas: que permite cada una
 
-Comprobado en su `robots.txt` el 03/09/2026.
+Comprobado nuevamente en fuentes públicas el 09/09/2026.
 
 | Tienda | robots.txt | Como extrae | Estado |
 |---|---|---|---|
 | **falabella.com** | permite categorías; su WAF bloquea las fichas al bot | `__NEXT_DATA__` del listado | funcionando |
 | **paris.cl** | permite todo | JSON-LD | funcionando |
-| **simple.ripley.cl** | permite, excluye reviews y APIs | JSON-LD dentro de `@graph` | funcionando |
+| **simple.ripley.cl** | el sitemap 1P responde 403 al bot identificado | JSON-LD dentro de `@graph` | parser listo; barrido vivo bloqueado |
 | **hites.com** | permite (35 disallow) | JSON-LD + availability | funcionando |
+| **cl.hm.com** | permite catálogo y publica sitemaps de producto | JSON-LD + variantes de Next.js | funcionando |
+| **lapolar.cl / abc.cl** | La Polar remite al sitemap de abc.cl | microdatos schema.org | funcionando |
 | **sparta.cl** | permite (6 disallow) | Open Graph + bloque de Analytics | funcionando |
 | converse.cl | **bloquea todos los bots** salvo Google, Bing, WhatsApp y Facebook | JSON-LD | parser hecho, no se puede barrer |
+| zara.com | Akamai rechaza su sitemap al bot identificado | — | bloqueado; no se suplanta navegador |
 | nike.cl | devuelve 403 hasta en robots.txt | — | inviable |
 
 Barrido real de Falabella del 08/09/2026, usando seis listados públicos:
@@ -142,13 +145,21 @@ cuentan aparte.
 - **Paris** publica su indice de sitemaps como `<urlset>` en vez de
   `<sitemapindex>`, asi que habia que detectarlo o se devolvian rutas
   de sitemaps creyendo que eran fichas.
+- **Paris, Hites y La Polar** mezclan rubros en sus sitemaps. Antes se
+  recortaban las URLs y recién después se filtraba: unos pocos muebles
+  agotaban el límite y parecía que no tenían ropa. Ahora se filtran los
+  slugs de vestimenta antes de aplicar el límite.
+- **H&M** usa URLs numéricas que no permiten filtrar por slug. La ficha se
+  valida después; `__NEXT_DATA__` aporta tallas y contexto de audiencia.
+- **La Polar** remite desde su propio `robots.txt` al índice de `abc.cl`.
+  Se conserva el identificador `lapolar`, aunque el enlace actual sea de ABC.
 
 **Nota sobre Converse.** Su `robots.txt` dice `User-agent: * / Disallow: /`
 y el sitio devuelve **403** a cualquier User-Agent que no sea de
 navegador. El parser funciona (probado contra HTML guardado), pero
 barrer la tienda en vivo significa saltarse una restriccion explicita.
-Falabella puede poblarse desde sus listados públicos; Paris y Ripley
-publican sus URLs en sitemaps, así que son el camino recomendado.
+Falabella puede poblarse desde sus listados públicos; Paris, Hites, H&M,
+La Polar/ABC y Sparta publican fuentes automáticas utilizables.
 
 El User-Agent por defecto se identifica (`CachaElPrecioBot/1.0`). No se
 suplanta un navegador para saltarse bloqueos de los sitios.
@@ -156,9 +167,9 @@ suplanta un navegador para saltarse bloqueos de los sitios.
 ## Desarrollo
 
 ```bash
-pytest              # 66 pruebas (61 sin red + 5 contra PostgreSQL)
-ruff check .
-mypy
+uv run pytest -m "not red"  # 135 verdes; 7 integraciones opcionales
+uv run ruff check src tests
+uv run mypy src
 ```
 
 Las pruebas de integracion (`tests/integration/`) se saltan solas si no
@@ -176,5 +187,5 @@ pruebas escribian sus datos de mentira en la base de verdad.
 
 ## Que falta
 
-- Descarga, conversion a WebP y subida a S3 de las imagenes
+- Conseguir feeds o autorización para las tiendas que bloquean al agente identificado
 - Empaquetar el job en un timer de systemd

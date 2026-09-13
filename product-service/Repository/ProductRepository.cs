@@ -18,6 +18,16 @@ public sealed class ProductRepository(ProductDbContext context) : IProductReposi
         return await Query().SingleOrDefaultAsync(product => product.ProductId == id);
     }
 
+    public async Task<ProductEntity?> GetProductBySlugAsync(string slug)
+    {
+        return await Query().AsNoTracking().SingleOrDefaultAsync(product => product.Slug == slug);
+    }
+
+    public Task<bool> SlugExistsAsync(string slug)
+    {
+        return context.Products.AnyAsync(product => product.Slug == slug);
+    }
+
     public async Task<ProductEntity?> GetProductByCanonicalKeyAsync(string canonicalKey)
     {
         return await Query().SingleOrDefaultAsync(product => product.CanonicalKey == canonicalKey);

@@ -6,7 +6,7 @@ import {
   CUERPO_COMPLETO,
   IDS_PARTES,
   esCuerpoCompleto,
-  parteDeCategoria,
+  parteDeProducto,
 } from '@/modules/outfits/data/partes'
 import { precioMasBajo } from '@/shared/utils/precios'
 
@@ -17,6 +17,8 @@ import { precioMasBajo } from '@/shared/utils/precios'
 // cuando cambie un precio.
 
 const CLAVE = 'cep:outfit'
+const CLAVE_TALLA_ROPA = 'cep:outfit:talla-ropa'
+const CLAVE_TALLA_CALZADO = 'cep:outfit:talla-calzado'
 
 function vacio() {
   return Object.fromEntries(IDS_PARTES.map((id) => [id, null]))
@@ -30,14 +32,25 @@ function leerGuardado() {
 
     // Sólo se aceptan las partes conocidas: si mañana cambia el modelo, un
     // outfit viejo no mete claves inventadas en el estado.
+    const migrado = {
+      ...guardado,
+      'torso-base': guardado['torso-base'] ?? guardado.torso ?? null,
+      calzado: guardado.calzado ?? guardado.pies ?? null,
+    }
+
     return Object.fromEntries(
-      IDS_PARTES.map((id) => [
-        id,
-        typeof guardado[id] === 'string' ? guardado[id] : null,
-      ]),
+      IDS_PARTES.map((id) => [id, typeof migrado[id] === 'string' ? migrado[id] : null]),
     )
   } catch {
     return vacio()
+  }
+}
+
+function leerPreferencia(clave) {
+  try {
+    return localStorage.getItem(clave) ?? ''
+  } catch {
+    return ''
   }
 }
 
@@ -45,6 +58,8 @@ export const useOutfitStore = defineStore('outfit', () => {
   const catalogo = useComparadorStore()
 
   const seleccion = ref(leerGuardado())
+  const tallaRopa = ref(leerPreferencia(CLAVE_TALLA_ROPA))
+  const tallaCalzado = ref(leerPreferencia(CLAVE_TALLA_CALZADO))
 
   // Un outfit a medio armar no se pierde al recargar.
   watch(
@@ -59,17 +74,58 @@ export const useOutfitStore = defineStore('outfit', () => {
     { deep: true },
   )
 
+  function guardarPreferencia(clave, valor) {
+    try {
+      if (valor) localStorage.setItem(clave, valor)
+      else localStorage.removeItem(clave)
+    } catch {
+      // La preferencia sigue funcionando durante la sesión.
+    }
+  }
+
+  watch(tallaRopa, (valor) => guardarPreferencia(CLAVE_TALLA_ROPA, valor))
+  watch(tallaCalzado, (valor) => guardarPreferencia(CLAVE_TALLA_CALZADO, valor))
+
+  function tallasDePartes(partes) {
+    // Las tallas salen del stock real. `numeric: true` mantiene 36, 37.5, 38
+    // en orden sin desordenar XS, S, M, L.
+    return [
+      ...new Set(
+        catalogo.productos
+          .filter((producto) => partes.includes(parteDeProducto(producto)))
+          .flatMap((producto) =>
+            producto.precios
+              .filter((oferta) => oferta.stock)
+              .flatMap((oferta) => oferta.tallas ?? []),
+          ),
+      ),
+    ].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+  }
+
+  const tallasRopa = computed(() =>
+    tallasDePartes(['cabeza', 'torso-base', 'torso-abrigo', 'interior', 'piernas']),
+  )
+  const tallasCalzado = computed(() => tallasDePartes(['calcetines', 'calzado']))
+
+  function tallaParaParte(parte) {
+    return ['calcetines', 'calzado'].includes(parte) ? tallaCalzado.value : tallaRopa.value
+  }
+
+  function ofertaPara(producto, parte = parteDeProducto(producto)) {
+    return precioMasBajo(producto, tallaParaParte(parte))
+  }
+
   /** Prendas del catálogo que pueden ir en una ranura. */
   function opcionesPara(parte) {
     return catalogo.productos.filter((p) => {
-      const suya = parteDeCategoria(p.categoria)
+      const suya = parteDeProducto(p)
 
       if (suya !== parte) return false
 
       // Una prenda de cuerpo completo se ofrece en torso, no en piernas.
       if (parte === 'piernas' && esCuerpoCompleto(p)) return false
 
-      return true
+      return ofertaPara(p, parte) !== null
     })
   }
 
@@ -83,11 +139,11 @@ export const useOutfitStore = defineStore('outfit', () => {
       ]),
     )
 
-    const torso = puesto.torso
+    const torso = puesto['torso-base']
 
     if (torso && esCuerpoCompleto(torso)) {
       CUERPO_COMPLETO.ocupa
-        .filter((id) => id !== 'torso')
+        .filter((id) => id !== 'torso-base')
         .forEach((id) => {
           puesto[id] = torso
         })
@@ -99,29 +155,58 @@ export const useOutfitStore = defineStore('outfit', () => {
   // Las partes que cubre una prenda de cuerpo completo no se pueden elegir
   // aparte: llevar vestido y pantalón a la vez no es un outfit.
   const partesBloqueadas = computed(() => {
-    const torso = prendas.value.torso
+    const torso = prendas.value['torso-base']
 
     if (!torso || !esCuerpoCompleto(torso)) return []
 
-    return CUERPO_COMPLETO.ocupa.filter((id) => id !== 'torso')
+    return CUERPO_COMPLETO.ocupa.filter((id) => id !== 'torso-base')
   })
 
   // Cada pieza distinta del outfit, sin repetir la de cuerpo completo.
   const piezas = computed(() => {
     const vistos = new Set()
 
-    return IDS_PARTES.map((parte) => ({ parte, producto: prendas.value[parte] }))
-      .filter(({ producto }) => {
-        if (!producto || vistos.has(producto.id)) return false
+    return IDS_PARTES.map((parte) => ({
+      parte,
+      producto: prendas.value[parte],
+    })).filter(({ producto }) => {
+      if (!producto || vistos.has(producto.id)) return false
 
-        vistos.add(producto.id)
+      vistos.add(producto.id)
 
-        return true
-      })
+      return true
+    })
   })
 
-  const completo = computed(() =>
-    IDS_PARTES.every((id) => prendas.value[id] !== null),
+  // Una capa sin productos todavía no impide completar el outfit. La decisión
+  // depende del catálogo con stock, NO de la talla elegida: si una talla deja
+  // una ranura sin alternativas, esa ranura debe invalidar el progreso en vez
+  // de desaparecer del denominador y mantener el outfit como “completo”.
+  const partesActivas = computed(() =>
+    IDS_PARTES.filter((parte) =>
+      catalogo.productos.some((producto) => {
+        if (parteDeProducto(producto) !== parte) return false
+        if (parte === 'piernas' && esCuerpoCompleto(producto)) return false
+
+        return precioMasBajo(producto) !== null
+      }),
+    ),
+  )
+
+  const partesListas = computed(
+    () =>
+      partesActivas.value.filter((id) => {
+        const producto = prendas.value[id]
+
+        return producto !== null && ofertaPara(producto, id) !== null
+      }).length,
+  )
+
+  // Una ranura deja de estar lista si la persona cambia a una talla que esa
+  // prenda no tiene. Así el progreso y el autocompletado no dan por válido un
+  // outfit cuyo total omite piezas sin stock.
+  const completo = computed(
+    () => partesActivas.value.length > 0 && partesListas.value === partesActivas.value.length,
   )
 
   // ——— dinero ———
@@ -132,7 +217,7 @@ export const useOutfitStore = defineStore('outfit', () => {
     piezas.value.map(({ parte, producto }) => ({
       parte,
       producto,
-      oferta: precioMasBajo(producto),
+      oferta: ofertaPara(producto, parte),
     })),
   )
 
@@ -155,10 +240,16 @@ export const useOutfitStore = defineStore('outfit', () => {
     catalogo.tiendas.forEach((tienda) => {
       let suma = 0
 
-      const tieneTodo = piezas.value.every(({ producto }) => {
-        const oferta = producto.precios.find(
-          (o) => o.tienda === tienda.id && o.stock,
-        )
+      const tieneTodo = piezas.value.every(({ parte, producto }) => {
+        const talla = tallaParaParte(parte)
+        const oferta = producto.precios
+          .filter(
+            (o) =>
+              o.tienda === tienda.id &&
+              o.stock &&
+              (talla === '' || (o.tallas ?? []).includes(talla)),
+          )
+          .sort((a, b) => a.precio - b.precio)[0]
 
         if (!oferta) return false
 
@@ -172,9 +263,7 @@ export const useOutfitStore = defineStore('outfit', () => {
 
     if (candidatas.size === 0) return null
 
-    const [tienda, precio] = [...candidatas.entries()].sort(
-      (a, b) => a[1] - b[1],
-    )[0]
+    const [tienda, precio] = [...candidatas.entries()].sort((a, b) => a[1] - b[1])[0]
 
     return { tienda, total: precio }
   })
@@ -194,12 +283,16 @@ export const useOutfitStore = defineStore('outfit', () => {
   function ponerPrenda(parte, productoId) {
     if (!IDS_PARTES.includes(parte)) return
 
+    const producto = catalogo.productoById(productoId)
+
+    if (!producto || !opcionesPara(parte).some((opcion) => opcion.id === productoId)) {
+      return
+    }
+
     seleccion.value = { ...seleccion.value, [parte]: productoId }
 
     // Al poner una prenda de cuerpo completo se limpia lo que hubiera en las
     // partes que cubre, para no dejar una selección contradictoria guardada.
-    const producto = catalogo.productoById(productoId)
-
     if (producto && esCuerpoCompleto(producto)) {
       CUERPO_COMPLETO.ocupa
         .filter((id) => id !== parte)
@@ -217,11 +310,33 @@ export const useOutfitStore = defineStore('outfit', () => {
     seleccion.value = vacio()
   }
 
+  // Completa sólo las ranuras vacías o incompatibles con la talla elegida.
+  // Respeta lo que la persona ya eligió y usa, para cada parte, la prenda con
+  // la oferta comprable más barata.
+  function completarConMasBarato() {
+    IDS_PARTES.forEach((parte) => {
+      if (partesBloqueadas.value.includes(parte)) return
+
+      const actual = prendas.value[parte]
+
+      if (actual && ofertaPara(actual, parte)) return
+
+      const candidata = opcionesPara(parte)
+        .map((producto) => ({ producto, oferta: ofertaPara(producto, parte) }))
+        .filter(({ oferta }) => oferta !== null)
+        .sort((a, b) => a.oferta.precio - b.oferta.precio)[0]
+
+      if (candidata) ponerPrenda(parte, candidata.producto.id)
+    })
+  }
+
   function ponerOutfit(porParte) {
     const nuevo = vacio()
 
     IDS_PARTES.forEach((id) => {
-      if (typeof porParte?.[id] === 'string') nuevo[id] = porParte[id]
+      const producto = catalogo.productoById(porParte?.[id])
+
+      if (producto && ofertaPara(producto, id)) nuevo[id] = producto.id
     })
 
     seleccion.value = nuevo
@@ -229,19 +344,28 @@ export const useOutfitStore = defineStore('outfit', () => {
 
   return {
     seleccion,
+    tallaRopa,
+    tallaCalzado,
+    tallasRopa,
+    tallasCalzado,
     prendas,
     piezas,
     partesBloqueadas,
+    partesActivas,
     completo,
+    partesListas,
     desglose,
     total,
     tiendasImplicadas,
     mejorTiendaUnica,
     ahorroRepartiendo,
     opcionesPara,
+    tallaParaParte,
+    ofertaPara,
     ponerPrenda,
     quitarPrenda,
     limpiar,
+    completarConMasBarato,
     ponerOutfit,
   }
 })

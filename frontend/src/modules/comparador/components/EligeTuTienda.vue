@@ -71,8 +71,8 @@ function condicionDe(oferta) {
 
     <ul class="tiendas__lista">
       <li
-        v-for="oferta in listadas"
-        :key="oferta.tienda"
+        v-for="(oferta, indice) in listadas"
+        :key="oferta.id ?? oferta.codigo ?? `${oferta.tienda}-${indice}`"
         class="oferta"
         :class="{
           'oferta--mejor': comparando && oferta.tienda === masBarata?.tienda,
@@ -124,6 +124,22 @@ function condicionDe(oferta) {
             :tienda="nombreTienda(oferta.tienda)"
             tamano="chico"
           />
+        </div>
+
+        <div class="oferta__tallas">
+          <span class="mono oferta__tallas-etiqueta">
+            {{ oferta.stock ? 'Tallas disponibles' : 'Tallas informadas' }}
+          </span>
+
+          <ul v-if="oferta.tallas?.length" class="oferta__tallas-lista">
+            <li v-for="talla in oferta.tallas" :key="talla" class="talla mono">
+              {{ talla }}
+            </li>
+          </ul>
+
+          <span v-else class="mono muted oferta__tallas-vacio">
+            La tienda no informó las tallas.
+          </span>
         </div>
       </li>
     </ul>
@@ -290,6 +306,46 @@ function condicionDe(oferta) {
 .oferta__sinstock {
   font-size: var(--cep-fs-xs);
   color: var(--cep-muted);
+}
+
+.oferta__tallas {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--cep-sp-2) var(--cep-sp-3);
+  flex-wrap: wrap;
+  padding-top: var(--cep-sp-2);
+  border-top: 1px dashed var(--cep-line-media);
+}
+.oferta__tallas-etiqueta,
+.oferta__tallas-vacio {
+  font-size: var(--cep-fs-2xs);
+}
+.oferta__tallas-etiqueta {
+  color: var(--cep-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.oferta__tallas-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cep-sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.talla {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--cep-control-h-sm);
+  min-height: var(--cep-sp-7);
+  padding: 0 var(--cep-sp-2);
+  background: var(--cep-wash);
+  border: 1px solid var(--cep-line-media);
+  border-radius: var(--cep-r-sm);
+  color: var(--cep-ink);
+  font-size: var(--cep-fs-xs);
 }
 
 .tiendas__vacio {

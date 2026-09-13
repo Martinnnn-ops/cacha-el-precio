@@ -17,6 +17,9 @@ builder.Services.AddHttpClient<ProductServiceProxy>(client =>
 {
     client.BaseAddress = new Uri(productUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AllowAutoRedirect = false
 });
 builder.Services.AddSingleton<FollowRepository>();
 builder.Services.AddHealthChecks();
@@ -114,6 +117,10 @@ static void MapProductRoutes(WebApplication app)
     app.MapGet("/productos", ProxyTo("/api/products")).AllowAnonymous();
     app.MapGet("/productos/{id:long}", ProxyToDynamic(context => $"/api/products/{context.Request.RouteValues["id"]}"))
         .AllowAnonymous();
+    app.MapGet(
+        "/productos/{slug:regex(^(?![0-9]+$)[a-z0-9]+(?:-[a-z0-9]+)*$)}",
+        ProxyToDynamic(context => $"/api/products/{Uri.EscapeDataString(context.Request.RouteValues["slug"]?.ToString() ?? string.Empty)}"))
+        .AllowAnonymous();
     app.MapPost("/productos", ProxyTo("/api/products")).RequireAuthorization("product-write");
     app.MapPut("/productos/{id:long}", ProxyToDynamic(context => $"/api/products/{context.Request.RouteValues["id"]}"))
         .RequireAuthorization("product-write");
@@ -156,6 +163,10 @@ static void MapProductRoutes(WebApplication app)
 
     app.MapGet("/api/products", ProxyTo("/api/products")).AllowAnonymous();
     app.MapGet("/api/products/{id:int}", ProxyToDynamic(context => $"/api/products/{context.Request.RouteValues["id"]}"))
+        .AllowAnonymous();
+    app.MapGet(
+        "/api/products/{slug:regex(^(?![0-9]+$)[a-z0-9]+(?:-[a-z0-9]+)*$)}",
+        ProxyToDynamic(context => $"/api/products/{Uri.EscapeDataString(context.Request.RouteValues["slug"]?.ToString() ?? string.Empty)}"))
         .AllowAnonymous();
     app.MapGet("/api/products/by-category/{category}", ProxyToDynamic(context => $"/api/products/by-category/{Uri.EscapeDataString(context.Request.RouteValues["category"]?.ToString() ?? string.Empty)}"))
         .AllowAnonymous();

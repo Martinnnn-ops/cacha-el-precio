@@ -97,8 +97,9 @@ class RepositorioPostgres:
         datos = producto.model_dump()
         try:
             with self._con.cursor() as cur:
-                cur.execute(_PRECIO_ANTERIOR, {"store": producto.store,
-                                               "external_id": producto.external_id})
+                cur.execute(
+                    _PRECIO_ANTERIOR, {"store": producto.store, "external_id": producto.external_id}
+                )
                 fila = cur.fetchone()
                 cambio = fila is None or fila[0] != producto.price or fila[1] != producto.available
 
@@ -118,17 +119,31 @@ class RepositorioPostgres:
         if fila is None:
             return None
         campos = (
-            "store", "external_id", "name", "brand", "price", "currency",
-            "product_url", "description", "source_image_url", "image_url",
-            "image_card_url", "image_detail_url", "image_card_key", "image_detail_key",
-            "image_hash", "available", "scraped_at",
+            "store",
+            "external_id",
+            "name",
+            "brand",
+            "price",
+            "currency",
+            "product_url",
+            "description",
+            "source_image_url",
+            "image_url",
+            "image_card_url",
+            "image_detail_url",
+            "image_card_key",
+            "image_detail_key",
+            "image_hash",
+            "available",
+            "scraped_at",
         )
         return Product(**dict(zip(campos, fila, strict=True)))
 
     def historial(self, store: str, external_id: str, limite: int = 100) -> list[Offer]:
         with self._con.cursor() as cur:
-            cur.execute(_SELECT_HISTORIAL,
-                        {"store": store, "external_id": external_id, "limite": limite})
+            cur.execute(
+                _SELECT_HISTORIAL, {"store": store, "external_id": external_id, "limite": limite}
+            )
             filas = cur.fetchall()
         campos = ("store", "external_id", "price", "currency", "available", "scraped_at")
         return [Offer(**dict(zip(campos, f, strict=True))) for f in filas]

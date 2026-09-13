@@ -31,6 +31,13 @@ namespace Product_Service.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ProductId"));
 
+                    b.Property<string>("BodyArea")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("Cuerpo");
+
                     b.Property<string>("CanonicalKey")
                         .IsRequired()
                         .HasMaxLength(240)
@@ -44,6 +51,20 @@ namespace Product_Service.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Unisex");
+
+                    b.Property<string>("Layer")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("General");
 
                     b.Property<string>("ProductBrand")
                         .IsRequired()
@@ -64,6 +85,11 @@ namespace Product_Service.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)");
+
                     b.Property<int>("Visits")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -75,6 +101,9 @@ namespace Product_Service.Migrations
                         .IsUnique();
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
 
                     b.HasIndex("Visits");
 

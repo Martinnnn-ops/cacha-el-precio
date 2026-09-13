@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
@@ -43,6 +43,17 @@ const {
   hayFiltros,
 } = storeToRefs(store)
 
+// Dos filas completas en escritorio (tres tarjetas por fila) antes del
+// anuncio. La persona alcanza a comparar resultados antes de la pausa y el
+// bloque sigue apareciendo sin quedar enterrado al final de cientos de ítems.
+const CORTE_ANUNCIO = 6
+const primerosResultados = computed(() =>
+  productosFiltrados.value.slice(0, CORTE_ANUNCIO),
+)
+const siguientesResultados = computed(() =>
+  productosFiltrados.value.slice(CORTE_ANUNCIO),
+)
+
 onMounted(() => store.cargarProductos())
 
 // El buscador de la cabecera entra con ?q=, la portada con ?categoria= y
@@ -66,8 +77,8 @@ watch(
       <h1 class="comparador__titulo">Compara antes de comprar</h1>
 
       <p class="comparador__bajada">
-        El mismo producto en Ripley, Paris, Zara, H&amp;M y Mango, con la tienda
-        más barata destacada.
+        Reunimos las tiendas disponibles y destacamos dónde conviene comprar
+        cada prenda.
       </p>
 
       <BaseSearchInput
@@ -170,7 +181,7 @@ watch(
 
           <div class="grilla">
             <ProductoCard
-              v-for="producto in productosFiltrados"
+              v-for="producto in primerosResultados"
               :key="producto.id"
               :producto="producto"
             />
@@ -181,6 +192,14 @@ watch(
             :alto="110"
             class="resultados__anuncio"
           />
+
+          <div v-if="siguientesResultados.length" class="grilla grilla--continuacion">
+            <ProductoCard
+              v-for="producto in siguientesResultados"
+              :key="producto.id"
+              :producto="producto"
+            />
+          </div>
         </template>
       </div>
     </div>
@@ -189,6 +208,9 @@ watch(
 
 <style scoped>
 .resultados__anuncio {
+  margin-top: var(--cep-sp-6);
+}
+.grilla--continuacion {
   margin-top: var(--cep-sp-6);
 }
 

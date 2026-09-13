@@ -17,13 +17,22 @@ _TERMINOS = {
     "blusa",
     "body",
     "boxer",
+    "boxers",
+    "bralette",
+    "brasier",
+    "brassiere",
     "calza",
+    "calzon",
+    "calzones",
+    "calzoncillo",
+    "calzoncillos",
     "calcetin",
     "calcetines",
     "camisa",
     "camiseta",
     "chaqueta",
     "chaleco",
+    "colaless",
     "cortaviento",
     "enterito",
     "falda",
@@ -43,6 +52,7 @@ _TERMINOS = {
     "short",
     "shorts",
     "sosten",
+    "tanga",
     "sudadera",
     "sueter",
     "sweater",
@@ -78,6 +88,8 @@ _TERMINOS = {
     "cinturones",
     "corbata",
     "corbatas",
+    "conjunto",
+    "conjuntos",
     "gorro",
     "gorros",
     "guante",
@@ -110,10 +122,18 @@ def _normalizar(texto: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", texto).strip()
 
 
-def es_vestimenta(producto: Product) -> bool:
-    """Solo acepta productos cuyo nombre o URL indiquen ropa o calzado."""
-    texto = _normalizar(f"{producto.name} {producto.product_url}")
+def texto_parece_vestimenta(texto_crudo: str) -> bool:
+    """Clasifica un nombre, descripción o URL sin necesitar un ``Product``."""
+    texto = _normalizar(texto_crudo)
     palabras = set(texto.split())
-    if palabras & _EXCLUSIONES or any(frase in texto for frase in _EXCLUSIONES):
+    if palabras & _EXCLUSIONES or any(_normalizar(frase) in texto for frase in _EXCLUSIONES):
         return False
     return bool(palabras & _TERMINOS) or any(_normalizar(frase) in texto for frase in _FRASES)
+
+
+def es_vestimenta(producto: Product) -> bool:
+    """Solo acepta productos cuyo contenido indique ropa o calzado."""
+    return texto_parece_vestimenta(
+        f"{producto.name} {producto.taxonomy_context or ''} "
+        f"{producto.description or ''} {producto.product_url}"
+    )

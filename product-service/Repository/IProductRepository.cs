@@ -9,6 +9,10 @@ public interface IProductRepository
 
     Task<ProductEntity?> GetProductByIdAsync(int id);
 
+    Task<ProductEntity?> GetProductBySlugAsync(string slug);
+
+    Task<bool> SlugExistsAsync(string slug);
+
     Task<ProductEntity?> GetProductByCanonicalKeyAsync(string canonicalKey);
 
     Task<ProductEntity> AddProductAsync(ProductEntity product);

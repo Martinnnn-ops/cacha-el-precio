@@ -9,7 +9,19 @@
 > Se lee en dos partes: **§1 qué decisiones cambiaron** (y cuáles no quedaron escritas) y
 > **§2 qué hay que arreglar**, en orden de gravedad.
 >
-> Última revisión: **09-09-2026, integración de visitas con catálogo PostgreSQL**
+> Última revisión: **13-09-2026, URLs canónicas por slug**
+
+## Actualización de URLs canónicas · 13-09
+
+Product Service V2 incorpora un `slug` persistido y único. La entrada histórica
+`GET /api/products/{id}` en V2 responde con una redirección hacia
+`/api/products/{slug}`, mientras V1 conserva la lectura por id. El gateway reenvía la versión
+solicitada, publica `/productos/{slug}` y cambia el `Location` interno por esa ruta pública.
+
+El frontend mantiene el listado y el contador de visitas en V1, pero pide la ficha directamente
+por slug con `Version: 2.0`. Ya no descarga el catálogo completo antes de abrir un enlace directo;
+los enlaces anteriores `nombre-id` se reconocen mediante el catálogo sólo como ruta de migración y
+se reemplazan por la URL canónica.
 
 ## Actualización de ingesta e imágenes · 08-09
 
@@ -22,6 +34,23 @@ S3 no está configurado, por lo que el frontend ya no depende de un almacenamien
 Converse sigue teniendo parser y pruebas, pero `robots.txt` declara `User-agent: *` y
 `Disallow: /`; su sitemap también responde `403` al agente del proyecto. No se implementa una
 suplantación de navegador. Para ingesta en vivo hace falta permiso o un feed autorizado.
+
+## Actualización de cobertura y taxonomía · 09-09
+
+El catálogo distingue el tipo de prenda de su zona corporal y audiencia. `category` conserva
+categorías específicas —incluidos gorros, polerones, calcetines y ropa interior femenina o
+masculina—, mientras `bodyArea` expresa `Cabeza`, `Torso`, `Piernas`, `Pies` o
+`Cuerpo completo`. El frontend usa esa zona explícita al armar outfits y mantiene el mapa
+anterior como respaldo.
+
+Paris e Hites no estaban fallando por parser: el descubridor cortaba sus sitemaps mixtos antes
+de filtrar vestimenta. Corregido el orden, ambos entregan prendas. Se incorporaron adaptadores
+con fixtures reales para H&M Chile y La Polar/ABC. Ripley y Zara siguen bloqueando sus sitemaps
+al User-Agent identificado; no se implementó suplantación de navegador.
+
+Product Service mantiene los SKU internos por `(store, externalId)`, pero su respuesta pública
+consolida una sola oferta por tienda, con el menor precio disponible y las tallas unidas. Esto
+elimina las listas repetidas que estiraban una tarjeta y toda la fila del comparador.
 
 ## Actualización de catálogo y persistencia · 08-09
 

@@ -8,6 +8,9 @@ public sealed class ProductRequest
     public string Name { get; set; } = null!;
     public string Brand { get; set; } = null!;
     public string Category { get; set; } = null!;
+    public string? BodyArea { get; set; }
+    public string? Gender { get; set; }
+    public string? Layer { get; set; }
     public int Price { get; set; }
     public string[] Sizes { get; set; } = [];
     public string? Description { get; set; }

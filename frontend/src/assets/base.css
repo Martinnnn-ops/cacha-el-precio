@@ -190,6 +190,8 @@ body {
      la columna ya estrecha. Hacen falta los dos. */
   overflow-wrap: break-word;
   background: var(--cep-bg);
+  background-image: radial-gradient(var(--cep-line) 0.7px, transparent 0.7px);
+  background-size: var(--cep-sp-6) var(--cep-sp-6);
   color: var(--cep-ink);
   font-family: var(--cep-font-sans);
   font-size: var(--cep-fs-md);
@@ -198,6 +200,10 @@ body {
   transition:
     background var(--cep-dur-2) var(--cep-ease),
     color var(--cep-dur-2) var(--cep-ease);
+}
+::selection {
+  background: color-mix(in srgb, var(--cep-accent) 24%, transparent);
+  color: var(--cep-ink);
 }
 h1,
 h2,
@@ -369,9 +375,21 @@ textarea {
   color: var(--cep-muted);
 }
 .seccion-titulo {
+  position: relative;
   margin: 0 0 var(--cep-sp-3);
+  padding-left: var(--cep-sp-3);
   font-family: var(--cep-font-display);
   font-size: var(--cep-fs-xl);
+}
+.seccion-titulo::before {
+  content: '';
+  position: absolute;
+  top: 0.12em;
+  bottom: 0.12em;
+  left: 0;
+  width: var(--cep-sp-05);
+  background: var(--cep-accent);
+  border-radius: var(--cep-r-pill);
 }
 .divisor {
   height: 1px;

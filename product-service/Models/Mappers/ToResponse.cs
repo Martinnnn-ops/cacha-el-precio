@@ -11,29 +11,54 @@ public static class EntityToResponse
         return new ProductResponse
         {
             Id = product.ProductId,
+            Slug = product.Slug,
             CanonicalKey = product.CanonicalKey,
             Name = product.ProductName,
             Brand = product.ProductBrand,
             Category = product.ProductCategory,
+            BodyArea = product.BodyArea,
+            Gender = product.Gender,
+            Layer = product.Layer,
             Description = product.Description,
             Image = product.ProductImage,
             Visits = product.Visits,
             CreatedAt = product.CreatedAt,
             Offers = product.Offers
+                .GroupBy(offer => offer.Store, StringComparer.OrdinalIgnoreCase)
+                .Select(ToStoreOffer)
                 .OrderBy(offer => offer.Price)
-                .Select(offer => new ProductOfferResponse
-                {
-                    Id = offer.OfferId,
-                    ExternalId = offer.ExternalId,
-                    Store = offer.Store,
-                    Price = offer.Price,
-                    Sizes = offer.Sizes,
-                    Url = offer.ProductUrl,
-                    Image = offer.ProductImage,
-                    Active = offer.Active,
-                    UpdatedAt = offer.UpdatedAt
-                })
                 .ToList()
+        };
+    }
+
+    private static ProductOfferResponse ToStoreOffer(IGrouping<string, ProductOfferEntity> group)
+    {
+        List<ProductOfferEntity> offers = group.ToList();
+        ProductOfferEntity representative = offers
+            .Where(offer => offer.Active)
+            .DefaultIfEmpty(offers.OrderBy(offer => offer.Price).First())
+            .OrderBy(offer => offer.Price)
+            .First();
+        List<ProductOfferEntity> available = offers.Where(offer => offer.Active).ToList();
+        IReadOnlyList<ProductOfferEntity> sizeSources = available.Count > 0 ? available : offers;
+
+        return new ProductOfferResponse
+        {
+            Id = representative.OfferId,
+            ExternalId = representative.ExternalId,
+            Store = representative.Store,
+            Price = representative.Price,
+            Sizes = sizeSources
+                .SelectMany(offer => offer.Sizes ?? [])
+                .Where(size => !string.IsNullOrWhiteSpace(size))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(size => size)
+                .ToList(),
+            Url = representative.ProductUrl,
+            Image = representative.ProductImage
+                ?? offers.Select(offer => offer.ProductImage).FirstOrDefault(image => image is not null),
+            Active = available.Count > 0,
+            UpdatedAt = offers.Max(offer => offer.UpdatedAt)
         };
     }
 }

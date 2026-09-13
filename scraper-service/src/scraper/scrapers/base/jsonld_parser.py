@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import re
+from html import unescape
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -161,7 +162,7 @@ class ParserJsonLd:
     @staticmethod
     def _texto(valor: Any) -> str | None:
         if isinstance(valor, str) and valor.strip():
-            return valor.strip()
+            return unescape(valor).strip()
         return None
 
     def _precio(self, oferta: dict[str, Any], og: dict[str, str]) -> int | None:

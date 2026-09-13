@@ -78,8 +78,9 @@ class RepositorioEnMemoria:
         # Se desempata por orden de insercion: dos barridos muy seguidos
         # pueden compartir scraped_at, y sin el indice el orden quedaria
         # indefinido justo cuando mas importa (el precio recien visto).
-        ordenadas = sorted(enumerate(filas), key=lambda par: (par[1].scraped_at, par[0]),
-                           reverse=True)
+        ordenadas = sorted(
+            enumerate(filas), key=lambda par: (par[1].scraped_at, par[0]), reverse=True
+        )
         return [o for _, o in ordenadas][:limite]
 
     # --- utilidades para pruebas y para el CLI ---
