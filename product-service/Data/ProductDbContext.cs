@@ -19,11 +19,16 @@ public class ProductDbContext : DbContext
 
         var product = modelBuilder.Entity<ProductEntity>();
         product.HasKey(p => p.ProductId);
+        product.HasIndex(p => p.Slug).IsUnique();
         product.HasIndex(p => p.CanonicalKey).IsUnique();
+        product.Property(p => p.Slug).IsRequired().HasMaxLength(180);
         product.Property(p => p.CanonicalKey).IsRequired().HasMaxLength(240);
         product.Property(p => p.ProductName).IsRequired().HasMaxLength(120);
         product.Property(p => p.ProductBrand).IsRequired().HasMaxLength(120);
         product.Property(p => p.ProductCategory).IsRequired().HasMaxLength(120);
+        product.Property(p => p.BodyArea).IsRequired().HasMaxLength(40).HasDefaultValue("Cuerpo");
+        product.Property(p => p.Gender).IsRequired().HasMaxLength(30).HasDefaultValue("Unisex");
+        product.Property(p => p.Layer).IsRequired().HasMaxLength(40).HasDefaultValue("General");
         product.Property(p => p.Description).HasMaxLength(2000);
         product.Property(p => p.ProductImage).HasMaxLength(1000);
         product.Property(p => p.Visits).IsRequired().HasDefaultValue(0);

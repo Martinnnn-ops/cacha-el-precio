@@ -73,7 +73,8 @@ public sealed class ProductServiceProxy(HttpClient client)
             }
         }
 
-        request.Headers.TryAddWithoutValidation("Version", "1.0");
+        string requestedVersion = context.Request.Headers["Version"].FirstOrDefault() ?? "1.0";
+        request.Headers.TryAddWithoutValidation("Version", requestedVersion);
 
         try
         {
@@ -91,7 +92,7 @@ public sealed class ProductServiceProxy(HttpClient client)
 
             if (response.Headers.Location is not null)
             {
-                context.Response.Headers.Location = response.Headers.Location.ToString();
+                context.Response.Headers.Location = RewriteLocation(context, response.Headers.Location);
             }
 
             await response.Content.CopyToAsync(context.Response.Body, cancellationToken);
@@ -106,5 +107,26 @@ public sealed class ProductServiceProxy(HttpClient client)
                 mensaje = "Product Service no respondió."
             }, cancellationToken);
         }
+    }
+
+    private static string RewriteLocation(HttpContext context, Uri location)
+    {
+        const string internalProductPrefix = "/api/products/";
+
+        if (!context.Request.Path.StartsWithSegments("/productos"))
+        {
+            return location.ToString();
+        }
+
+        string pathAndQuery = location.IsAbsoluteUri
+            ? location.PathAndQuery
+            : location.ToString();
+
+        if (!pathAndQuery.StartsWith(internalProductPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return location.ToString();
+        }
+
+        return $"/productos/{pathAndQuery[internalProductPrefix.Length..]}";
     }
 }

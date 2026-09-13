@@ -8,7 +8,9 @@ aplicación; Caddy y API Gateway deben apuntar a él, nunca directamente a Produ
 - valida firma, emisor y vigencia de los access tokens de Cognito;
 - exige `token_use=access` y un `client_id` conocido;
 - autoriza escrituras por el scope configurado y administración por `cognito:groups`;
-- reenvía el catálogo a Product Service y preserva el encabezado `Version: 1.0`;
+- reenvía el catálogo a Product Service, conserva la versión solicitada y usa `Version: 1.0`
+  cuando el cliente no envía el encabezado;
+- publica las URLs canónicas por `slug` de Product Service V2 sin filtrar sus rutas internas;
 - mantiene temporalmente el seguimiento por usuario en memoria.
 
 ## Configuración
@@ -45,7 +47,8 @@ interno viajaría hasta el navegador de cada usuario.
 
 | Ruta | Acceso | Sin token |
 |---|---|---|
-| `GET /productos` · `/productos/{id}` | pública | 200 · 404 si no existe |
+| `GET /productos` · `/productos/{id}` | pública | 200 · 302 a la URL canónica en V2 · 404 si no existe |
+| `GET /productos/{slug}` | pública | 200 con `Version: 2.0` · 404 si no existe |
 | `GET /catalogos` | pública | 200 |
 | `POST /productos/{id}/visitas` | **pública** | 204 · 404 si no existe |
 | `POST` · `PUT` · `DELETE /productos` | scope de escritura | **401** |
@@ -67,6 +70,21 @@ Dos rutas piden explicación:
   carga útil.
 
 Si Product Service no responde, el gateway devuelve un `502` JSON estable.
+
+### URLs canónicas de Product Service V2
+
+El gateway mantiene V1 como valor predeterminado para no romper a los clientes existentes. Cuando
+recibe el encabezado `Version: 2.0`, lo reenvía a Product Service. Consultar un producto por id en
+V2 devuelve una redirección temporal y el gateway cambia el `Location` interno
+`/api/products/{slug}` por el contrato público `/productos/{slug}`:
+
+```bash
+curl -i -H 'Version: 2.0' http://localhost:8080/productos/2
+curl -H 'Version: 2.0' http://localhost:8080/productos/zapatilla-converse-chuck-70
+```
+
+Las rutas `/api/products/{id}` y `/api/products/{slug}` siguen disponibles únicamente como
+compatibilidad interna y conservan el `Location` original de Product Service.
 
 ## Deuda conocida
 

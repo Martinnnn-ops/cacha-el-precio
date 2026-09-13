@@ -36,6 +36,25 @@ Todas las llamadas utilizan `Version: 1.0`.
 | DELETE | `/api/products/{id}` | elimina el producto y sus ofertas |
 | POST | `/api/products/{id}/visits` | suma una visita; `204`, o `404` si no existe |
 
+## Lectura canónica por slug en v2
+
+V2 mantiene temporalmente la entrada por ID para no romper enlaces existentes, pero la convierte
+en una redirección hacia la URL legible del producto:
+
+| Método | Cabecera | Ruta | Resultado |
+|---|---|---|---|
+| GET | `Version: 2.0` | `/api/products/{id}` | `302` hacia `/api/products/{slug}`; `404` si no existe |
+| GET | `Version: 2.0` | `/api/products/{slug}` | producto canónico como `ProductResponse`; `404` si no existe |
+
+Por ejemplo, `/api/products/2` redirige a una ruta como
+`/api/products/poleron-ck-institutional-blanco-yaf-calvin-klein`. El cliente debe conservar la
+cabecera `Version: 2.0` al seguir o solicitar directamente la URL canónica.
+
+El servicio genera `slug` al crear el producto, lo guarda en PostgreSQL y no lo cambia al editar
+el nombre, evitando romper enlaces publicados. Si dos nombres producen el mismo valor, añade un
+sufijo numérico sólo al segundo. La migración `AddProductSlug` rellena los productos existentes a
+partir de su `canonicalKey`, que ya era único.
+
 Ejemplo de una tercera oferta para el mismo modelo:
 
 ```json
@@ -46,6 +65,9 @@ Ejemplo de una tercera oferta para el mismo modelo:
   "name": "Zapatilla Converse Chuck Taylor All Star negra",
   "brand": "Converse",
   "category": "Zapatillas",
+  "bodyArea": "Pies",
+  "gender": "Unisex",
+  "layer": "Calzado",
   "price": 59990,
   "sizes": ["38", "39", "42.5", "M"],
   "description": "Descripción pública",
@@ -58,20 +80,31 @@ Ejemplo de una tercera oferta para el mismo modelo:
 `canonicalKey` agrupa marca/modelo; si se omite, Product Service lo deriva del nombre. La regla
 elimina términos de género, color y talla, por lo que es una heurística y admite corrección manual.
 `(Store, ExternalId)` es único dentro de las ofertas: repetir el POST actualiza precio, tallas,
-URL, imagen y disponibilidad en lugar de duplicar la tienda.
+URL, imagen y disponibilidad. Una tienda puede conservar varios SKU del mismo modelo en la base;
+la respuesta pública los consolida en una oferta por tienda, elige el menor precio disponible y
+reúne sus tallas. Así una variante no se presenta como si fuera otra tienda ni alarga las tarjetas.
 
 La respuesta tiene la forma:
 
 ```text
-Product { id, canonicalKey, name, brand, category, description, image, offers[] }
+Product { id, slug, canonicalKey, name, brand, category, bodyArea, gender, layer,
+          description, image, offers[] }
 Offer   { id, externalId, store, price, sizes[], url, image, active, updatedAt }
 ```
 
-### Dos campos que la respuesta trae y la petición no acepta
+`category` dice qué prenda es (`Polerones`, `Calcetines`, `Ropa interior femenina`);
+`bodyArea` dice dónde se usa (`Cabeza`, `Torso`, `Piernas`, `Pies` o `Cuerpo completo`) y
+`gender` conserva `Mujer`, `Hombre`, `Niña`, `Niño`, `Bebé` o `Unisex`; `layer` distingue, por
+ejemplo, `Base`, `Abrigo`, `Calcetería` y `Calzado`. Los campos son abiertos
+para no volver a bloquear la ingesta cada vez que aparezca una categoría legítima nueva.
 
-`ProductResponse` incluye `visits` y `createdAt`, y **`ProductRequest` no los tiene**. No es un
-olvido:
+### Tres campos que la respuesta trae y la petición no acepta
 
+`ProductResponse` incluye `slug`, `visits` y `createdAt`, y **`ProductRequest` no los tiene**. No
+es un olvido:
+
+- **`slug`** es identidad pública administrada por el servicio. Aceptarlo desde el scraper
+  permitiría cambiar o duplicar URLs canónicas por accidente.
 - **`visits`** solo cambia por `POST /api/products/{id}/visits`, que suma uno con una única
   sentencia `UPDATE ... SET Visits = Visits + 1`. Si se pudiera mandar en el cuerpo, cualquiera con
   el scope de escritura podría poner el número que quisiera; y si se hiciera leyendo, sumando y

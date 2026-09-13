@@ -46,6 +46,14 @@ public static partial class ProductIdentity
         );
     }
 
+    public static string CreateSlug(string value)
+    {
+        string slug = Normalize(Required(value, "slug")).Replace(' ', '-');
+        if (slug.Length == 0) return "producto";
+        if (slug.All(char.IsDigit)) slug = $"producto-{slug}";
+        return slug.Length <= 180 ? slug : slug[..180].TrimEnd('-');
+    }
+
     public static string Required(string? value, string field)
     {
         if (string.IsNullOrWhiteSpace(value))

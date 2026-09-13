@@ -1,1 +1,13 @@
 @Product_Service_HostAddress = http://localhost:8081
+
+### V1: lectura directa por ID
+GET {{Product_Service_HostAddress}}/api/products/2
+Version: 1.0
+
+### V2: el ID redirige a la URL canónica con slug
+GET {{Product_Service_HostAddress}}/api/products/2
+Version: 2.0
+
+### V2: lectura directa por slug
+GET {{Product_Service_HostAddress}}/api/products/poleron-ck-institutional-blanco-yaf-calvin-klein
+Version: 2.0

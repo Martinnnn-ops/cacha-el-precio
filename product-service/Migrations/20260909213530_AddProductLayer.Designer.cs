@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Product_Service.Data;
@@ -11,9 +12,11 @@ using Product_Service.Data;
 namespace Product_Service.Migrations
 {
     [DbContext(typeof(ProductDbContext))]
-    partial class ProductDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909213530_AddProductLayer")]
+    partial class AddProductLayer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -85,11 +88,6 @@ namespace Product_Service.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
-
                     b.Property<int>("Visits")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -101,9 +99,6 @@ namespace Product_Service.Migrations
                         .IsUnique();
 
                     b.HasIndex("CreatedAt");
-
-                    b.HasIndex("Slug")
-                        .IsUnique();
 
                     b.HasIndex("Visits");
 

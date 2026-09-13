@@ -3,10 +3,14 @@ namespace Product_Service.Models.DTOs;
 public sealed class ProductResponse
 {
     public int Id { get; set; }
+    public string Slug { get; set; } = null!;
     public string CanonicalKey { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string Brand { get; set; } = null!;
     public string Category { get; set; } = null!;
+    public string BodyArea { get; set; } = null!;
+    public string Gender { get; set; } = null!;
+    public string Layer { get; set; } = null!;
     public string? Description { get; set; }
     public string? Image { get; set; }
     public int Visits { get; set; }
