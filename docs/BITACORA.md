@@ -340,6 +340,46 @@ DTO todavía; el costo de ese acoplamiento quedó anotado en ADR-016 para no olv
 
 ## Semana 3 · 7–13 sep 2026 · Entrega EP1
 
+### 09-09 · Tarjetas acotadas, taxonomía corporal y nuevas tiendas
+
+**Orion —** Se corrigió de extremo a extremo la fila que crecía hasta el alto de todos los SKU
+de Falabella. Product Service conserva las variantes en PostgreSQL, pero responde una oferta por
+tienda —la disponible más barata, con tallas unificadas—; el adaptador Vue repite la consolidación
+como defensa durante despliegues graduales y cada tarjeta resume como máximo cuatro tiendas.
+
+La taxonomía separa ahora `category`, `bodyArea` y `gender`. Quedaron comprobados en vivo un
+gorro de mujer (`Cabeza`), un polerón (`Torso`), calcetines (`Pies`), ropa interior femenina y
+masculina (`Piernas`) y un conjunto infantil (`Cuerpo completo`). EF Core agregó las migraciones
+`AddProductTaxonomy` y `BackfillProductTaxonomy`; esta última clasifica también las 221 filas que
+ya existían.
+
+Se encontró por qué Paris e Hites aparentaban no tener productos: el descubridor limitaba sus
+sitemaps antes de filtrar hogar/electrónica. Se invirtió ese orden y se añadieron H&M Chile
+(JSON-LD + variantes Next.js) y La Polar/ABC (microdatos), con fixtures tomados de fichas reales.
+Zara y Ripley siguen rechazando sus sitemaps al User-Agent identificado, por lo que no se falseó
+un navegador ni se afirmó cobertura inexistente.
+
+Prueba local completa:
+
+```text
+Product Service: 227 productos, 0 productos con tiendas repetidas
+Tiendas con datos: falabella, paris, hites, hym, lapolar
+Categorías nuevas visibles: Gorros, Calcetines, Conjuntos,
+  Ropa interior femenina, Ropa interior masculina
+Barrido vivo Paris/Hites/H&M/La Polar: 7/7 guardados y sincronizados, 0 fallos
+Scraper: 135 passed, 7 skipped (integraciones opcionales)
+Frontend: build correcto; humo sin fallos
+```
+
+Además, una instalación nueva del frontend activa todas las tiendas que entrega la API. Antes
+heredaba los cinco ids de los mocks y dejaba tres fuentes reales desmarcadas sin intervención.
+
+**Panditax —**
+
+**Del equipo:**
+
+---
+
 **Martín —**
 
 (10-09, madrugada) 🚀 **El sistema completo montado y medido en AWS, y el borde por fin en el
@@ -742,3 +782,88 @@ de DNS**, que es el único paso fuera de AWS.
 
 **Lo que queda, y no es técnico:** decidir **en qué cuenta vive el sistema**. Hasta entonces el
 despliegue depende de que otra persona encienda su laboratorio, y eso no se arregla con código.
+
+---
+
+### 09-09 · Experiencia de catálogo, tallas y outfits
+
+**Orion —** En `feature/frontend-experiencia-catalogo` se alineó la interfaz del monorepo con el
+contrato multi-oferta actual sin cambiar su identidad de papel, tinta y tickets.
+
+- La ficha muestra las tallas informadas por **cada tienda**, junto con el número de ofertas y
+  tallas disponibles del producto.
+- El armador separa talla de ropa y talla de calzado, descarta ofertas incompatibles o agotadas,
+  conserva las preferencias en el navegador y puede completar las ranuras con la combinación
+  comprable más barata. El resumen usa las mismas tallas para comparar compra repartida y compra
+  en una sola tienda.
+- El selector permite buscar y ordenar prendas y explica el stock aplicable antes de elegir.
+- Los anuncios pasaron a pausas naturales: después de seis resultados, después de elegir tienda y
+  después del armador. Inicio de sesión, registro, retorno OAuth y 404 quedan sin anuncios.
+- Se reforzó la jerarquía visual con textura de papel, reglas de acento, separación de paneles y
+  estados de disponibilidad, conservando los tokens y componentes existentes.
+
+Verificación:
+
+```bash
+cd frontend
+npm run build
+npm run humo
+```
+
+Resultado: build de producción correcto y **0 comprobaciones fallidas**. La consulta opcional del
+sitemap al backend se omitió porque los contenedores locales estaban detenidos a propósito.
+
+**Panditax —**
+
+**Del equipo:**
+
+---
+
+### 13-09 · URL canónica por slug en Product Service v2
+
+**Orion —** La rama `feature/frontend-experiencia-catalogo` se actualizó por fast-forward desde
+`origin/development` (`734ebf1`) antes de continuar. Los cambios locales se protegieron en un
+stash y, al restaurarlos, el único conflicto fue esta bitácora; se conservaron ambas historias.
+
+Product Service ahora genera un `slug` único al crear el producto, lo persiste sin modificarlo
+cuando cambia el nombre y lo incluye en `ProductResponse`. La migración `AddProductSlug` rellena
+las filas existentes desde `canonicalKey` antes de aplicar `NOT NULL` y el índice único.
+
+V1 conserva `GET /api/products/{id}`. En V2, esa misma entrada por ID responde con una redirección
+a `/api/products/{slug}` y el nuevo `GetProductBySlug` devuelve el producto desde la URL canónica.
+La versión sigue viajando en la cabecera `Version`, de acuerdo con el contrato del servicio.
+
+El gateway conserva V1 como valor predeterminado, pero ahora reenvía la versión pedida por el
+cliente y publica `GET /productos/{slug}`. Cuando V2 responde desde la entrada numérica, desactiva
+el seguimiento automático de redirecciones y transforma el `Location` interno
+`/api/products/{slug}` en la URL pública `/productos/{slug}`. Los patrones excluyen slugs
+puramente numéricos para que `/productos/2` nunca compita con la ruta por id.
+
+El frontend conserva el listado y las visitas en V1, pero abre cada ficha directamente con el slug
+de V2. El adaptador mantiene ese campo, las tarjetas y el sitemap comparten la misma URL canónica y
+los enlaces antiguos `nombre-id` se redirigen sin quedar duplicados en el historial. La ficha deja
+de descargar todo el catálogo antes de mostrar una entrada directa. Durante la validación apareció
+además un defecto del armador: una talla agotada quitaba ranuras del cálculo y el outfit seguía
+marcado como completo; las partes activas ahora dependen del catálogo, no de la talla elegida.
+
+Verificación sin reactivar los contenedores:
+
+```text
+dotnet format --verify-no-changes: correcto
+dotnet build --no-restore: 0 errores, 0 advertencias
+dotnet ef migrations has-pending-model-changes: sin cambios pendientes
+dotnet ef migrations script: migración transaccional renderizada correctamente
+arranque del gateway y selección de rutas id/slug: correctos
+npm run humo: 0 comprobaciones fallidas
+npm run build: compilación de producción correcta
+pytest -m "not red": 137 aprobadas, 7 integraciones omitidas
+ruff y mypy: sin hallazgos
+```
+
+La prueba HTTP contra PostgreSQL quedó pendiente porque los contenedores se mantienen detenidos
+por petición expresa; `Product-Service.http` deja preparados los tres requests para probar V1,
+la redirección V2 y la lectura directa por slug cuando se reactive el entorno.
+
+**Panditax —**
+
+**Del equipo:**
