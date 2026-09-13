@@ -1,15 +1,18 @@
-// Slug legible para las URL del sitio.
-//
-// La URL del detalle ES el slug:
-//   /producto/poleron-ck-institutional-blanco-42
-// Como la API identifica los productos por id, la vista del detalle resuelve
-// el slug mirando el catálogo del store y con ese id pide la ficha. El id se
-// incluye porque dos productos canónicos todavía pueden compartir nombre; sin
-// él una ficha y una entrada del sitemap quedarían ocultas tras la otra.
+// Slug canónico que entrega Product Service. La forma antigua `nombre-id` se
+// conserva sólo para poder redirigir enlaces guardados antes de API V2.
 
 const MAX_SLUG = 60
+const SLUG_VALIDO = /^(?![0-9]+$)[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export function slugProducto(producto) {
+  const canonico = String(producto?.slug ?? '').trim()
+
+  if (SLUG_VALIDO.test(canonico)) return canonico
+
+  return slugProductoAnterior(producto)
+}
+
+export function slugProductoAnterior(producto) {
   if (!producto || typeof producto.nombre !== 'string') return 'producto'
 
   const identidad = String(producto.id ?? '').trim()

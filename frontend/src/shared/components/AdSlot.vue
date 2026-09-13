@@ -44,7 +44,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <aside v-if="visible" class="anuncio" :style="{ minHeight: `${alto}px` }">
+  <aside
+    v-if="visible"
+    class="anuncio"
+    :style="{ minHeight: `${alto}px` }"
+    aria-label="Publicidad"
+  >
     <!-- Etiquetar el anuncio está permitido por las políticas de AdSense
          (siempre que la etiqueta sea neutra) y en un comparador de precios es
          lo honesto: un anuncio que se confunde con un producto engaña. -->
@@ -65,10 +70,16 @@ onMounted(async () => {
 .anuncio {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--cep-sp-15);
+  width: min(100%, 58rem);
+  margin-inline: auto;
+  padding: var(--cep-sp-3) 0;
+  border-top: 1px solid var(--cep-line);
+  border-bottom: 1px solid var(--cep-line);
 }
 .anuncio__marca {
-  align-self: flex-start;
   font-size: var(--cep-fs-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -77,5 +88,6 @@ onMounted(async () => {
 .anuncio__bloque {
   display: block;
   width: 100%;
+  text-align: center;
 }
 </style>

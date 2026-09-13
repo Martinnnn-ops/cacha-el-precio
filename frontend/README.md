@@ -1,6 +1,6 @@
 # cacha-el-precio — frontend modular
 
-Comparador de precios de ropa entre Ripley, Paris, Zara, H&M y Mango.
+Comparador de precios de ropa que deriva tiendas, categorías y tallas del catálogo real.
 Vue 3 (`<script setup>`) + Vite + Pinia + Vue Router 4 + axios.
 
 ```bash
@@ -33,8 +33,8 @@ usuario.
 
 | Qué pasa | Dónde se resuelve |
 |---|---|
-| El contrato vigente es `1.0` | `core/api/http.js` manda `Version: 1.0` en cada petición |
-| Las rutas públicas son `GET /productos` y `GET /productos/{id}` | el servicio del módulo las llama tal cual |
+| El listado conserva el contrato `1.0` | `comparador.service.js` pide `GET /productos` con `Version: 1.0` |
+| La ficha usa el contrato canónico `2.0` | pide `GET /productos/{slug}` con `Version: 2.0`; la entrada por id redirige al slug |
 | El frontend y el gateway ocupan puertos distintos en desarrollo | el proxy de Vite intercepta `/api`, **le quita el prefijo** y reenvía a `BACKEND_URL=http://localhost:8080` |
 | El gateway puede devolver Problem Details o `{ estado, error, mensaje }` | el interceptor traduce ambos formatos a mensajes mostrables |
 
@@ -70,43 +70,49 @@ BACKEND_URL=http://127.0.0.1:8080 npm run humo
 ### El modelo no coincide, y hay un adaptador
 
 ```
-API   Product { id, externalId, store, name, brand, category, price,
-                sizes, description, url, image, active,
-                visits, createdAt }
-App   Producto { id, nombre, categoria, precios[], historial[],
+API   Product { id, slug, canonicalKey, name, brand, category, bodyArea, gender, layer, description,
+                image, visits, createdAt, offers[] }
+      Offer   { id, externalId, store, price, sizes[], url, image,
+                active, updatedAt }
+App   Producto { id, slug, nombre, categoria, zona, genero, capa, imagen, precios[], historial[],
                  vistas, agregadoHace }
 ```
 
 `services/producto.adapter.js` traduce una cosa en la otra. `category` alimenta
-los filtros, `store` identifica la fuente de precio y `sizes` se transforma en
-la lista de tallas disponibles. `visits` y `createdAt` son los dos campos por
+los filtros, cada elemento de `offers[]` se transforma en una oferta de
+`precios[]` y `sizes` conserva tallas alfabéticas y numéricas. La imagen del
+producto tiene prioridad y, si falta, se usa la primera imagen de una oferta.
+`bodyArea` alimenta directamente las ranuras del armador —cabeza, torso,
+piernas y pies—; el mapa por categoría queda sólo como compatibilidad con
+respuestas antiguas. El adaptador también consolida defensivamente los SKU
+repetidos de una misma tienda y limita el resumen de tarjeta a cuatro tiendas.
+`slug` se conserva para que el detalle, las tarjetas y el sitemap compartan la
+misma URL canónica que el backend. Los enlaces antiguos `nombre-id` se reconocen
+y se reemplazan sin añadirlos al historial. `visits` y `createdAt` son los dos campos por
 los que ordena la portada; si el adaptador dejara de producirlos con el nombre
 que el store espera, las secciones «Lo más visto» y «Lo más reciente»
 ordenarían por nada **sin dar ningún error** — ya pasó, y por eso `npm run
 humo` lo comprueba contra datos reales.
 
-#### Lo que falta para que esto sea un comparador
+#### Comparación multi-tienda y degradación
 
-La API guarda una oferta por fila, pero todavía no relaciona automáticamente
-el mismo artículo entre varias tiendas. Para comparar una prenda equivalente
-hace falta una identidad de producto compartida y ofertas separadas:
+El Product Service entrega un producto canónico con todas sus ofertas. El
+frontend conserva esa agrupación: una sola ficha muestra las tiendas, sus
+precios, enlaces, imágenes y tallas disponibles. `canonicalKey` identifica el
+modelo y `(store, externalId)` identifica cada publicación de tienda.
 
 ```
-Oferta { id, productoId, tiendaId, precio, precioLista, stock, fecha }
-Tienda { id, nombre }
+Product { canonicalKey, offers: Offer[] }
+Offer   { externalId, store, price, sizes[], active }
 ```
 
-Con eso el adaptador agrupa por `productoId` y **todo lo demás ya está escrito**:
-el cálculo del más barato, el ahorro entre tiendas, el gráfico de historial y
-los filtros por tienda.
-
-Mientras tanto la interfaz se degrada sola en vez de mentir:
+La interfaz sigue degradándose sin inventar datos cuando el backend omite un
+campo:
 
 | Falta en la API | Qué hace la app hoy |
 |---|---|
-| agrupación del mismo producto entre tiendas | cada oferta se muestra como un producto independiente |
 | precio de lista | no pinta el porcentaje de descuento |
-| stock por talla | usa `active` para la oferta y `sizes` para cada talla |
+| tallas de una oferta | indica que la tienda no informó tallas; no inventa disponibilidad |
 | historial de precios | la ficha muestra «todavía no tenemos historial» |
 | ~~contador de visitas~~ | ✅ resuelto: la ficha registra una visita por día y por navegador, y «Lo más visto» ordena por el número real |
 
@@ -145,6 +151,12 @@ puede desplegar sin ellos: la portada se ve limpia, sin cajas vacías.
   reserva empujaría el contenido; ese salto lo mide Core Web Vitals (CLS).
 - **Los bloques van etiquetados «Publicidad».** Las políticas de AdSense
   permiten etiquetas neutras, y en un comparador de precios es lo honesto.
+- **Interrumpen lo mínimo.** En la portada aparecen después del contenido de
+  outfits; en el catálogo, después de los primeros seis resultados; en la
+  ficha, después de comparar tiendas; y en el armador, después de terminar el
+  flujo. El bloque de cierre vive en el layout.
+- **Las pantallas de sesión, retorno OAuth y error no llevan anuncios.** No son
+  contenido editorial y se marcan con `meta.sinAnuncios`.
 
 ### Pendiente
 
@@ -226,8 +238,8 @@ El layout de cada ruta se declara en su `meta.layout` y lo resuelve `App.vue`.
 
 | Layout | Rutas | Qué tiene |
 |---|---|---|
-| `default` | catálogo, ficha, legales | cabecera completa + pie completo. Con `meta.ancho: 'lectura'` estrecha el contenido a 820px |
-| `auth` | entrar, registro, retorno de Google | barra mínima con la marca y pie sólo con enlaces legales. Sin buscador ni filtro de tiendas: en una pantalla de sesión, cada elemento de más es una salida por la que abandonar el proceso |
+| `default` | catálogo, ficha, outfits, legales, entrar y registro | cabecera completa + pie completo. Con `meta.ancho: 'lectura'` estrecha el contenido a 820px |
+| `auth` | retorno de Google | marco mínimo para una pantalla de paso que termina el inicio de sesión |
 
 Viven en `src/layouts/` y **no** en `shared/`: son parte del punto de
 composición, como `App.vue` y `core/router`. Son el único sitio donde el marco
@@ -244,8 +256,11 @@ durante el render, el usuario ve una pantalla con salida en vez de un blanco.
 |---|---|---|
 | `/` | `InicioView` | Portada: destacado, Lo más reciente, Lo más visto, Categorías populares, Ofertas del día y dos huecos de anuncio. |
 | `/comparador` | `ComparadorView` | Búsqueda, filtro por tienda y rejilla de resultados. Acepta `?categoria=Poleras`. |
-| `/producto/:slug` | `ProductoDetailView` | Precio por tienda e historial. Un slug que no está en el catálogo cae en el 404. |
-| `/entrar`, `/registro` | módulo `cuenta` | Sesión. |
+| `/producto/:slug` | `ProductoDetailView` | Consulta directa por slug V2, muestra ofertas y tallas por tienda y redirige enlaces antiguos `nombre-id`. |
+| `/comparar` | `CompararView` | Compara hasta tres productos en columnas equivalentes. |
+| `/outfits` | `OutfitsView` | Outfits automáticos y selecciones preparadas. |
+| `/armar` | `ArmarView` | Armador por partes con talla separada de ropa/calzado, stock real, autocompletado más barato y comparación entre comprar separado o en una tienda. |
+| `/login`, `/registro` | módulo `cuenta` | Sesión con cabecera y pie, sin anuncios. `/entrar` redirige a `/login`. |
 | `/terminos`, `/privacidad`, `/preguntas` | módulo `legal` | Páginas de texto. |
 
 ---
@@ -279,7 +294,8 @@ Contrato del BFF, verificado con `curl` contra el sistema corriendo:
 | Endpoint | Acceso | Sin token |
 |---|---|---|
 | `GET /productos` | público | 200 |
-| `GET /productos/{id}` | público | 200 · 404 si no existe |
+| `GET /productos/{id}` · V2 | público | 302 hacia `/productos/{slug}` · 404 si no existe |
+| `GET /productos/{slug}` · V2 | público | 200 · 404 si no existe |
 | `GET /catalogos` | público | 200 |
 | `POST /productos/{id}/visitas` | público | 204 |
 | `POST/PUT/DELETE /productos` | token con scope de escritura | **401** |
@@ -287,7 +303,9 @@ Contrato del BFF, verificado con `curl` contra el sistema corriendo:
 | `GET /seguimiento` · `POST/DELETE /seguimiento/{id}` | autenticado | **401** |
 | `GET /health` | público | 200 |
 
-Todas con `Version: 1.0`.
+El listado y las visitas usan `Version: 1.0`; la ficha usa `Version: 2.0`. El
+gateway conserva V1 como valor predeterminado, reenvía la versión explícita y
+traduce las redirecciones del Product Service a su contrato público.
 
 El frontend sólo consume las operaciones públicas. Las categorías y tiendas se
 derivan de la respuesta del listado, no de `/catalogos`: ya no hace falta un

@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
-import { IDS_PARTES, parteDeCategoria } from '@/modules/outfits/data/partes'
+import { IDS_PARTES, parteDeProducto } from '@/modules/outfits/data/partes'
 import { precioMasBajo } from '@/shared/utils/precios'
 
 // Rellena una plantilla con prendas reales del catálogo.
@@ -15,7 +15,7 @@ export function useOutfitArmado() {
   // La prenda más barata de una parte, opcionalmente acotada a unas categorías.
   function masBarataDe(parte, categorias) {
     const candidatas = catalogo.productos.filter((p) => {
-      if (parteDeCategoria(p.categoria) !== parte) return false
+      if (parteDeProducto(p) !== parte) return false
 
       if (!categorias?.length) return true
 

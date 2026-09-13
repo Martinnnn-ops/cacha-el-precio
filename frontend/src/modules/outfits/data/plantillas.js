@@ -21,9 +21,10 @@ export const AUTOMATICAS = [
     nombre: 'Para la oficina',
     descripcion: 'Camisa, pantalón y zapatos. Sobrio y sin gastar de más.',
     porParte: {
-      torso: ['Camisas', 'Chalecos'],
+      'torso-base': ['Camisas'],
+      'torso-abrigo': ['Chalecos'],
       piernas: ['Pantalones'],
-      pies: ['Zapatos'],
+      calzado: ['Zapatos'],
     },
   },
   {
@@ -32,9 +33,9 @@ export const AUTOMATICAS = [
     descripcion: 'Polera, jeans y zapatillas. El uniforme de no hacer nada.',
     porParte: {
       cabeza: ['Jockeys', 'Gorros'],
-      torso: ['Poleras'],
+      'torso-base': ['Poleras'],
       piernas: ['Pantalones'],
-      pies: ['Zapatillas'],
+      calzado: ['Zapatillas'],
     },
   },
   {
@@ -43,9 +44,9 @@ export const AUTOMATICAS = [
     descripcion: 'Abrigo, gorro y calzado cerrado para los días malos.',
     porParte: {
       cabeza: ['Gorros'],
-      torso: ['Abrigos', 'Chaquetas'],
+      'torso-abrigo': ['Abrigos', 'Chaquetas'],
       piernas: ['Pantalones'],
-      pies: ['Zapatos', 'Zapatillas'],
+      calzado: ['Zapatos', 'Zapatillas'],
     },
   },
 ]
@@ -58,9 +59,9 @@ export const FIJAS = [
     descripcion: 'La combinación que más se arma en el comparador.',
     prendas: {
       cabeza: '8',
-      torso: '1',
+      'torso-base': '1',
       piernas: '2',
-      pies: '9',
+      calzado: '9',
     },
   },
 ]

@@ -1,29 +1,24 @@
 <script setup>
-import { computed } from 'vue'
-
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import BaseButton from '@/shared/components/BaseButton.vue'
 import BaseTicket from '@/shared/components/BaseTicket.vue'
 import PrendaArt from '@/shared/components/PrendaArt.vue'
 import { formatearPrecio } from '@/shared/utils/formato'
-import { precioMasBajo } from '@/shared/utils/precios'
 
 // Una parte del cuerpo en el armador: vacía, con prenda, o cubierta por una
 // prenda de cuerpo completo puesta en otra ranura.
-const props = defineProps({
+defineProps({
   parte: { type: Object, required: true },
   producto: { type: Object, default: null },
   bloqueada: { type: Boolean, default: false },
   opciones: { type: Number, default: 0 },
+  oferta: { type: Object, default: null },
+  talla: { type: String, default: '' },
 })
 
 defineEmits(['elegir', 'quitar'])
 
 const { nombreTienda } = useTiendas()
-
-const oferta = computed(() =>
-  props.producto ? precioMasBajo(props.producto) : null,
-)
 </script>
 
 <template>
@@ -34,9 +29,7 @@ const oferta = computed(() =>
     <template v-if="bloqueada">
       <div class="ranura__cubierta">
         <p class="ranura__nombre">{{ producto?.nombre }}</p>
-        <p class="mono muted ranura__nota">
-          Esta parte ya la cubre la prenda del torso.
-        </p>
+        <p class="mono muted ranura__nota">Esta capa ya la cubre la prenda de cuerpo completo.</p>
       </div>
     </template>
 
@@ -60,7 +53,11 @@ const oferta = computed(() =>
             <span class="muted">en {{ nombreTienda(oferta.tienda) }}</span>
           </p>
 
-          <p v-else class="mono ranura__agotada">Sin stock ahora mismo</p>
+          <p v-if="talla && oferta" class="mono ranura__talla">Talla {{ talla }}</p>
+
+          <p v-else-if="!oferta" class="mono ranura__agotada">
+            {{ talla ? `Sin stock en talla ${talla}` : 'Sin stock ahora mismo' }}
+          </p>
         </div>
       </div>
 
@@ -68,9 +65,7 @@ const oferta = computed(() =>
         <BaseButton variante="secundario" tamano="chico" @click="$emit('elegir')">
           Cambiar
         </BaseButton>
-        <BaseButton variante="texto" tamano="chico" @click="$emit('quitar')">
-          Quitar
-        </BaseButton>
+        <BaseButton variante="texto" tamano="chico" @click="$emit('quitar')"> Quitar </BaseButton>
       </div>
     </template>
 
@@ -92,9 +87,7 @@ const oferta = computed(() =>
 
       <!-- Sin prendas de esta parte en el catálogo se dice, en vez de dejar un
            botón que no lleva a ninguna parte. -->
-      <p v-else class="mono muted ranura__nota">
-        Todavía no tenemos prendas para esta parte.
-      </p>
+      <p v-else class="mono muted ranura__nota">Todavía no tenemos prendas para esta parte.</p>
     </template>
   </BaseTicket>
 </template>
@@ -149,6 +142,16 @@ const oferta = computed(() =>
   margin: 0;
   font-size: var(--cep-fs-xs);
   color: var(--cep-alerta);
+}
+.ranura__talla {
+  display: inline-flex;
+  width: fit-content;
+  margin: var(--cep-sp-1) 0 0;
+  padding: var(--cep-sp-05) var(--cep-sp-2);
+  background: var(--cep-wash);
+  border-radius: var(--cep-r-sm);
+  color: var(--cep-muted);
+  font-size: var(--cep-fs-2xs);
 }
 
 .ranura__hueco {

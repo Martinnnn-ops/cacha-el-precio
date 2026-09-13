@@ -3,7 +3,7 @@
 // se descarga hasta que alguien entra en esa ruta.
 
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
-import { slugProducto } from '@/shared/utils/slug'
+import { slugProducto, slugProductoAnterior } from '@/shared/utils/slug'
 
 // ¿Ese slug NO corresponde a ningún producto? Solo se responde cuando se puede
 // responder de verdad, es decir con el catálogo ya en memoria.
@@ -27,10 +27,17 @@ import { slugProducto } from '@/shared/utils/slug'
 function elSlugNoExiste(slug) {
   const store = useComparadorStore()
 
+  // La entrada histórica por id sigue siendo válida en V2: el backend la
+  // redirige al slug y la vista actualiza la URL visible.
+  if (/^[0-9]+$/.test(slug)) return false
+
   // Sin catálogo no hay nada que afirmar. Decir "no existe" sería inventar.
   if (store.productos.length === 0) return false
 
-  return !store.productos.some((producto) => slugProducto(producto) === slug)
+  return !store.productos.some(
+    (producto) =>
+      slugProducto(producto) === slug || slugProductoAnterior(producto) === slug,
+  )
 }
 
 // Destino del 404 conservando la URL que se pidió. La ruta se llama

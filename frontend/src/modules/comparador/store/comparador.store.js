@@ -17,12 +17,14 @@ function leerPreferencia() {
   try {
     const guardado = JSON.parse(localStorage.getItem(CLAVE_TIENDAS) ?? 'null')
 
-    if (Array.isArray(guardado) && guardado.length > 0) return guardado
+    if (Array.isArray(guardado) && guardado.length > 0) {
+      return { ids: guardado, explicita: true }
+    }
   } catch {
     // Almacenamiento bloqueado o valor corrupto: se cae al valor por defecto.
   }
 
-  return TIENDAS.map((t) => t.id)
+  return { ids: TIENDAS.map((t) => t.id), explicita: false }
 }
 
 function guardarPreferencia(ids) {
@@ -34,6 +36,7 @@ function guardarPreferencia(ids) {
 }
 
 export const useComparadorStore = defineStore('comparador', () => {
+  const preferenciaInicial = leerPreferencia()
   // ——— estado ———
   const productos = ref([])
   // La lista de tiendas ya no es una constante: con backend se deriva del
@@ -58,7 +61,8 @@ export const useComparadorStore = defineStore('comparador', () => {
   // lista escrita a mano.
   const atributos = ref({})
   // Preferencia del usuario, persistida: qué tiendas quiere ver en toda la web.
-  const tiendasActivas = ref(leerPreferencia())
+  const tiendasActivas = ref(preferenciaInicial.ids)
+  let preferenciaExplicita = preferenciaInicial.explicita
   const cargando = ref(false)
   const error = ref(null)
   // Marca de tiempo de la última carga con éxito. Sólo se mueve cuando la
@@ -410,7 +414,14 @@ export const useComparadorStore = defineStore('comparador', () => {
 
   // Se persiste desde un watch y no dentro de cada acción: así también se
   // guarda cuando la cabecera escribe la lista entera con v-model.
-  watch(tiendasActivas, guardarPreferencia, { deep: true })
+  watch(
+    tiendasActivas,
+    (ids) => {
+      preferenciaExplicita = true
+      guardarPreferencia(ids)
+    },
+    { deep: true },
+  )
 
   // ——— derivados de la portada ———
   // La portada respeta la PREFERENCIA de tiendas (es una elección deliberada
@@ -510,7 +521,9 @@ export const useComparadorStore = defineStore('comparador', () => {
       )
 
       tiendasActivas.value =
-        validas.length > 0 ? validas : lista.map((t) => t.id)
+        !preferenciaExplicita || validas.length === 0
+          ? lista.map((t) => t.id)
+          : validas
     } catch {
       // Si la consulta de productos falla se sigue con la lista por defecto:
       // dejar la cabecera sin ninguna tienda que ofrecer.
@@ -521,7 +534,7 @@ export const useComparadorStore = defineStore('comparador', () => {
   // de que llegue la respuesta, la primera no debe pisar a la segunda.
   let peticion = 0
 
-  async function cargarProducto(id) {
+  async function cargarProducto(slug) {
     const actual = ++peticion
 
     cargando.value = true
@@ -529,7 +542,7 @@ export const useComparadorStore = defineStore('comparador', () => {
     producto.value = null
 
     try {
-      const resultado = await obtenerProducto(id)
+      const resultado = await obtenerProducto(slug)
 
       if (actual !== peticion) return
 

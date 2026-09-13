@@ -6,7 +6,13 @@ export default [
     // Sin `layout`: usa el layout por defecto, con cabecera y pie completos.
     // `ancho: 'lectura'` estrecha la columna para que la tarjeta no quede
     // perdida en 1180px.
-    meta: { titulo: 'Entrar', soloInvitados: true, ancho: 'lectura', centrado: true },
+    meta: {
+      titulo: 'Entrar',
+      soloInvitados: true,
+      ancho: 'lectura',
+      centrado: true,
+      sinAnuncios: true,
+    },
   },
   {
     // La URL anterior estuvo publicada: se redirige en vez de romperla, que es
@@ -21,7 +27,13 @@ export default [
     path: '/registro',
     name: 'registro',
     component: () => import('@/modules/cuenta/views/EntrarView.vue'),
-    meta: { titulo: 'Crear cuenta', soloInvitados: true, ancho: 'lectura', centrado: true },
+    meta: {
+      titulo: 'Crear cuenta',
+      soloInvitados: true,
+      ancho: 'lectura',
+      centrado: true,
+      sinAnuncios: true,
+    },
   },
   {
     // Vuelta de Google. NO lleva `soloInvitados`: aquí se llega sin sesión y
@@ -33,6 +45,6 @@ export default [
     path: '/auth/google',
     name: 'retorno-google',
     component: () => import('@/modules/cuenta/views/RetornoGoogleView.vue'),
-    meta: { titulo: 'Entrando', layout: 'auth' },
+    meta: { titulo: 'Entrando', layout: 'auth', sinAnuncios: true },
   },
 ]
