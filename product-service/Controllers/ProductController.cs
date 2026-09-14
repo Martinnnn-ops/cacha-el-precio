@@ -56,7 +56,10 @@ public class ProductController : ControllerBase
         };
     }
 
-    [HttpGet("{slug:regex(^(?![0-9]+$)[a-z0-9]+(?:-[a-z0-9]+)*$)}")]
+    // En rutas por atributo, los corchetes simples se interpretan como tokens
+    // de reemplazo (por ejemplo, [controller]). Se duplican para que lleguen
+    // como literales a la expresión regular del constraint.
+    [HttpGet("{slug:regex(^(?![[0-9]]+$)[[a-z0-9]]+(?:-[[a-z0-9]]+)*$)}")]
     [MapToApiVersion("2.0")]
     public async Task<ActionResult<ProductResponse>> GetProductBySlug(string slug)
     {
