@@ -867,3 +867,56 @@ la redirección V2 y la lectura directa por slug cuando se reactive el entorno.
 **Panditax —**
 
 **Del equipo:**
+
+---
+
+### 14-09 · Despliegue reproducible y catálogo de seis tiendas
+
+**Orion —** Se levantó una cuenta nueva del Learner Lab desde cero con los scripts del
+repositorio: Cognito, API Gateway, EC2 `t3.small` con Elastic IP, bucket web S3 y bucket privado
+de respaldos. La EC2 ejecuta Caddy, Gateway, Product Service, PostgreSQL y Scraper API mediante
+Docker Compose. El frontend quedó compilado con el client ID y la URL del API Gateway de esta
+misma cuenta; el script comprobó ambos valores dentro del bundle antes de subirlo.
+
+La primera ejecución descubrió dos fallos que no aparecían en la compilación local:
+
+- Product Service abortaba al construir las rutas porque los corchetes de la expresión regular
+  del slug se interpretaban como tokens de una ruta por atributo. Se escaparon como `[[...]]` y
+  se comprobó el arranque sin reinicios, la lectura v1 y una ficha v2 por slug.
+- GitHub respondió 504 al descargar Buildx. Los scripts ahora reintentan errores transitorios y
+  descargan a un temporal antes de instalar, para no reemplazar un binario válido con una
+  descarga incompleta.
+
+S3 sirve `index.html` como documento de error, pero mantiene el HTTP 404. El despliegue publica
+además las once rutas estáticas conocidas como objetos sin extensión, de modo que portada,
+comparador, login, outfits y páginas informativas responden 200 al abrirse o recargarse. Las
+fichas dinámicas `/producto/:slug` siguen dependiendo del CDN del dominio definitivo para
+reescribir cualquier ruta a la SPA con estado 200.
+
+Se ejecutó una carga inicial respetando la pausa por tienda, de forma secuencial. El contrato
+público quedó con **325 productos canónicos y 325 ofertas visibles**, distribuidas así:
+
+| Tienda | Ofertas visibles | Con imagen | Con tallas informadas |
+|---|---:|---:|---:|
+| Falabella | 229 | 229 | 202 |
+| Paris | 30 | 30 | 0 |
+| Hites | 24 | 24 | 0 |
+| H&M | 22 | 22 | 22 |
+| La Polar / ABC | 17 | 17 | 16 |
+| Sparta | 3 | 3 | 0 |
+
+La diferencia entre fichas sincronizadas y ofertas visibles ocurre porque Product Service
+consolida los SKU de una misma tienda antes de responder. El catálogo expone las seis tiendas y
+categorías como gorros, jockeys, polerones, ropa interior femenina y masculina, vestidos,
+pantalones, zapatillas y zapatos. Se verificaron además: catálogo público 200, ruta protegida sin
+token 401, acceso directo a la EC2 sin el encabezado del borde 403, CORS desde el origen S3 y una
+imagen real 200.
+
+Después de la ingesta se ejecutó un respaldo inmediato y se confirmó el archivo comprimido en el
+bucket privado. El temporizador horario también quedó activo. Pendiente fuera del repositorio:
+apuntar Cloudflare a la nueva IP/bucket y configurar el proveedor de Google con credenciales
+rotadas y su nueva URL de retorno.
+
+**Panditax —**
+
+**Del equipo:**
