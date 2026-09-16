@@ -158,9 +158,12 @@ BUILDX_VER="\$(docker buildx version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+' | 
 if [ -z "\$BUILDX_VER" ] || [ "\$BUILDX_VER" -lt 17 ]; then
   echo "  buildx viejo o ausente, instalando v0.17.1..."
   sudo mkdir -p /usr/local/lib/docker/cli-plugins
-  sudo curl -fsSL https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-amd64 \
-    -o /usr/local/lib/docker/cli-plugins/docker-buildx
-  sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+  BUILDX_TMP="\$(mktemp)"
+  curl -fsSL --retry 4 --retry-all-errors --connect-timeout 15 \
+    https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-amd64 \
+    -o "\$BUILDX_TMP"
+  sudo install -m 755 "\$BUILDX_TMP" /usr/local/lib/docker/cli-plugins/docker-buildx
+  rm -f "\$BUILDX_TMP"
   echo "  buildx ahora: \$(docker buildx version | head -1)"
 else
   echo "  buildx ya sirve: \$(docker buildx version | head -1)"
@@ -430,8 +433,32 @@ if [[ -n "$FALLO" ]]; then
 fi
 verde "  verificado dentro del bundle: client id y API de esta cuenta"
 
-aws --region "$INFRA_REGION" s3 sync dist/ "s3://$INFRA_BUCKET/" --delete --only-show-errors \
-  && verde "  subido a s3://$INFRA_BUCKET/" || rojo "  fallo la subida"
+if ! aws --region "$INFRA_REGION" s3 sync dist/ "s3://$INFRA_BUCKET/" \
+     --delete --only-show-errors; then
+  rojo "  fallo la subida a s3://$INFRA_BUCKET/"
+  exit 1
+fi
+
+# El sitio usa createWebHistory. S3 entrega index.html como documento de error
+# para una ruta desconocida, pero conserva el estado HTTP 404. Las rutas
+# estaticas conocidas se publican tambien como objetos sin extension para que
+# abrirlas o recargarlas directamente responda 200. Las fichas dinamicas
+# /producto/:slug siguen necesitando el CDN que sirve el dominio definitivo.
+RUTAS_SPA=(
+  comparador comparar login entrar registro auth/google
+  terminos privacidad preguntas outfits armar
+)
+for RUTA in "${RUTAS_SPA[@]}"; do
+  if ! aws --region "$INFRA_REGION" s3 cp dist/index.html \
+       "s3://$INFRA_BUCKET/$RUTA" \
+       --content-type "text/html; charset=utf-8" \
+       --cache-control "no-cache, no-store, must-revalidate" \
+       --only-show-errors; then
+    rojo "  no se pudo publicar la ruta SPA /$RUTA"
+    exit 1
+  fi
+done
+verde "  subido a s3://$INFRA_BUCKET/ (${#RUTAS_SPA[@]} rutas SPA con respuesta 200)"
 fi
 
 # ---------------------------------------------------------------------------
