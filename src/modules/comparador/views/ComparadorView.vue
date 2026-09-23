@@ -10,7 +10,7 @@ import ProductoCard from '@/modules/comparador/components/ProductoCard.vue'
 import ProductoCardSkeleton from '@/modules/comparador/components/ProductoCardSkeleton.vue'
 import AdSlot from '@/shared/components/AdSlot.vue'
 import AvisoDatos from '@/shared/components/AvisoDatos.vue'
-import BaseButton from '@/shared/components/BaseButton.vue'
+import BasePaginacion from '@/shared/components/BasePaginacion.vue'
 import BaseSearchInput from '@/shared/components/BaseSearchInput.vue'
 
 // Anuncio del listado. Va DESPUÉS de los primeros resultados, no antes: quien
@@ -31,6 +31,8 @@ const {
   busqueda,
   categoria,
   orden,
+  paginaActual,
+  itemsPorPagina,
   tiendas,
   tiendasActivas,
   filtrosActivos,
@@ -39,52 +41,23 @@ const {
   actualizadoEn,
   datosDesactualizados,
   productosFiltrados,
+  productosPagina,
   totalResultados,
   hayFiltros,
 } = storeToRefs(store)
 
 // Dos filas completas en escritorio (tres tarjetas por fila) antes del
-// anuncio. La persona alcanza a comparar resultados antes de la pausa y el
-// bloque sigue apareciendo sin quedar enterrado al final de cientos de ítems.
+// anuncio, DENTRO de la página actual. Con paginación real ya no hace falta
+// pintar de a tandas para no colgar la pestaña — cada página trae como mucho
+// `itemsPorPagina` productos — así que esto sólo decide dónde entra el
+// anuncio, no cuánto se monta.
 const CORTE_ANUNCIO = 6
 
-// Cuántos resultados se PINTAN de una vez.
-//
-// El catálogo entero llega en una sola respuesta —los filtros se resuelven en
-// el navegador y por eso hacen falta todos—, pero montar un componente por
-// producto no escala: con el catálogo en miles, la pestaña se queda colgada
-// mientras Vue crea las tarjetas, y quien mira sólo ve las primeras tres filas
-// igual.
-//
-// Así que se separa descargar de pintar: se descarga todo y se pinta de a
-// tandas. 48 son ocho filas completas en escritorio, suficiente para que haya
-// que desplazarse antes de llegar al botón.
-const POR_TANDA = 48
-const visibles = ref(POR_TANDA)
-
-const productosVisibles = computed(() =>
-  productosFiltrados.value.slice(0, visibles.value),
-)
-const quedanPorMostrar = computed(() =>
-  Math.max(productosFiltrados.value.length - visibles.value, 0),
-)
-
-function mostrarMas() {
-  visibles.value += POR_TANDA
-}
-
-// Cualquier cambio de filtro empieza de cero. Si no, alguien que cargó ocho
-// tandas y después busca otra cosa se encuentra 400 resultados pintados de
-// golpe, que es justo lo que esto evita.
-watch(productosFiltrados, () => {
-  visibles.value = POR_TANDA
-})
-
 const primerosResultados = computed(() =>
-  productosVisibles.value.slice(0, CORTE_ANUNCIO),
+  productosPagina.value.slice(0, CORTE_ANUNCIO),
 )
 const siguientesResultados = computed(() =>
-  productosVisibles.value.slice(CORTE_ANUNCIO),
+  productosPagina.value.slice(CORTE_ANUNCIO),
 )
 
 onMounted(() => store.cargarProductos())
@@ -234,12 +207,14 @@ watch(
             />
           </div>
 
-          <div v-if="quedanPorMostrar > 0" class="resultados__mas">
-            <BaseButton @click="mostrarMas">Ver más prendas</BaseButton>
-            <p class="mono resultados__restantes">
-              quedan {{ quedanPorMostrar }}
-            </p>
-          </div>
+          <BasePaginacion
+            class="resultados__paginacion"
+            :pagina-actual="paginaActual"
+            :items-por-pagina="itemsPorPagina"
+            :total-items="totalResultados"
+            @update:pagina-actual="store.irAPagina"
+            @update:items-por-pagina="store.cambiarItemsPorPagina"
+          />
         </template>
       </div>
     </div>
@@ -254,17 +229,8 @@ watch(
   margin-top: var(--cep-sp-6);
 }
 
-.resultados__mas {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--cep-sp-2);
+.resultados__paginacion {
   margin-top: var(--cep-sp-6);
-}
-.resultados__restantes {
-  margin: 0;
-  color: var(--cep-muted);
-  font-size: 0.85rem;
 }
 
 .barra-resultados {

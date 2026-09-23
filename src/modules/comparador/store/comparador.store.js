@@ -59,6 +59,11 @@ export const useComparadorStore = defineStore('comparador', () => {
   // defecto en un comparador: si alguien viene a ver precios, lo primero que
   // quiere arriba es el más bajo.
   const orden = ref('barato')
+  // Paginación de los resultados filtrados. Todo el catálogo llega de una sola
+  // vez (ver `cargarProductos`), así que paginar acá es cortar el arreglo ya
+  // filtrado en pedazos — no hay una página que pedirle al backend.
+  const paginaActual = ref(1)
+  const itemsPorPagina = ref(20)
   // Tope de precio. null = sin tope.
   const precioMaximo = ref(null)
   // Marcas elegidas. Vacío = todas.
@@ -412,6 +417,21 @@ export const useComparadorStore = defineStore('comparador', () => {
 
   const totalResultados = computed(() => productosFiltrados.value.length)
 
+  // Cuántas páginas caben con el tamaño de página actual. Al menos 1, para no
+  // mostrar "página 1 de 0" cuando el filtro no deja ningún producto.
+  const totalPaginas = computed(() =>
+    Math.max(1, Math.ceil(productosFiltrados.value.length / itemsPorPagina.value)),
+  )
+
+  // El pedazo que de verdad pinta la grilla. `productosFiltrados` sigue
+  // siendo la lista completa filtrada — la usan `totalResultados` y las
+  // facetas de arriba — esto es sólo la página actual de esa lista.
+  const productosPagina = computed(() => {
+    const inicio = (paginaActual.value - 1) * itemsPorPagina.value
+
+    return productosFiltrados.value.slice(inicio, inicio + itemsPorPagina.value)
+  })
+
   // Índice por id. Como Map y no como find(): el armador lo consulta una vez
   // por ranura en cada recálculo, y recorrer el catálogo entero cada vez se
   // nota cuando hay cientos de prendas.
@@ -442,6 +462,16 @@ export const useComparadorStore = defineStore('comparador', () => {
     },
     { deep: true },
   )
+
+  // Cualquier cambio en qué se muestra —un filtro, el orden, o que el catálogo
+  // se haya vuelto a cargar— puede dejar la página actual sin sentido, o
+  // directamente vacía si antes había más páginas que ahora. Se vuelve a la 1
+  // cada vez que la lista filtrada cambia, en vez de en cada acción por
+  // separado: así no hay que acordarse de resetear en cada sitio nuevo que
+  // toque un filtro.
+  watch(productosFiltrados, () => {
+    paginaActual.value = 1
+  })
 
   // ——— derivados de la portada ———
   // La portada respeta la PREFERENCIA de tiendas (es una elección deliberada
@@ -608,6 +638,19 @@ export const useComparadorStore = defineStore('comparador', () => {
     marcarTodasLasTiendas()
   }
 
+  // Ir a una página concreta, acotada a lo que de verdad existe: nunca antes
+  // de la 1 ni después de la última con el tamaño de página actual.
+  function irAPagina(pagina) {
+    paginaActual.value = Math.min(Math.max(1, pagina), totalPaginas.value)
+  }
+
+  // Cambiar cuántos ítems caben por página. Se vuelve a la página 1: con un
+  // tamaño distinto, "página 3" ya no apunta al mismo pedazo de la lista.
+  function cambiarItemsPorPagina(n) {
+    itemsPorPagina.value = n
+    paginaActual.value = 1
+  }
+
   return {
     productos,
     tiendas,
@@ -615,6 +658,8 @@ export const useComparadorStore = defineStore('comparador', () => {
     busqueda,
     categoria,
     orden,
+    paginaActual,
+    itemsPorPagina,
     precioMaximo,
     marcas,
     talla,
@@ -633,6 +678,8 @@ export const useComparadorStore = defineStore('comparador', () => {
     atributosDisponibles,
     productosFiltrados,
     totalResultados,
+    totalPaginas,
+    productosPagina,
     comparacionDisponible,
     datosDesactualizados,
     masRecientes,
@@ -653,5 +700,7 @@ export const useComparadorStore = defineStore('comparador', () => {
     ponerAtributo,
     quitarFiltro,
     limpiarFiltros,
+    irAPagina,
+    cambiarItemsPorPagina,
   }
 })
