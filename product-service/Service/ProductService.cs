@@ -12,32 +12,34 @@ public sealed class ProductService(IProductRepository repository)
     public async Task<IReadOnlyList<ProductResponse>> GetAllProductsAsync()
     {
         var products = await repository.GetAllProductsAsync();
-        return products.Select(product => product.ToResponse()).ToList();
+        return PublicProducts(products);
     }
 
     public async Task<ProductResponse?> GetProductByIdAsync(int id)
     {
         ProductEntity? product = await repository.GetProductByIdAsync(id);
-        return product?.ToResponse();
+        return product is not null && !IsChild(product) ? product.ToResponse() : null;
     }
 
     public async Task<string?> GetProductSlugByIdAsync(int id)
     {
         ProductEntity? product = await repository.GetProductByIdAsync(id);
-        return product?.Slug;
+        return product is not null && !IsChild(product) ? product.Slug : null;
     }
 
     public async Task<ProductResponse?> GetProductBySlugAsync(string slug)
     {
         string normalizedSlug = ProductIdentity.CreateSlug(slug);
         ProductEntity? product = await repository.GetProductBySlugAsync(normalizedSlug);
-        return product?.ToResponse();
+        return product is not null && !IsChild(product) ? product.ToResponse() : null;
     }
 
     public async Task<ProductResponse> UpsertProductAsync(ProductRequest request)
     {
         ValidatedProduct input = Validate(request);
-        ProductEntity? product = await repository.GetProductByCanonicalKeyAsync(input.CanonicalKey);
+        // El SKU es estable aunque cambie la normalización de marca o de nombre.
+        ProductEntity? product = await repository.GetProductByOfferAsync(input.Store, input.ExternalId)
+            ?? await repository.GetProductByCanonicalKeyAsync(input.CanonicalKey);
 
         if (product is null)
         {
@@ -73,6 +75,7 @@ public sealed class ProductService(IProductRepository repository)
         }
 
         product.ProductCategory = input.Category;
+        product.ProductBrand = input.Brand;
         product.BodyArea = input.BodyArea;
         product.Gender = input.Gender;
         product.Layer = input.Layer;
@@ -132,20 +135,24 @@ public sealed class ProductService(IProductRepository repository)
     public async Task<IReadOnlyList<ProductResponse>> GetProductsByCategoryAsync(string category)
     {
         var products = await repository.GetProductsByCategoryAsync(category);
-        return products.Select(product => product.ToResponse()).ToList();
+        return PublicProducts(products);
     }
 
     public async Task<IReadOnlyList<ProductResponse>> GetProductsByPriceAsync(int price)
     {
         var products = await repository.GetProductsByPriceAsync(price);
-        return products.Select(product => product.ToResponse()).ToList();
+        return PublicProducts(products);
     }
 
     public async Task<IReadOnlyList<ProductResponse>> GetProductsBySizeAsync(string size)
     {
         var products = await repository.GetProductsBySizeAsync(size);
-        return products.Select(product => product.ToResponse()).ToList();
+        return PublicProducts(products);
     }
+
+    private static bool IsChild(ProductEntity p) => CatalogPolicy.IsChild(p.ProductName, $"{p.ProductCategory} {p.Gender}");
+    private static IReadOnlyList<ProductResponse> PublicProducts(IEnumerable<ProductEntity> products) =>
+        products.Where(p => !IsChild(p)).Select(p => p.ToResponse()).ToList();
 
     private static ProductOfferEntity? FindOffer(ProductEntity product, ValidatedProduct input)
     {
@@ -157,7 +164,9 @@ public sealed class ProductService(IProductRepository repository)
     private static ValidatedProduct Validate(ProductRequest request)
     {
         string name = ProductIdentity.Required(request.Name, "name");
-        string brand = ProductIdentity.Required(request.Brand, "brand");
+        string brand = CatalogPolicy.Brand(request.Brand);
+        if (CatalogPolicy.IsChild(name, $"{request.Category} {request.Gender}"))
+            throw new ArgumentException("El catálogo no admite prendas para bebés o niños.");
 
         if (request.Price <= 0)
         {
@@ -166,7 +175,9 @@ public sealed class ProductService(IProductRepository repository)
 
         return new ValidatedProduct(
             string.IsNullOrWhiteSpace(request.CanonicalKey)
-                ? ProductIdentity.CreateKey(brand, name)
+                ? brand == "Genéricas"
+                    ? CatalogPolicy.GenericKey(request.Store, request.ExternalId)
+                    : ProductIdentity.CreateKey(brand, name)
                 : ProductIdentity.NormalizeKey(request.CanonicalKey),
             ProductIdentity.Required(request.ExternalId, "externalId"),
             ProductIdentity.Required(request.Store, "store").ToLowerInvariant(),

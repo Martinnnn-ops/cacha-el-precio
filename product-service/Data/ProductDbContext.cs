@@ -10,12 +10,20 @@ public class ProductDbContext : DbContext
 
     public DbSet<ProductEntity> Products { get; set; }
     public DbSet<ProductOfferEntity> ProductOffers { get; set; }
+    public DbSet<PersonalItem> PersonalItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.HasDefaultSchema("product");
+
+        var personal = modelBuilder.Entity<PersonalItem>();
+        personal.HasKey(p => new { p.Owner, p.Kind, p.Key });
+        personal.Property(p => p.Owner).HasMaxLength(128);
+        personal.Property(p => p.Kind).HasMaxLength(20);
+        personal.Property(p => p.Key).HasMaxLength(40);
+        personal.Property(p => p.Payload).HasColumnType("jsonb");
 
         var product = modelBuilder.Entity<ProductEntity>();
         product.HasKey(p => p.ProductId);
