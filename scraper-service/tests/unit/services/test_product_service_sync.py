@@ -48,7 +48,7 @@ def test_adapta_producto_al_contrato_csharp():
     assert product["category"] == "Polerones"
     assert product["bodyArea"] == "Torso"
     assert product["gender"] == "Unisex"
-    assert product["layer"] == "Abrigo"
+    assert product["layer"] == "Intermedia"
     assert product["externalId"] == "MK4QJFISTR"
     assert product["store"] == "paris"
     assert product["sizes"] == []
@@ -145,3 +145,19 @@ def test_envia_tallas_alfabeticas_y_numericas():
     sync.sincronizar(item)
 
     assert cliente.productos[0]["sizes"] == ["S", "38", "42.5"]
+
+
+def test_no_sincroniza_prendas_infantiles():
+    cliente = ClienteProductServiceFalso()
+    sync = ProductServiceSync(cliente)
+    assert sync.sincronizar(producto(nombre="Polera niño")) is False
+    assert cliente.sincronizados == 0
+
+
+def test_genericas_agrupa_marca_sin_fusionar_productos_distintos():
+    cliente = ClienteProductServiceFalso()
+    sync = ProductServiceSync(cliente)
+    sync.sincronizar(producto(nombre="Polera básica", brand="Genérico", external_id="SKU-A"))
+    sync.sincronizar(producto(nombre="Polera básica", brand="Sin marca", external_id="SKU-B"))
+    assert {p["brand"] for p in cliente.productos} == {"Genéricas"}
+    assert cliente.productos[0]["canonicalKey"] != cliente.productos[1]["canonicalKey"]

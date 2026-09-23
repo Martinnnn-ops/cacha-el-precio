@@ -46,6 +46,18 @@ def test_barrido_normal():
     assert len(repo) == 2
 
 
+def test_descarta_infantil_y_guarda_marca_normalizada():
+    repo = RepositorioEnMemoria()
+    infantil = prod("A1").model_copy(update={"name": "Zapatilla niño"})
+    juvenil = prod("A2").model_copy(update={"name": "Zapatilla juvenil", "brand": "Genérico"})
+    servicio = ScraperService({"converse": ScraperFalso({"u": [infantil, juvenil]})}, repo)
+    resultado = servicio.ejecutar("converse", ["u"])
+    assert resultado.productos_descartados == 1
+    assert resultado.guardados == 1
+    assert repo.obtener("converse", "A1") is None
+    assert repo.obtener("converse", "A2").brand == "Genéricas"
+
+
 def test_una_url_rota_no_aborta_el_barrido():
     """Lo importante en un barrido nocturno de cientos de productos."""
     repo = RepositorioEnMemoria()

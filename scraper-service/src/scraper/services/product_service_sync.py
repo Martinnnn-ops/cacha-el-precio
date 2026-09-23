@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 
+from scraper.domain.catalog_policy import clave_generica, marca_catalogo, motivo_infantil
 from scraper.domain.categoria import clasificacion_de
 from scraper.domain.product import Product
 from scraper.domain.product_identity import canonical_key
@@ -38,13 +39,19 @@ class ProductServiceSync:
 
     def sincronizar(self, producto: Product) -> bool:
         """Crea o actualiza la oferta en Product Service."""
+        if motivo_infantil(producto.name, producto.taxonomy_context or ""):
+            return False
         clasificacion = clasificacion_de(producto)
         payload = {
-            "canonicalKey": canonical_key(producto.brand, producto.name),
+            "canonicalKey": (
+                clave_generica(producto.store, producto.external_id)
+                if marca_catalogo(producto.brand) == "Genéricas"
+                else canonical_key(producto.brand, producto.name)
+            ),
             "externalId": producto.external_id,
             "store": producto.store,
             "name": producto.name,
-            "brand": producto.brand or "Sin marca",
+            "brand": marca_catalogo(producto.brand),
             "category": clasificacion.categoria,
             "bodyArea": clasificacion.zona_corporal,
             "gender": clasificacion.genero,
