@@ -8,6 +8,8 @@ namespace Product_Service.Repository;
 
 public sealed class ProductRepository(ProductDbContext context) : IProductRepository
 {
+    public Task<ProductEntity?> GetProductByOfferAsync(string store, string externalId) =>
+        Query().SingleOrDefaultAsync(p => p.Offers.Any(o => o.Store == store && o.ExternalId == externalId));
     public async Task<IReadOnlyList<ProductEntity>> GetAllProductsAsync()
     {
         return await Query().AsNoTracking().OrderBy(product => product.ProductId).ToListAsync();

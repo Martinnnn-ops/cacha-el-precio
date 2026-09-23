@@ -6,6 +6,8 @@ import re
 import unicodedata
 from typing import TYPE_CHECKING
 
+from scraper.domain.catalog_policy import motivo_infantil
+
 if TYPE_CHECKING:
     from scraper.domain.product import Product
 
@@ -133,6 +135,8 @@ def texto_parece_vestimenta(texto_crudo: str) -> bool:
 
 def es_vestimenta(producto: Product) -> bool:
     """Solo acepta productos cuyo contenido indique ropa o calzado."""
+    if motivo_infantil(producto.name, producto.taxonomy_context or ""):
+        return False
     return texto_parece_vestimenta(
         f"{producto.name} {producto.taxonomy_context or ''} "
         f"{producto.description or ''} {producto.product_url}"

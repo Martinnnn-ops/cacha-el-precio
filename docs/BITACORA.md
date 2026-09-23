@@ -1,5 +1,33 @@
 # Bitácora del proyecto
 
+Última actualización: 23-09-2026.
+
+## 23-09 · Catálogo y armario personal — Orion
+
+Trabajo en `feature/catalogo-personal-y-capas`, desde `development` actualizado (incluye el
+PR #30). Se conservó la paginación reciente y se agregaron filtros acotados, imágenes sin
+recorte, menos reactividad profunda y selector de prendas por tandas. Marcas genéricas
+normalizadas sin fusionar automáticamente prendas sin marca entre tiendas. Scraper y backend
+rechazan/ocultan prendas infantiles; polerones y chalecos tienen capa intermedia propia.
+
+Deseados y outfits por usuario persisten en PostgreSQL mediante migración, con propietario
+derivado del JWT en el BFF. Se añadieron «Mi armario», guardado desde fichas/tarjetas y armador,
+rutas protegidas de AWS y ruta SPA de S3. Detalle: [operación](CATALOGO-PERSONAL.md) y
+[ADR-028](adr/028-armario-personal-y-politica-catalogo.md).
+
+Verificación: compilación de frontend y servicios; pruebas de humo sin fallos, 166 pruebas
+Python aprobadas y 7 omitidas; pruebas HTTP sobre PostgreSQL desechable para concurrencia,
+aislamiento y rutas sin token, y pruebas de cambios de sesión/capas en el frontend.
+Revisión visual en Chromium a 390 y 1440 px. La herramienta de limpieza se probó con registros
+sintéticos: conservó la prenda juvenil, eliminó la infantil tras respaldar y permitió restaurarla
+en otra base de prueba.
+
+Una consulta **solo de lectura** al catálogo público encontró 7.504 productos, 122 candidatos
+infantiles y 18 marcas genéricas. No se eliminó ni desplegó nada en producción. Quedan: revisión
+de candidatos y limpieza respaldada en la base correcta, despliegue, prueba real de Google/Cognito
+y autorización para commits/PR. El catálogo aún se descarga completo; facetas/paginación de
+servidor quedan como trabajo posterior de escalabilidad.
+
 > Tres líneas por persona por semana. No es burocracia: en septiembre **esta bitácora es el
 > informe**, ya escrito. Escribir esto al final de cada semana cuesta 5 minutos y ahorra un día.
 >

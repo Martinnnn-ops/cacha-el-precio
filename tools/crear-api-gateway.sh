@@ -332,6 +332,9 @@ I_VISITAS="$(integracion '/productos/{id}/visitas')";  gris "  /productos/{id}/v
 I_SEGUIMIENTO="$(integracion /seguimiento)";           gris "  /seguimiento     -> $I_SEGUIMIENTO"
 I_SEGUIR="$(integracion '/seguimiento/{id}')";         gris "  /seguimiento/{id}-> $I_SEGUIR"
 I_YO="$(integracion /api/yo)";                         gris "  /api/yo          -> $I_YO"
+I_CUENTA="$(integracion /mi-cuenta)"
+I_DESEADO="$(integracion '/mi-cuenta/deseados/{id}')"
+I_OUTFIT="$(integracion '/mi-cuenta/outfits/{id}')"
 I_ADMIN="$(integracion /api/admin/diagnostico)";       gris "  /api/admin/...   -> $I_ADMIN"
 
 # --------------------------------------------------------------------------
@@ -428,6 +431,11 @@ ruta "GET /seguimiento"                "$I_SEGUIMIENTO" jwt
 ruta "POST /seguimiento/{id}"          "$I_SEGUIR"      jwt
 ruta "DELETE /seguimiento/{id}"        "$I_SEGUIR"      jwt
 ruta "GET /api/yo"                     "$I_YO"          jwt
+ruta "GET /mi-cuenta"                  "$I_CUENTA"      jwt
+ruta "PUT /mi-cuenta/deseados/{id}"     "$I_DESEADO"     jwt
+ruta "DELETE /mi-cuenta/deseados/{id}"  "$I_DESEADO"     jwt
+ruta "PUT /mi-cuenta/outfits/{id}"      "$I_OUTFIT"      jwt
+ruta "DELETE /mi-cuenta/outfits/{id}"   "$I_OUTFIT"      jwt
 
 # El 403 por rol lo resuelve el BFF leyendo cognito:groups; el API Gateway solo
 # comprueba que haya un token valido. Son dos capas distintas a proposito.

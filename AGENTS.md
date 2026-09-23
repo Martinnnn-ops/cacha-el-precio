@@ -27,7 +27,8 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 398 líneas |
+| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 484 líneas |
+| Política de marcas/edad, armario personal, limpieza respaldada y pruebas | `docs/CATALOGO-PERSONAL.md` | 87 líneas |
 | **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 918 líneas |
 | La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 408 líneas |
 | Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
@@ -37,7 +38,7 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 | En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 212 líneas |
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 783 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 950 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
 | Presentar el proyecto a alguien de afuera | `README.md` | 155 líneas |
 

@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from scraper.domain.catalog_policy import marca_catalogo
 from scraper.domain.clothing import es_vestimenta
 from scraper.domain.product import Product
 
@@ -67,7 +68,7 @@ class ResultadoBarrido:
         return (
             f"[{self.tienda}] {self.urls_ok}/{self.urls_pedidas} URLs, "
             f"{self.guardados} guardados, {self.cambios_de_precio} cambios de precio, "
-            f"{self.productos_descartados} fuera de vestimenta, "
+            f"{self.productos_descartados} fuera del catálogo (edad o vestimenta), "
             f"{self.imagenes_procesadas} imagenes procesadas, "
             f"{self.sincronizados} sincronizados, "
             f"{len(self.sin_producto)} sin producto, "
@@ -154,6 +155,7 @@ class ScraperService:
                             producto = self._preservar_imagen(producto, anterior)
                     else:
                         producto = self._preservar_imagen(producto, anterior)
+                producto = producto.model_copy(update={"brand": marca_catalogo(producto.brand)})
                 try:
                     if self._repo.guardar(producto):
                         res.cambios_de_precio += 1
@@ -165,8 +167,8 @@ class ScraperService:
                     continue
                 if self._sync_service:
                     try:
-                        self._sync_service.sincronizar(producto)
-                        res.sincronizados += 1
+                        if self._sync_service.sincronizar(producto):
+                            res.sincronizados += 1
                     except Exception:
                         # El sync a Product Service es un plus: si no se puede,
                         # el producto ya quedo en la base propia del scraper.

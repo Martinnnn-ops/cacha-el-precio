@@ -1,5 +1,10 @@
 export default [
   {
+    path: '/mi-armario', name: 'mi-armario',
+    component: () => import('@/modules/cuenta/views/ColeccionView.vue'),
+    meta: { titulo: 'Mi armario', requiereSesion: true, sinAnuncios: true },
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('@/modules/cuenta/views/EntrarView.vue'),

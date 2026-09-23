@@ -101,6 +101,8 @@ public class ProductController : ControllerBase
     [MapToApiVersion("1.0")]
     public async Task<ActionResult<ProductResponse>> CreateProduct(ProductRequest request)
     {
+        if (CatalogPolicy.IsChild(request.Name ?? "", $"{request.Category} {request.Gender}"))
+            return BadRequest(new { mensaje = "El catálogo es para adolescentes y adultos." });
         ProductResponse product = await _service.UpsertProductAsync(request);
         return Ok(product);
     }
@@ -109,6 +111,8 @@ public class ProductController : ControllerBase
     [MapToApiVersion("1.0")]
     public async Task<ActionResult> UpdateProduct(int id, ProductRequest request)
     {
+        if (CatalogPolicy.IsChild(request.Name ?? "", $"{request.Category} {request.Gender}"))
+            return BadRequest(new { mensaje = "El catálogo es para adolescentes y adultos." });
         bool isSuccess = await _service.UpdateProductAsync(id, request);
         return isSuccess switch
         {

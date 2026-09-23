@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import FiltroTiendas from '@/modules/comparador/components/FiltroTiendas.vue'
@@ -14,6 +14,11 @@ import { formatearPrecio } from '@/shared/utils/formato'
 // quedaba vacía y no se podía filtrar por nada, aunque el store sí sabía
 // hacerlo por categoría.
 const store = useComparadorStore()
+const buscarMarca = ref('')
+const limiteMarcas = ref(16)
+watch(buscarMarca, () => { limiteMarcas.value = 16 })
+const marcasVisibles = computed(() => store.marcasDisponibles.filter(m =>
+  m.nombre.toLocaleLowerCase('es').includes(buscarMarca.value.trim().toLocaleLowerCase('es'))))
 
 const {
   categoria,
@@ -86,10 +91,11 @@ const paso = computed(() => {
     <!-- ——— marca ——— -->
     <fieldset v-if="marcasDisponibles.length > 1" class="grupo">
       <legend class="grupo__titulo">Marca</legend>
+      <input v-model="buscarMarca" type="search" class="buscar-marca" aria-label="Buscar marca" placeholder="Buscar marca…" />
 
-      <div class="grupo__opciones">
+      <div class="grupo__opciones grupo__opciones--marcas" tabindex="0" aria-label="Marcas disponibles">
         <button
-          v-for="m in marcasDisponibles"
+          v-for="m in marcasVisibles.slice(0, limiteMarcas)"
           :key="m.nombre"
           type="button"
           class="pildora"
@@ -101,6 +107,7 @@ const paso = computed(() => {
           <span class="pildora__cuenta">{{ m.total }}</span>
         </button>
       </div>
+      <BaseButton v-if="marcasVisibles.length > limiteMarcas" variante="texto" tamano="chico" @click="limiteMarcas += 16">Ver más marcas</BaseButton>
     </fieldset>
 
     <!-- ——— talla ——— -->
@@ -200,6 +207,10 @@ const paso = computed(() => {
 </template>
 
 <style scoped>
+.buscar-marca { width: 100%; min-height: 40px; margin-bottom: .75rem; padding: .5rem .75rem;
+  border: 1px solid var(--cep-line-media); border-radius: var(--cep-r-sm);
+  background: var(--cep-surface); color: var(--cep-ink); }
+.grupo__opciones--marcas { max-height: 240px; overflow-y: auto; padding: 2px; scrollbar-width: thin; }
 .panel {
   display: flex;
   flex-direction: column;

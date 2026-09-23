@@ -5,6 +5,7 @@ namespace Product_Service.Repository;
 
 public interface IProductRepository
 {
+    Task<ProductEntity?> GetProductByOfferAsync(string store, string externalId);
     Task<IReadOnlyList<ProductEntity>> GetAllProductsAsync();
 
     Task<ProductEntity?> GetProductByIdAsync(int id);

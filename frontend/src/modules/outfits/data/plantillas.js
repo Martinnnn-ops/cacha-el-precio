@@ -22,7 +22,7 @@ export const AUTOMATICAS = [
     descripcion: 'Camisa, pantalón y zapatos. Sobrio y sin gastar de más.',
     porParte: {
       'torso-base': ['Camisas'],
-      'torso-abrigo': ['Chalecos'],
+      'torso-intermedia': ['Chalecos'],
       piernas: ['Pantalones'],
       calzado: ['Zapatos'],
     },

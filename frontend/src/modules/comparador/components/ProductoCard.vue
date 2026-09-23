@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import { formatearPrecio } from '@/shared/utils/formato'
@@ -9,6 +9,7 @@ import BaseTicket from '@/shared/components/BaseTicket.vue'
 import BotonComparar from '@/modules/comparar/components/BotonComparar.vue'
 import EnlaceTienda from '@/shared/components/EnlaceTienda.vue'
 import PrendaArt from '@/shared/components/PrendaArt.vue'
+import BotonDeseado from '@/modules/cuenta/components/BotonDeseado.vue'
 
 const props = defineProps({
   producto: { type: Object, required: true },
@@ -20,6 +21,8 @@ const props = defineProps({
 })
 
 const { nombreTienda, colorTienda } = useTiendas()
+const imagenFallida = ref(false)
+watch(() => props.producto.imagen, () => { imagenFallida.value = false })
 
 const masBarato = computed(() => precioMasBajo(props.producto))
 const ahorro = computed(() => ahorroMaximo(props.producto))
@@ -54,12 +57,11 @@ const subtitulo = computed(() =>
   <BaseTicket
     class="tarjeta"
     :class="{ 'tarjeta--compacta': compacta }"
-    :to="{ name: 'producto-detalle', params: { slug: slugProducto(producto) } }"
     :relleno="false"
     columna
   >
     <div class="tarjeta__cabecera">
-      <div class="tarjeta__arte">
+      <RouterLink class="tarjeta__arte" :to="{ name: 'producto-detalle', params: { slug: slugProducto(producto) } }">
         <!--
           `lazy` es lo que hace viable un catálogo grande: el listado pinta una
           tarjeta por producto, así que sin esto el navegador pide de golpe
@@ -70,23 +72,26 @@ const subtitulo = computed(() =>
           el hilo que está pintando el resto de la lista.
         -->
         <img
-          v-if="producto.imagen"
+          v-if="producto.imagen && !imagenFallida"
           :src="producto.imagen"
           :alt="producto.nombre"
           loading="lazy"
           decoding="async"
+          width="400"
+          height="300"
+          @error="imagenFallida = true"
         />
-        <PrendaArt v-else :alto="compacta ? 108 : 140" />
+        <PrendaArt v-else :alto="200" />
 
         <span v-if="insignia" class="tarjeta__insignia mono">{{ insignia }}</span>
-      </div>
+      </RouterLink>
 
       <p v-if="subtitulo" class="eyebrow tarjeta__marca truncar">{{ subtitulo }}</p>
 
       <!-- `title` para que el nombre completo siga estando a mano cuando el
            recorte se lo come. -->
       <h3 class="display tarjeta__nombre recorte-2" :title="producto.nombre">
-        {{ producto.nombre }}
+        <RouterLink :to="{ name: 'producto-detalle', params: { slug: slugProducto(producto) } }">{{ producto.nombre }}</RouterLink>
       </h3>
 
       <p v-if="masBarato" class="tarjeta__precio">
@@ -143,6 +148,7 @@ const subtitulo = computed(() =>
       <!-- @click.stop dentro de los dos: la tarjeta entera es un enlace a la
            ficha, y pulsar aquí no debe abrir además el detalle. -->
       <BotonComparar :producto-id="producto.id" />
+      <BotonDeseado :producto-id="producto.id" />
 
       <EnlaceTienda
         v-if="masBarato"
@@ -165,14 +171,16 @@ const subtitulo = computed(() =>
   padding: var(--cep-sp-4) var(--cep-sp-4) 0;
 }
 .tarjeta__arte {
+  display: block;
   position: relative;
   border-radius: var(--cep-r-sm);
   overflow: hidden;
 }
 .tarjeta__arte img {
   width: 100%;
-  height: 140px;
-  object-fit: cover;
+  height: 200px;
+  object-fit: contain;
+  background: #fff;
 }
 .tarjeta__insignia {
   position: absolute;
@@ -195,6 +203,8 @@ const subtitulo = computed(() =>
      ese cálculo da por supuesta. */
   line-height: var(--cep-lh-tight);
 }
+.tarjeta__nombre a { color: inherit; text-decoration: none; }
+.tarjeta__nombre a:hover { text-decoration: underline; text-underline-offset: .2em; }
 .tarjeta__precio {
   display: flex;
   align-items: baseline;

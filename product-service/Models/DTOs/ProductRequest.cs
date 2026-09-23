@@ -6,7 +6,7 @@ public sealed class ProductRequest
     public string ExternalId { get; set; } = null!;
     public string Store { get; set; } = null!;
     public string Name { get; set; } = null!;
-    public string Brand { get; set; } = null!;
+    public string? Brand { get; set; }
     public string Category { get; set; } = null!;
     public string? BodyArea { get; set; }
     public string? Gender { get; set; }

@@ -14,7 +14,7 @@ public static class EntityToResponse
             Slug = product.Slug,
             CanonicalKey = product.CanonicalKey,
             Name = product.ProductName,
-            Brand = product.ProductBrand,
+            Brand = Product_Service.Models.Domain.CatalogPolicy.Brand(product.ProductBrand),
             Category = product.ProductCategory,
             BodyArea = product.BodyArea,
             Gender = product.Gender,

@@ -68,10 +68,10 @@ def test_ripley_encuentra_el_product_dentro_de_graph():
 @pytest.mark.parametrize(
     ("Parser", "tienda", "esperado"),
     [
-        (ParisParser, "paris", True),
+        (ParisParser, "paris", False),  # Fixture: polera de niño.
         (RipleyParser, "ripley", False),
         (HitesParser, "hites", False),
-        (HymParser, "hym", True),
+        (HymParser, "hym", False),  # Breadcrumb: bebés/niño.
         (LaPolarParser, "lapolar", True),
         (SpartaParser, "sparta", False),
     ],

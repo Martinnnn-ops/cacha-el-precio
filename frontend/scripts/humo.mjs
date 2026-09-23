@@ -1622,7 +1622,7 @@ try {
     )
     check(
       'polerones y calcetines conservan capas distintas',
-      partes.parteDeCategoria('Polerones') === 'torso-abrigo' &&
+      partes.parteDeCategoria('Polerones') === 'torso-intermedia' &&
         partes.parteDeCategoria('Calcetines') === 'calcetines',
     )
     check(
@@ -1830,7 +1830,7 @@ try {
     )
     check(
       '  ofrece completar el outfit automáticamente',
-      armar.includes('Completar con lo más barato') && armar.includes('0 de 5 capas disponibles'),
+      armar.includes('Completar con lo más barato') && armar.includes('0 de 3 capas disponibles'),
     )
     check('  con el resumen al lado', armar.includes('Tu outfit'))
     check('  y dice qué hacer cuando está vacío', armar.includes('Ve eligiendo prendas'))
