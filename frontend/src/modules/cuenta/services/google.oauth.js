@@ -180,6 +180,7 @@ export async function obtenerPerfil(accessToken) {
   const datos = await respuesta.json()
 
   return {
+    id: datos.sub ?? null,
     correo: datos.email ?? '',
     nombre: datos.name ?? datos.given_name ?? datos.email ?? '',
     avatar: datos.picture ?? null,
