@@ -9,7 +9,16 @@
 > Se lee en dos partes: **§1 qué decisiones cambiaron** (y cuáles no quedaron escritas) y
 > **§2 qué hay que arreglar**, en orden de gravedad.
 >
-> Última revisión: **13-09-2026, URLs canónicas por slug**
+> Última revisión: **23-09-2026, catálogo y armario personal en rama**
+
+## Actualización de catálogo y armario · 23-09
+
+Implementado, pendiente de despliegue: política de marcas genéricas y edad, capas intermedias,
+mejoras de renderizado/filtros y guardados por usuario en PostgreSQL. El BFF dejó de usar el
+seguimiento en memoria; ahora delega a rutas internas cuyo propietario obtiene del JWT.
+La limpieza física de prendas infantiles requiere auditoría y respaldo, no ocurre al migrar.
+Responsable: Orion. Ver [operación y pruebas](CATALOGO-PERSONAL.md) y
+[ADR-028](adr/028-armario-personal-y-politica-catalogo.md).
 
 ## Actualización de URLs canónicas · 13-09
 
