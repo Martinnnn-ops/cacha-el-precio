@@ -33,6 +33,7 @@ const {
   partesListas,
   partesActivas,
   completo,
+  genero,
 } = storeToRefs(outfit)
 
 // Qué ranura se está editando. null = ninguna.
@@ -94,6 +95,12 @@ onMounted(() => catalogo.cargarProductos())
       <div class="herramientas__acciones">
         <div class="campos-talla">
           <label class="campo-talla">
+            <span class="mono campo-talla__etiqueta">Prendas</span>
+            <select v-model="genero" class="campo-talla__control">
+              <option value="">Todas</option><option>Mujer</option><option>Hombre</option><option>Unisex</option>
+            </select>
+          </label>
+          <label class="campo-talla">
             <span class="mono campo-talla__etiqueta">Talla de ropa</span>
             <select v-model="tallaRopa" class="campo-talla__control">
               <option value="">Cualquiera</option>
@@ -124,6 +131,7 @@ onMounted(() => catalogo.cargarProductos())
       </div>
 
       <p class="mono muted herramientas__nota">
+        Gorro, ropa interior, calcetines y abrigos son opcionales. Puedes usar polera, polerón y chaqueta juntos.
         Separamos ropa y calzado para no mezclar una M con un 39. El cálculo usa sólo ofertas con
         stock en tus tallas.
       </p>

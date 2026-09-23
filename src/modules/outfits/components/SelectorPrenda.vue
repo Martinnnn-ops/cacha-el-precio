@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import BaseButton from '@/shared/components/BaseButton.vue'
@@ -22,6 +22,8 @@ defineEmits(['elegir', 'cerrar'])
 const { nombreTienda } = useTiendas()
 const busqueda = ref('')
 const orden = ref('precio')
+const limite = ref(24)
+watch(() => [busqueda.value, orden.value, props.parte.id, props.talla], () => { limite.value = 24 })
 
 function tallasDe(producto) {
   return [...new Set(
@@ -89,7 +91,7 @@ const listadas = computed(() => {
     </div>
 
     <ul class="selector__lista">
-      <li v-for="{ producto, oferta } in listadas" :key="producto.id">
+      <li v-for="{ producto, oferta } in listadas.slice(0, limite)" :key="producto.id">
         <button
           type="button"
           class="opcion"
@@ -124,6 +126,7 @@ const listadas = computed(() => {
         </button>
       </li>
     </ul>
+    <BaseButton v-if="listadas.length > limite" @click="limite += 24">Ver más prendas</BaseButton>
 
     <p v-if="listadas.length === 0" class="muted selector__vacio">
       No encontramos prendas con esa búsqueda.

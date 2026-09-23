@@ -219,6 +219,9 @@ const iniciales = computed(() => {
           <template #default="{ cerrar }">
             <template v-if="usuario">
               <p class="menu__titulo">{{ usuario.nombre ?? usuario.correo }}</p>
+              <RouterLink class="menu__opcion" :to="{ name: 'mi-armario' }" @click="cerrar()">
+                Mi armario · deseados y outfits
+              </RouterLink>
 
               <button
                 type="button"
