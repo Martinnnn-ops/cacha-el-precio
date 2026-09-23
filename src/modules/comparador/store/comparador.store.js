@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
@@ -48,7 +48,8 @@ function guardarPreferencia(ids) {
 export const useComparadorStore = defineStore('comparador', () => {
   const preferenciaInicial = leerPreferencia()
   // ——— estado ———
-  const productos = ref([])
+  // Las respuestas se reemplazan completas: no necesitamos miles de proxies anidados.
+  const productos = shallowRef([])
   // La lista de tiendas ya no es una constante: con backend se deriva del
   // campo `store`, y con datos de ejemplo son las cinco de siempre.
   const tiendas = ref(TIENDAS_INICIALES)

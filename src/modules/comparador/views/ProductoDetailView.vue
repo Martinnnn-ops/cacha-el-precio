@@ -19,6 +19,7 @@ import BaseButton from '@/shared/components/BaseButton.vue'
 import MigasDePan from '@/shared/components/MigasDePan.vue'
 import BaseTicket from '@/shared/components/BaseTicket.vue'
 import PrendaArt from '@/shared/components/PrendaArt.vue'
+import BotonDeseado from '@/modules/cuenta/components/BotonDeseado.vue'
 
 const props = defineProps({
   slug: { type: String, required: true },
@@ -239,6 +240,7 @@ const subtitulo = computed(() =>
           </p>
 
           <h1 class="display cabecera__titulo">{{ producto.nombre }}</h1>
+          <BotonDeseado :producto-id="producto.id" />
 
           <div v-if="masBarato" class="cabecera__resumen">
             <div>

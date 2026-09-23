@@ -397,7 +397,10 @@ watch(
   }
   .comparador__lateral {
     position: sticky;
-    top: 24px;
+    top: 84px;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
   /* Aquí ya hay columna lateral: el botón sobra y el panel se enseña siempre,
      esté como esté el estado de plegado. El bloque va el último de todos para
@@ -414,6 +417,7 @@ watch(
 
 .grilla {
   display: grid;
+  align-items: start;
   grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
