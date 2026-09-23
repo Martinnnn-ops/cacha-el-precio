@@ -21,7 +21,6 @@ builder.Services.AddHttpClient<ProductServiceProxy>(client =>
 {
     AllowAutoRedirect = false
 });
-builder.Services.AddSingleton<FollowRepository>();
 builder.Services.AddHealthChecks();
 
 builder.Services
@@ -101,6 +100,14 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/mi-cuenta") ||
+        context.Request.Path.StartsWithSegments("/seguimiento"))
+        context.Response.Headers.CacheControl = "no-store";
+    await next(context);
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -109,6 +116,7 @@ app.MapHealthChecks("/health").AllowAnonymous();
 MapProductRoutes(app);
 MapIdentityRoutes(app);
 MapFollowRoutes(app);
+MapPersonalRoutes(app);
 
 app.Run();
 
@@ -201,25 +209,28 @@ static void MapIdentityRoutes(WebApplication app)
 
 static void MapFollowRoutes(WebApplication app)
 {
-    app.MapGet("/seguimiento", (ClaimsPrincipal user, FollowRepository repository) =>
-    {
-        IReadOnlyCollection<long> products = repository.List(user.FindFirstValue("sub")!);
-        return Results.Ok(new { productos = products, total = products.Count });
-    }).RequireAuthorization();
-
-    app.MapPost("/seguimiento/{productId:long}", (long productId, ClaimsPrincipal user, FollowRepository repository) =>
-    {
-        bool added = repository.Add(user.FindFirstValue("sub")!, productId);
-        return added
-            ? Results.Created($"/seguimiento/{productId}", new { siguiendo = productId })
-            : Results.Ok(new { siguiendo = productId, yaEstaba = true });
-    }).RequireAuthorization();
-
-    app.MapDelete("/seguimiento/{productId:long}", (long productId, ClaimsPrincipal user, FollowRepository repository) =>
-        repository.Remove(user.FindFirstValue("sub")!, productId)
-            ? Results.NoContent()
-            : Results.NotFound()).RequireAuthorization();
+    app.MapGet("/seguimiento", PersonalProxy(""))
+        .RequireAuthorization(p => p.RequireAuthenticatedUser().RequireClaim("sub"));
+    app.MapPost("/seguimiento/{id:int:min(1)}", PersonalProxy("deseados"))
+        .RequireAuthorization(p => p.RequireAuthenticatedUser().RequireClaim("sub"));
+    app.MapDelete("/seguimiento/{id:int:min(1)}", PersonalProxy("deseados"))
+        .RequireAuthorization(p => p.RequireAuthenticatedUser().RequireClaim("sub"));
 }
+
+static void MapPersonalRoutes(WebApplication app)
+{
+    var routes = app.MapGroup("/mi-cuenta").RequireAuthorization(policy =>
+        policy.RequireAuthenticatedUser().RequireClaim("sub"));
+    routes.MapGet("/", PersonalProxy(""));
+    routes.MapPut("/deseados/{id:int:min(1)}", PersonalProxy("deseados"));
+    routes.MapDelete("/deseados/{id:int:min(1)}", PersonalProxy("deseados"));
+    routes.MapPut("/outfits/{id:guid}", PersonalProxy("outfits"));
+    routes.MapDelete("/outfits/{id:guid}", PersonalProxy("outfits"));
+}
+
+static RequestDelegate PersonalProxy(string kind) => ProxyToDynamic(context =>
+    $"/internal/personal/{Uri.EscapeDataString(context.User.FindFirstValue("sub")!)}" +
+    (kind.Length == 0 ? "" : $"/{kind}/{context.Request.RouteValues["id"]}"));
 
 static RequestDelegate ProxyTo(string path)
 {
