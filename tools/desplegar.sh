@@ -446,7 +446,7 @@ fi
 # /producto/:slug siguen necesitando el CDN que sirve el dominio definitivo.
 RUTAS_SPA=(
   comparador comparar login entrar registro auth/google
-  terminos privacidad preguntas outfits armar
+  terminos privacidad preguntas outfits armar mi-armario
 )
 for RUTA in "${RUTAS_SPA[@]}"; do
   if ! aws --region "$INFRA_REGION" s3 cp dist/index.html \
