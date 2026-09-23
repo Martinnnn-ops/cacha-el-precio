@@ -60,6 +60,23 @@ export const useOutfitStore = defineStore('outfit', () => {
   const seleccion = ref(leerGuardado())
   const tallaRopa = ref(leerPreferencia(CLAVE_TALLA_ROPA))
   const tallaCalzado = ref(leerPreferencia(CLAVE_TALLA_CALZADO))
+  const genero = ref('')
+
+  watch(() => catalogo.productos, () => {
+    if (!catalogo.productos.length) return
+    const actual = { ...seleccion.value }
+    const antiguoAbrigo = catalogo.productoById(actual['torso-abrigo'])
+    if (antiguoAbrigo && parteDeProducto(antiguoAbrigo) === 'torso-intermedia') {
+      actual['torso-intermedia'] ??= actual['torso-abrigo']
+      actual['torso-abrigo'] = null
+    }
+    for (const id of IDS_PARTES) {
+      const prenda = catalogo.productoById(actual[id])
+      if (!prenda || parteDeProducto(prenda) !== id) actual[id] = null
+    }
+    if (esCuerpoCompleto(catalogo.productoById(actual['torso-base']))) actual.piernas = null
+    seleccion.value = actual
+  }, { immediate: true })
 
   // Un outfit a medio armar no se pierde al recargar.
   watch(
@@ -103,7 +120,7 @@ export const useOutfitStore = defineStore('outfit', () => {
   }
 
   const tallasRopa = computed(() =>
-    tallasDePartes(['cabeza', 'torso-base', 'torso-abrigo', 'interior', 'piernas']),
+    tallasDePartes(['cabeza', 'torso-base', 'torso-intermedia', 'torso-abrigo', 'interior', 'piernas']),
   )
   const tallasCalzado = computed(() => tallasDePartes(['calcetines', 'calzado']))
 
@@ -118,6 +135,7 @@ export const useOutfitStore = defineStore('outfit', () => {
   /** Prendas del catálogo que pueden ir en una ranura. */
   function opcionesPara(parte) {
     return catalogo.productos.filter((p) => {
+      if (genero.value && p.genero && !['Unisex', genero.value].includes(p.genero)) return false
       const suya = parteDeProducto(p)
 
       if (suya !== parte) return false
@@ -183,7 +201,7 @@ export const useOutfitStore = defineStore('outfit', () => {
   // una ranura sin alternativas, esa ranura debe invalidar el progreso en vez
   // de desaparecer del denominador y mantener el outfit como “completo”.
   const partesActivas = computed(() =>
-    IDS_PARTES.filter((parte) =>
+    IDS_PARTES.filter((parte) => ['torso-base', 'piernas', 'calzado'].includes(parte) || seleccion.value[parte]).filter((parte) =>
       catalogo.productos.some((producto) => {
         if (parteDeProducto(producto) !== parte) return false
         if (parte === 'piernas' && esCuerpoCompleto(producto)) return false
@@ -282,6 +300,7 @@ export const useOutfitStore = defineStore('outfit', () => {
 
   function ponerPrenda(parte, productoId) {
     if (!IDS_PARTES.includes(parte)) return
+    if (partesBloqueadas.value.includes(parte)) return
 
     const producto = catalogo.productoById(productoId)
 
@@ -314,7 +333,7 @@ export const useOutfitStore = defineStore('outfit', () => {
   // Respeta lo que la persona ya eligió y usa, para cada parte, la prenda con
   // la oferta comprable más barata.
   function completarConMasBarato() {
-    IDS_PARTES.forEach((parte) => {
+    partesActivas.value.forEach((parte) => {
       if (partesBloqueadas.value.includes(parte)) return
 
       const actual = prendas.value[parte]
@@ -336,8 +355,10 @@ export const useOutfitStore = defineStore('outfit', () => {
     IDS_PARTES.forEach((id) => {
       const producto = catalogo.productoById(porParte?.[id])
 
-      if (producto && ofertaPara(producto, id)) nuevo[id] = producto.id
+      if (producto && parteDeProducto(producto) === id && ofertaPara(producto, id)) nuevo[id] = producto.id
     })
+
+    if (esCuerpoCompleto(catalogo.productoById(nuevo['torso-base']))) nuevo.piernas = null
 
     seleccion.value = nuevo
   }
@@ -346,6 +367,7 @@ export const useOutfitStore = defineStore('outfit', () => {
     seleccion,
     tallaRopa,
     tallaCalzado,
+    genero,
     tallasRopa,
     tallasCalzado,
     prendas,

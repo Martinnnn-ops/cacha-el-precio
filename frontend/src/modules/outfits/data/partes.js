@@ -17,9 +17,14 @@ export const PARTES = [
     categorias: ['Poleras', 'Camisas', 'Blusas'],
   },
   {
+    id: 'torso-intermedia',
+    nombre: 'Torso · capa intermedia',
+    categorias: ['Polerones', 'Chalecos'],
+  },
+  {
     id: 'torso-abrigo',
     nombre: 'Torso · abrigo',
-    categorias: ['Polerones', 'Chaquetas', 'Abrigos', 'Chalecos'],
+    categorias: ['Chaquetas', 'Abrigos'],
   },
   {
     id: 'interior',
@@ -83,6 +88,7 @@ const PARTE_POR_ZONA = new Map([
 ])
 
 const PARTE_POR_CAPA = new Map([
+  ['intermedia', 'torso-intermedia'],
   ['base', 'torso-base'],
   ['abrigo', 'torso-abrigo'],
   ['ropa interior', 'interior'],
@@ -105,6 +111,8 @@ export function parteDeProducto(producto) {
   const zona = typeof producto?.zona === 'string' ? producto.zona.trim().toLowerCase() : ''
 
   return (
+    // Catálogos anteriores marcaban polerones como abrigo: siguen siendo combinables.
+    (['Polerones', 'Chalecos'].includes(producto?.categoria) ? 'torso-intermedia' : null) ??
     PARTE_POR_CAPA.get(capa) ??
     parteDeCategoria(producto?.categoria) ??
     PARTE_POR_ZONA.get(zona) ??
