@@ -7,7 +7,7 @@ import {
   adaptarTiendas,
 } from '@/modules/comparador/services/producto.adapter'
 import { PRODUCTOS_MOCK } from '@/modules/comparador/data/productos.mock'
-import { TIENDAS } from '@/modules/comparador/data/tiendas'
+import { TIENDAS_MOCK } from '@/modules/comparador/data/tiendas'
 import { slugProducto, slugProductoAnterior } from '@/shared/utils/slug'
 
 // Capa de servicios del módulo: aquí y sólo aquí se sabe cómo son las URLs del
@@ -73,7 +73,7 @@ async function filasProductos({ forzar = false } = {}) {
  * del campo `store` de los productos.
  */
 export async function obtenerTiendas() {
-  if (USAR_MOCK) return simularRed(TIENDAS)
+  if (USAR_MOCK) return simularRed(TIENDAS_MOCK)
 
   const tiendas = adaptarTiendas(await filasProductos())
 

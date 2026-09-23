@@ -6,12 +6,22 @@ import {
   obtenerProductos,
   obtenerTiendas,
 } from '@/modules/comparador/services/comparador.service'
-import { TIENDAS } from '@/modules/comparador/data/tiendas'
+import { TIENDAS_MOCK } from '@/modules/comparador/data/tiendas'
+import { USAR_MOCK } from '@/core/api/http'
 import { ahorroMaximo, precioMasBajo } from '@/shared/utils/precios'
 
 // Estado del módulo comparador. El store orquesta y guarda; no sabe de HTTP ni
 // de URLs — para eso llama al servicio.
 const CLAVE_TIENDAS = 'cep:tiendas'
+
+// Con qué tiendas arranca la aplicación antes de que responda el catálogo.
+//
+// Contra la API real es una lista VACÍA, y es a propósito: las tiendas del
+// catálogo se derivan de los productos (`cargarTiendas`, que App.vue dispara al
+// arrancar). Antes arrancaba con las cinco de los datos de ejemplo, así que
+// durante el primer instante el filtro ofrecía Zara y Mango —que no tienen
+// scraper— y omitía Falabella, Hites, La Polar y Sparta, que sí.
+const TIENDAS_INICIALES = USAR_MOCK ? TIENDAS_MOCK : []
 
 function leerPreferencia() {
   try {
@@ -24,7 +34,7 @@ function leerPreferencia() {
     // Almacenamiento bloqueado o valor corrupto: se cae al valor por defecto.
   }
 
-  return { ids: TIENDAS.map((t) => t.id), explicita: false }
+  return { ids: TIENDAS_INICIALES.map((t) => t.id), explicita: false }
 }
 
 function guardarPreferencia(ids) {
@@ -41,7 +51,7 @@ export const useComparadorStore = defineStore('comparador', () => {
   const productos = ref([])
   // La lista de tiendas ya no es una constante: con backend se deriva del
   // campo `store`, y con datos de ejemplo son las cinco de siempre.
-  const tiendas = ref(TIENDAS)
+  const tiendas = ref(TIENDAS_INICIALES)
   const producto = ref(null)
   const busqueda = ref('')
   const categoria = ref('')
@@ -147,6 +157,16 @@ export const useComparadorStore = defineStore('comparador', () => {
       .map(([nombre, total]) => ({ nombre, total }))
       .sort((a, b) => b.total - a.total || a.nombre.localeCompare(b.nombre))
   })
+
+  // ¿Se muestran las ofertas de esta tienda?
+  //
+  // Mientras el catálogo no ha respondido, `tiendas` está vacío y todavía no se
+  // sabe qué tiendas existen. En ese momento NO se filtra por tienda: filtrar
+  // contra una lista vacía descartaría todas las ofertas y la primera pintada
+  // saldría en blanco, que se lee como «no hay productos» y no como «espera».
+  function tiendaVisible(id) {
+    return tiendas.value.length === 0 || tiendasActivas.value.includes(id)
+  }
 
   // ——— facetas: qué se puede filtrar, según lo que hay ———
   //
@@ -338,7 +358,7 @@ export const useComparadorStore = defineStore('comparador', () => {
 
         // Un producto entra si alguna de las tiendas marcadas lo vende.
         const coincideTienda = p.precios.some((oferta) =>
-          tiendasActivas.value.includes(oferta.tienda),
+          tiendaVisible(oferta.tienda),
         )
 
         return (
@@ -356,7 +376,7 @@ export const useComparadorStore = defineStore('comparador', () => {
         // Sólo las ofertas de las tiendas marcadas: si el usuario descartó
         // H&M, el "más barato" no puede seguir siendo el de H&M.
         precios: p.precios.filter((oferta) =>
-          tiendasActivas.value.includes(oferta.tienda),
+          tiendaVisible(oferta.tienda),
         ),
       }))
       .sort((a, b) => {
@@ -433,12 +453,12 @@ export const useComparadorStore = defineStore('comparador', () => {
   const visibles = computed(() =>
     productos.value
       .filter((p) =>
-        p.precios.some((o) => tiendasActivas.value.includes(o.tienda)),
+        p.precios.some((o) => tiendaVisible(o.tienda)),
       )
       .map((p) => ({
         ...p,
         precios: p.precios.filter((o) =>
-          tiendasActivas.value.includes(o.tienda),
+          tiendaVisible(o.tienda),
         ),
       })),
   )

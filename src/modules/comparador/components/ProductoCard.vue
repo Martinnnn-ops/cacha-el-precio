@@ -60,7 +60,22 @@ const subtitulo = computed(() =>
   >
     <div class="tarjeta__cabecera">
       <div class="tarjeta__arte">
-        <img v-if="producto.imagen" :src="producto.imagen" :alt="producto.nombre" />
+        <!--
+          `lazy` es lo que hace viable un catálogo grande: el listado pinta una
+          tarjeta por producto, así que sin esto el navegador pide de golpe
+          tantas imágenes como resultados haya. Con el catálogo en miles, eso
+          satura la conexión antes de que se vea la primera fila.
+
+          `decoding="async"` va con él: decodificar la imagen deja de bloquear
+          el hilo que está pintando el resto de la lista.
+        -->
+        <img
+          v-if="producto.imagen"
+          :src="producto.imagen"
+          :alt="producto.nombre"
+          loading="lazy"
+          decoding="async"
+        />
         <PrendaArt v-else :alto="compacta ? 108 : 140" />
 
         <span v-if="insignia" class="tarjeta__insignia mono">{{ insignia }}</span>

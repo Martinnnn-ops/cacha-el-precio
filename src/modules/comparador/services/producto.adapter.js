@@ -6,6 +6,8 @@
 //                   active, updatedAt }
 //   App   Producto { id, nombre, categoria, precios[], historial[] }
 
+import { TIENDAS_CONOCIDAS } from '@/modules/comparador/data/tiendas'
+
 // Fuente de respaldo para productos antiguos que no identifican la tienda.
 export const FUENTE_UNICA = {
   id: 'catalogo',
@@ -27,30 +29,9 @@ function diasDesde(fecha) {
   return dias >= 0 ? dias : null
 }
 
-const COLORES_CONOCIDOS = {
-  falabella: '#1676b8',
-  hites: '#d71920',
-  lapolar: '#e31b23',
-  ripley: '#6b2d8c',
-  paris: '#0b5cad',
-  sparta: '#e4572e',
-  converse: '#111111',
-  zara: '#2b2b2b',
-  hym: '#c0392b',
-  mango: '#8a6a2f',
-}
-const NOMBRES_CONOCIDOS = {
-  falabella: 'Falabella',
-  hites: 'Hites',
-  lapolar: 'La Polar',
-  ripley: 'Ripley',
-  paris: 'Paris',
-  sparta: 'Sparta',
-  converse: 'Converse',
-  zara: 'Zara',
-  hym: 'H&M',
-  mango: 'Mango',
-}
+// Los nombres y colores viven en `data/tiendas.js`, que es la única fuente.
+// Estaban duplicados aquí, y una copia acaba envejeciendo distinto de la otra:
+// este mapa ya conocía a Falabella cuando el otro todavía no.
 const COLORES_TIENDA = ['#0b5cad', '#a8325e', '#1f7a4d', '#8a5a14', '#5d4bb7']
 
 function texto(valor) {
@@ -156,8 +137,10 @@ export function adaptarTiendas(productos = []) {
     .sort(([, a], [, b]) => a.localeCompare(b, 'es'))
     .map(([id, nombre], indice) => ({
       id,
-      nombre: NOMBRES_CONOCIDOS[id] ?? nombre,
-      color: COLORES_CONOCIDOS[id] ?? COLORES_TIENDA[indice % COLORES_TIENDA.length],
+      nombre: TIENDAS_CONOCIDAS[id]?.nombre ?? nombre,
+      color:
+        TIENDAS_CONOCIDAS[id]?.color ??
+        COLORES_TIENDA[indice % COLORES_TIENDA.length],
     }))
 
   return hayProductoSinTienda ? [FUENTE_UNICA, ...tiendas] : tiendas

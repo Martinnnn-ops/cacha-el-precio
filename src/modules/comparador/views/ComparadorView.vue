@@ -47,11 +47,44 @@ const {
 // anuncio. La persona alcanza a comparar resultados antes de la pausa y el
 // bloque sigue apareciendo sin quedar enterrado al final de cientos de ítems.
 const CORTE_ANUNCIO = 6
+
+// Cuántos resultados se PINTAN de una vez.
+//
+// El catálogo entero llega en una sola respuesta —los filtros se resuelven en
+// el navegador y por eso hacen falta todos—, pero montar un componente por
+// producto no escala: con el catálogo en miles, la pestaña se queda colgada
+// mientras Vue crea las tarjetas, y quien mira sólo ve las primeras tres filas
+// igual.
+//
+// Así que se separa descargar de pintar: se descarga todo y se pinta de a
+// tandas. 48 son ocho filas completas en escritorio, suficiente para que haya
+// que desplazarse antes de llegar al botón.
+const POR_TANDA = 48
+const visibles = ref(POR_TANDA)
+
+const productosVisibles = computed(() =>
+  productosFiltrados.value.slice(0, visibles.value),
+)
+const quedanPorMostrar = computed(() =>
+  Math.max(productosFiltrados.value.length - visibles.value, 0),
+)
+
+function mostrarMas() {
+  visibles.value += POR_TANDA
+}
+
+// Cualquier cambio de filtro empieza de cero. Si no, alguien que cargó ocho
+// tandas y después busca otra cosa se encuentra 400 resultados pintados de
+// golpe, que es justo lo que esto evita.
+watch(productosFiltrados, () => {
+  visibles.value = POR_TANDA
+})
+
 const primerosResultados = computed(() =>
-  productosFiltrados.value.slice(0, CORTE_ANUNCIO),
+  productosVisibles.value.slice(0, CORTE_ANUNCIO),
 )
 const siguientesResultados = computed(() =>
-  productosFiltrados.value.slice(CORTE_ANUNCIO),
+  productosVisibles.value.slice(CORTE_ANUNCIO),
 )
 
 onMounted(() => store.cargarProductos())
@@ -200,6 +233,13 @@ watch(
               :producto="producto"
             />
           </div>
+
+          <div v-if="quedanPorMostrar > 0" class="resultados__mas">
+            <BaseButton @click="mostrarMas">Ver más prendas</BaseButton>
+            <p class="mono resultados__restantes">
+              quedan {{ quedanPorMostrar }}
+            </p>
+          </div>
         </template>
       </div>
     </div>
@@ -212,6 +252,19 @@ watch(
 }
 .grilla--continuacion {
   margin-top: var(--cep-sp-6);
+}
+
+.resultados__mas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cep-sp-2);
+  margin-top: var(--cep-sp-6);
+}
+.resultados__restantes {
+  margin: 0;
+  color: var(--cep-muted);
+  font-size: 0.85rem;
 }
 
 .barra-resultados {
