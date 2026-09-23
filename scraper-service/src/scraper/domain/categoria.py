@@ -63,7 +63,7 @@ _CATEGORIAS: list[tuple[str, str, str, tuple[str, ...]]] = [
     (
         "Polerones",
         "Torso",
-        "Abrigo",
+        "Intermedia",
         ("poleron", "polerones", "hoodie", "hoodies", "sudadera", "sudaderas"),
     ),
     ("Poleras", "Torso", "Base", ("polera", "poleras", "camiseta", "camisetas", "tshirt")),
@@ -78,7 +78,7 @@ _CATEGORIAS: list[tuple[str, str, str, tuple[str, ...]]] = [
     (
         "Chalecos",
         "Torso",
-        "Abrigo",
+        "Intermedia",
         ("chaleco", "chalecos", "cardigan", "cardigans", "sweater", "sueter", "jersey"),
     ),
     (

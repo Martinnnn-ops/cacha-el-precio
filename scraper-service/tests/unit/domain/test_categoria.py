@@ -66,7 +66,7 @@ def test_clasificacion_separa_tipo_zona_y_genero():
 def test_clasificacion_distingue_capas_en_la_misma_zona():
     casos = {
         "Polera básica mujer": ("Torso", "Base"),
-        "Polerón con capucha mujer": ("Torso", "Abrigo"),
+        "Polerón con capucha mujer": ("Torso", "Intermedia"),
         "Calcetines deportivos": ("Pies", "Calcetería"),
         "Zapatillas urbanas": ("Pies", "Calzado"),
         "Boxer algodón hombre": ("Piernas", "Ropa interior"),
