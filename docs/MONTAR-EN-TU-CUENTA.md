@@ -9,7 +9,8 @@
 > el dominio y montarlo en cualquier otra, y los scripts la detectan solos. Está explicada en el
 > [paso 0](#0-lo-primero-el-dominio) y marcada 🅐 / 🅑 en cada paso donde importa.
 >
-> Última revisión: **10-09-2026**, probado de punta a punta en la cuenta `116813910999`.
+> Última revisión: **14-10-2026**, probado de punta a punta en la cuenta `731705830984` (antes, el
+> 10-09 en `116813910999`). Desde el EP3, `crear-api-gateway.sh` también deja lista la mensajería.
 
 ---
 
