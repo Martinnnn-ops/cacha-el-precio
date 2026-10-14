@@ -7,6 +7,10 @@ cambia, se avisa al equipo antes de tocar el código.
 - **Topología** (colas, tópicos, reglas): [`infra/mensajeria/topologia.json`](../infra/mensajeria/topologia.json). Es el único lugar donde se declaran.
 - **Crear todo en tu cuenta:** `python3 tools/crear-mensajeria.py` (`--estado`, `--borrar`).
 - **Sondeo de Academy:** `python3 tools/probar-mensajeria-academy.py` (¿API Gateway → SQS con LabRole?).
+  ✅ Respondió que sí el 14-10-2026: **opción A**.
+- **La puerta `POST /ingesta`** la crea `tools/crear-api-gateway.sh` (integración `SQS-SendMessage`
+  con `LabRole`, scope `ingesta`). Si las colas no existen, ese script corre antes
+  `crear-mensajeria.py`. El cuerpo del POST llega tal cual a la cola: es el sobre de abajo.
 
 ## Los dos flujos
 
