@@ -53,6 +53,17 @@ def aws(*args: str, entrada: dict | None = None) -> dict:
     return json.loads(r.stdout) if r.stdout.strip() else {}
 
 
+def url_moderna(url: str) -> str:
+    """Pasa la URL de una cola al formato https://sqs.<region>.amazonaws.com/<cuenta>/<cola>.
+
+    La aws cli v1 devuelve el formato antiguo (https://queue.amazonaws.com/...), que
+    la cli sigue aceptando pero la integracion SQS-SendMessage del API Gateway no:
+    responde 400 Bad Request y el mensaje nunca llega (probado el 14-oct).
+    """
+    cuenta, cola = url.rstrip("/").split("/")[-2:]
+    return f"https://sqs.{REGION}.amazonaws.com/{cuenta}/{cola}"
+
+
 def main() -> int:
     url_cola = api_id = None
     try:
@@ -90,7 +101,7 @@ def main() -> int:
             "IntegrationSubtype": "SQS-SendMessage",
             "PayloadFormatVersion": "1.0",
             "CredentialsArn": rol,
-            "RequestParameters": {"QueueUrl": url_cola, "MessageBody": "$request.body"},
+            "RequestParameters": {"QueueUrl": url_moderna(url_cola), "MessageBody": "$request.body"},
         })
         aws("apigatewayv2", "create-route", entrada={
             "ApiId": api_id, "RouteKey": "POST /ingesta",
