@@ -1,0 +1,99 @@
+{
+  "_about": "Unico lugar donde se declaran las colas, topicos y reglas de distribucion de Cacha el Precio. Lo leen tools/crear-mensajeria.sh y el componente de administracion. Ver docs/MENSAJERIA.md y ADR-029.",
+  "version": 1,
+  "prefix": "cep-",
+  "deadLetterQueues": [
+    {
+      "name": "ofertas-crudas-dlq",
+      "description": "Ofertas que product-service no pudo guardar. Se revisan y se devuelven con redrive.",
+      "messageRetentionSeconds": 1209600
+    },
+    {
+      "name": "notificaciones-dlq",
+      "description": "Avisos de cambios de oferta que notification-service no pudo enviar.",
+      "messageRetentionSeconds": 1209600
+    }
+  ],
+  "queues": [
+    {
+      "name": "ofertas-crudas",
+      "description": "Flujo 1. Cada oferta capturada por el scraper (evento oferta.capturada).",
+      "producer": "scraper-service (via API Gateway POST /ingesta)",
+      "consumer": "product-service",
+      "visibilityTimeoutSeconds": 60,
+      "messageRetentionSeconds": 345600,
+      "receiveWaitTimeSeconds": 20,
+      "deadLetter": {
+        "queue": "ofertas-crudas-dlq",
+        "maxReceiveCount": 5
+      }
+    },
+    {
+      "name": "notificaciones",
+      "description": "Flujo 2. Cambios que merecen un correo: bajas de 10% o mas, agotados y reposiciones (pasan el filtro del topico).",
+      "producer": "SNS cep-cambios-oferta",
+      "consumer": "notification-service",
+      "visibilityTimeoutSeconds": 60,
+      "messageRetentionSeconds": 345600,
+      "receiveWaitTimeSeconds": 20,
+      "deadLetter": {
+        "queue": "notificaciones-dlq",
+        "maxReceiveCount": 5
+      }
+    },
+    {
+      "name": "auditoria-precios",
+      "description": "Flujo 2. Copia de TODOS los cambios de oferta, sin filtro. Sirve para revisar precios sospechosos del scraper y para demostrar las reglas de distribucion.",
+      "producer": "SNS cep-cambios-oferta",
+      "consumer": "(opcional) consumidor de metricas",
+      "visibilityTimeoutSeconds": 30,
+      "messageRetentionSeconds": 345600,
+      "receiveWaitTimeSeconds": 20
+    }
+  ],
+  "topics": [
+    {
+      "name": "cambios-oferta",
+      "description": "Flujo 2. product-service publica aqui los cambios de una oferta que le importan a quien la sigue: precio.bajo, oferta.agotada y oferta.repuesta. El tipo va en el atributo 'type'.",
+      "producer": "product-service"
+    }
+  ],
+  "subscriptions": [
+    {
+      "topic": "cambios-oferta",
+      "queue": "notificaciones",
+      "description": "Bajas de precio de 10% o mas, y cualquier agotado o reposicion.",
+      "rawMessageDelivery": true,
+      "filterPolicy": {
+        "$or": [
+          {
+            "type": [
+              "precio.bajo"
+            ],
+            "discountPct": [
+              {
+                "numeric": [
+                  ">=",
+                  10
+                ]
+              }
+            ]
+          },
+          {
+            "type": [
+              "oferta.agotada",
+              "oferta.repuesta"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "topic": "cambios-oferta",
+      "queue": "auditoria-precios",
+      "description": "Todos los cambios, sin filtro.",
+      "rawMessageDelivery": true,
+      "filterPolicy": null
+    }
+  ]
+}

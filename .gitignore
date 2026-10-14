@@ -118,3 +118,6 @@ google.env
 # Datos de la infraestructura por cuenta (ids, IP, bucket). No al repositorio.
 infra.env
 borde.env
+
+# Generado por tools/crear-mensajeria.sh: URLs de colas y ARN del topico (cambian por cuenta)
+mensajeria.env
