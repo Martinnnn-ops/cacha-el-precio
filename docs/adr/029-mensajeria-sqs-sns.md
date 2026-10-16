@@ -1,6 +1,6 @@
 # ADR-029 · Mensajería asíncrona con SQS y SNS
 
-Fecha: 14-10-2026 · Estado: propuesto (Fase 0 del EP3).
+Fecha: 14-10-2026 · Estado: aceptado (opción A confirmada en Academy, ver al final).
 
 ## Contexto
 
@@ -66,6 +66,15 @@ Reglas de procesamiento (detalle en [MENSAJERIA.md](../MENSAJERIA.md)):
 - Costo: ~22.500 mensajes diarios (≈7.500 prendas × 3 barridos), con envío, recepción y borrado
   supera el millón gratuito al mes, pero a USD 0,40 por millón queda bajo un dólar. Cálculo
   propio, sin verificar en la calculadora de AWS.
-- 🔎 Pendiente de la Fase 0: confirmar si API Gateway puede escribir en SQS asumiendo
-  `LabRole` (opción A). Si no, el gateway publica en SQS con `AWSSDK.SQS` (opción B); el resto
-  de esta decisión no cambia.
+## Comprobado en AWS Academy (14-10-2026, cuenta `731705830984`)
+
+- **Opción A confirmada.** `tools/probar-mensajeria-academy.py` respondió HTTP 200 y el mensaje
+  llegó a la cola: API Gateway escribe directo en SQS asumiendo `LabRole`, cuya trust policy ya
+  incluye `apigateway.amazonaws.com`. La ruta `POST /ingesta` va a la cola sin código nuevo en
+  el gateway.
+- **Trampa encontrada:** la aws cli v1 de Academy devuelve la URL de la cola en el formato
+  antiguo (`https://queue.amazonaws.com/<cuenta>/<cola>`). La cli la acepta, pero la integración
+  `SQS-SendMessage` responde **400 Bad Request** y el mensaje no llega. Los scripts la pasan a
+  `https://sqs.<region>.amazonaws.com/<cuenta>/<cola>` antes de usarla (`url_moderna`).
+- **Correo:** desde la EC2 el puerto 587 de `smtp.gmail.com` sale y negocia STARTTLS (TLS 1.3).
+  El 25 está bloqueado, como documenta AWS. notification-service puede usar Gmail por SMTP.

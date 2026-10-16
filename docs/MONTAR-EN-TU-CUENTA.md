@@ -9,7 +9,8 @@
 > el dominio y montarlo en cualquier otra, y los scripts la detectan solos. Está explicada en el
 > [paso 0](#0-lo-primero-el-dominio) y marcada 🅐 / 🅑 en cada paso donde importa.
 >
-> Última revisión: **10-09-2026**, probado de punta a punta en la cuenta `116813910999`.
+> Última revisión: **14-10-2026**, probado de punta a punta en la cuenta `731705830984` (antes, el
+> 10-09 en `116813910999`). Desde el EP3, `crear-api-gateway.sh` también deja lista la mensajería.
 
 ---
 
@@ -285,6 +286,11 @@ La HTTP API, el JWT Authorizer contra el pool del paso anterior, **13 rutas** co
 acceso, CORS de orígenes explícitos, los stages `dev` y `prod`, límite de **50 req/s** y el
 **secreto del borde**.
 
+También crea **`POST /ingesta`** (EP3): va directo a la cola SQS `cep-ofertas-crudas`, sin pasar
+por la EC2, y exige el scope `ingesta`. Si las colas todavía no existen, el script corre solo
+`tools/crear-mensajeria.py`, así que **no hay un comando nuevo que recordar**. La URL queda en
+`api-gateway.env` como `API_GATEWAY_URL_INGESTA`, y las de las colas en `mensajeria.env`.
+
 **Aquí es donde se decide 🅐 o 🅑**, en este orden:
 
 1. Si le pasas `BACKEND_URL=...` a mano, manda eso.
@@ -425,6 +431,7 @@ Pide escribir `RESTAURAR` antes de sobrescribir nada.
 | Las rutas dan **503** | El borde apunta a una máquina que no es la tuya. Vuelve a correr `crear-api-gateway.sh` |
 | El login lleva a un Cognito ajeno | Se compiló con `frontend/.env.production`. `desplegar.sh` ahora lo detecta y **se niega a subirlo** |
 | Un contenedor muere al compilar | Sin memoria. Comprueba el swap: `swapon --show` |
+| `POST /ingesta` da **400** y el mensaje no llega | La integración tiene la URL antigua de la cola (`queue.amazonaws.com`). Vuelve a correr `crear-api-gateway.sh`, que la pasa al formato `sqs.<region>.amazonaws.com` |
 | El `Caddyfile` no hace efecto | La máquina clona de GitHub: tiene que estar en `development` |
 
 ---

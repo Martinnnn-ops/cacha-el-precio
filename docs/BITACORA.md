@@ -1,6 +1,30 @@
 # Bitácora del proyecto
 
-Última actualización: 23-09-2026.
+Última actualización: 14-10-2026.
+
+## 14-10 · EP3: sondeo de Academy, puerta /ingesta y cuenta nueva (T02 y T03) — Martín
+
+Learner Lab nuevo: la cuenta pasó a ser **`731705830984`** (la anterior era `116813910999`).
+La receta de cuatro comandos de [MONTAR-EN-TU-CUENTA](MONTAR-EN-TU-CUENTA.md) se corrió entera
+sobre la cuenta vacía y dejó el sistema arriba sin pasos a mano: `/health` y `/productos` 200 y
+`/seguimiento` 401 a través del API Gateway.
+
+**T02.** El primer sondeo dijo «opción B», y era un **falso negativo**: la aws cli v1 de Academy
+devuelve la URL de la cola como `https://queue.amazonaws.com/...`, la cli la acepta, pero la
+integración `SQS-SendMessage` responde **400** y el mensaje no llega. Con la URL
+`https://sqs.us-east-1.amazonaws.com/...` responde 200 y el mensaje llega: **opción A
+confirmada**, LabRole ya confía en `apigateway.amazonaws.com`. Desde la EC2, el 587 de
+`smtp.gmail.com` sale y negocia STARTTLS; el 25, bloqueado. Queda en el
+[ADR-029](adr/029-mensajeria-sqs-sns.md), que pasa a aceptado.
+
+**T03.** `crear-api-gateway.sh` crea `POST /ingesta` directo a `cep-ofertas-crudas` con el scope
+`ingesta`, sin pasar por la EC2. Si las colas no existen, el script corre
+`crear-mensajeria.py`: montar una cuenta sigue siendo los mismos cuatro comandos. Medido: sin
+token 401, con el token del scraper 200 y el sobre en la cola; una segunda corrida no duplica
+nada.
+
+Pendiente: T04 (el scraper publica en la cola) y T05 (el consumidor en product-service). La EC2
+de la cuenta nueva quedó encendida para seguir con ellas.
 
 ## 23-09 · Catálogo y armario personal — Orion
 

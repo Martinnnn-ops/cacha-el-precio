@@ -17,6 +17,7 @@
 #   · Una HTTP API con CORS de origenes explicitos (nunca "*")
 #   · Un JWT Authorizer apuntando a nuestro user pool de Cognito
 #   · Las rutas hacia el backend, cada una con su nivel de acceso
+#   · POST /ingesta directo a la cola SQS cep-ofertas-crudas (EP3, ADR-029)
 #   · Los stages `dev` y `prod`
 #
 # ES IDEMPOTENTE: si algo ya existe lo reutiliza. Se puede correr las veces que
@@ -111,6 +112,7 @@ ORIGENES="$ORIGEN_WEB,$ORIGEN_LOCAL"
 verde()  { printf '\033[0;32m%s\033[0m\n' "$1"; }
 rojo()   { printf '\033[0;31m%s\033[0m\n' "$1"; }
 gris()   { printf '\033[0;90m%s\033[0m\n' "$1"; }
+amar()   { printf '\033[0;33m%s\033[0m\n' "$1"; }
 titulo() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 
 # --------------------------------------------------------------------------
@@ -337,6 +339,67 @@ I_DESEADO="$(integracion '/mi-cuenta/deseados/{id}')"
 I_OUTFIT="$(integracion '/mi-cuenta/outfits/{id}')"
 I_ADMIN="$(integracion /api/admin/diagnostico)";       gris "  /api/admin/...   -> $I_ADMIN"
 
+# ---------------------------------------------------------------------------
+# La puerta de la ingesta: POST /ingesta -> cola cep-ofertas-crudas (EP3, ADR-029).
+#
+# Esta integracion NO va a la EC2: el API Gateway escribe directo en SQS
+# asumiendo LabRole (opcion A, comprobada en Academy el 14-10-2026). Por eso
+# no lleva el secreto del borde y no depende de que la maquina este prendida:
+# si product-service esta caido, las ofertas esperan en la cola.
+#
+# Si la cola todavia no existe se crea aca mismo con tools/crear-mensajeria.py
+# (es idempotente), para que montar la cuenta siga siendo los mismos comandos.
+# ---------------------------------------------------------------------------
+COLA_INGESTA="$(python3 -c "import json;print(json.load(open('$RAIZ/infra/mensajeria/topologia.json'))['prefix'] + 'ofertas-crudas')")"
+url_cola_ingesta() {
+  aws_ sqs get-queue-url --queue-name "$COLA_INGESTA" --query QueueUrl --output text 2>/dev/null
+}
+URL_COLA="$(url_cola_ingesta)"
+if [[ -z "$URL_COLA" || "$URL_COLA" == "None" ]]; then
+  amar "  no existe $COLA_INGESTA: la creo con tools/crear-mensajeria.py"
+  REGION="$REGION" python3 "$RAIZ/tools/crear-mensajeria.py" >/dev/null \
+    || { rojo "  ! fallo crear-mensajeria.py; correlo a mano para ver el error"; exit 1; }
+  URL_COLA="$(url_cola_ingesta)"
+fi
+# La aws cli v1 devuelve https://queue.amazonaws.com/<cuenta>/<cola>; con ese
+# formato la integracion responde 400 y el mensaje no llega. Va el moderno.
+URL_COLA="https://sqs.$REGION.amazonaws.com/$CUENTA/${URL_COLA##*/}"
+
+# En Academy no se pueden crear roles: LabRole es el unico, y su trust policy
+# ya acepta a apigateway.amazonaws.com.
+ROL_INGESTA="arn:aws:iam::$CUENTA:role/LabRole"
+
+I_INGESTA_EXISTENTE="$(aws_ apigatewayv2 get-integrations --api-id "$API_ID" --max-results 200 \
+  --query "Items[?IntegrationSubtype=='SQS-SendMessage'].IntegrationId | [0]" --output text)"
+# --cli-input-json por la misma trampa de la cli v1 con los valores https:// (ver seccion 4).
+CUERPO_INGESTA="$(mktemp)"
+API_ID="$API_ID" EXISTENTE="$I_INGESTA_EXISTENTE" ROL="$ROL_INGESTA" COLA="$URL_COLA" \
+  python3 - > "$CUERPO_INGESTA" <<'PYJSON'
+import json, os
+d = {
+    "ApiId": os.environ["API_ID"],
+    "CredentialsArn": os.environ["ROL"],
+    # El cuerpo del POST llega tal cual a la cola: es el sobre oferta.capturada.
+    "RequestParameters": {"QueueUrl": os.environ["COLA"], "MessageBody": "$request.body"},
+}
+existente = os.environ.get("EXISTENTE", "")
+if existente and existente != "None":
+    d["IntegrationId"] = existente
+else:
+    d.update({"IntegrationType": "AWS_PROXY", "IntegrationSubtype": "SQS-SendMessage",
+              "PayloadFormatVersion": "1.0"})
+print(json.dumps(d))
+PYJSON
+if [[ "$I_INGESTA_EXISTENTE" != "None" && -n "$I_INGESTA_EXISTENTE" ]]; then
+  aws_ apigatewayv2 update-integration --cli-input-json "file://$CUERPO_INGESTA" >/dev/null
+  I_INGESTA="$I_INGESTA_EXISTENTE"
+else
+  I_INGESTA="$(aws_ apigatewayv2 create-integration --cli-input-json "file://$CUERPO_INGESTA" \
+    --query IntegrationId --output text)"
+fi
+rm -f "$CUERPO_INGESTA"
+gris "  /ingesta         -> $I_INGESTA (SQS $COLA_INGESTA, LabRole)"
+
 # --------------------------------------------------------------------------
 # 4. Las rutas, cada una con su nivel de acceso
 #
@@ -446,6 +509,8 @@ ruta "GET /api/admin/diagnostico"      "$I_ADMIN"       jwt
 ruta "POST /productos"                 "$I_PRODUCTOS"   scope
 ruta "PUT /productos/{id}"             "$I_PRODUCTO"    scope
 ruta "DELETE /productos/{id}"          "$I_PRODUCTO"    scope
+# La ingesta asincrona exige el mismo scope: solo el scraper deja ofertas en la cola.
+ruta "POST /ingesta"                   "$I_INGESTA"     scope
 
 # --------------------------------------------------------------------------
 # 5. Los stages
@@ -489,6 +554,8 @@ API_GATEWAY_ID=$API_ID
 API_GATEWAY_URL_DEV=$BASE/dev
 API_GATEWAY_URL_PROD=$BASE/prod
 API_GATEWAY_BACKEND=$BACKEND_URL
+# POST con token del scraper (scope ingesta): deja el sobre en $COLA_INGESTA
+API_GATEWAY_URL_INGESTA=$BASE/prod/ingesta
 EOF
 chmod 600 "$SALIDA"
 

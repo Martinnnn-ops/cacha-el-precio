@@ -118,6 +118,17 @@ def variable_env(nombre_completo: str, sufijo: str) -> str:
 # ---------------------------------------------------------------------------
 # Colas
 # ---------------------------------------------------------------------------
+def url_moderna(url: str) -> str:
+    """Pasa la URL de una cola al formato https://sqs.<region>.amazonaws.com/<cuenta>/<cola>.
+
+    La aws cli v1 devuelve el formato antiguo (https://queue.amazonaws.com/...), que
+    la cli sigue aceptando pero la integracion SQS-SendMessage del API Gateway no:
+    responde 400 Bad Request y el mensaje nunca llega (probado el 14-oct).
+    """
+    cuenta, cola = url.rstrip("/").split("/")[-2:]
+    return f"https://sqs.{REGION}.amazonaws.com/{cuenta}/{cola}"
+
+
 def url_de_cola(nombre: str) -> str | None:
     try:
         return aws("sqs", "get-queue-url", "--queue-name", nombre)["QueueUrl"]
@@ -253,7 +264,7 @@ def crear(topo: dict) -> None:
         f"MENSAJERIA_REGION={REGION}",
     ]
     for nombre, url in urls.items():
-        lineas.append(f"{variable_env(nombre, 'SQS_URL')}={url}")
+        lineas.append(f"{variable_env(nombre, 'SQS_URL')}={url_moderna(url)}")
     for nombre, arn in topicos.items():
         lineas.append(f"{variable_env(nombre, 'SNS_ARN')}={arn}")
     SALIDA.write_text("\n".join(lineas) + "\n")
