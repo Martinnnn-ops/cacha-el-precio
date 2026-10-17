@@ -29,6 +29,19 @@ public sealed class PersonalController(ProductDbContext db) : ControllerBase
         });
     }
 
+    // Lookup inverso para notification-service: dado un producto, quienes lo
+    // siguen (deseados). Ruta absoluta sin {owner}, solo por la red interna; no
+    // se enruta en el API Gateway. Ver ADR-030.
+    [HttpGet("/internal/personal/seguidores/{productId:int:min(1)}")]
+    public async Task<IActionResult> Seguidores(int productId, CancellationToken ct)
+    {
+        var seguidores = await db.PersonalItems.AsNoTracking()
+            .Where(p => p.Kind == "deseado" && p.Key == productId.ToString())
+            .Select(p => p.Owner)
+            .ToListAsync(ct);
+        return Ok(new { productId, seguidores });
+    }
+
     [HttpPut("deseados/{id:int:min(1)}")]
     [HttpPost("deseados/{id:int:min(1)}")]
     public async Task<IActionResult> Wish(string owner, int id, CancellationToken ct)
