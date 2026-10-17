@@ -66,6 +66,11 @@ Reglas de procesamiento (detalle en [MENSAJERIA.md](../MENSAJERIA.md)):
 - Costo: ~22.500 mensajes diarios (≈7.500 prendas × 3 barridos), con envío, recepción y borrado
   supera el millón gratuito al mes, pero a USD 0,40 por millón queda bajo un dólar. Cálculo
   propio, sin verificar en la calculadora de AWS.
+- **Limitación del productor:** product-service publica los cambios de oferta *después* de
+  guardar y en modo best-effort. Si SNS falla justo en ese upsert, el precio queda bien pero el
+  aviso **se pierde** y no se recupera al reintentar (no hay outbox). Es una decisión consciente
+  por el alcance del EP3; el detalle y la alternativa están en
+  [ADR-031](031-publicacion-cambios-oferta.md).
 ## Comprobado en AWS Academy (14-10-2026, cuenta `731705830984`)
 
 - **Opción A confirmada.** `tools/probar-mensajeria-academy.py` respondió HTTP 200 y el mensaje

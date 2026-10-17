@@ -1,13 +1,15 @@
 using Product_Service.Exceptions;
+using Product_Service.Mensajeria;
 using Product_Service.Models.Domain;
 using Product_Service.Models.DTOs;
 using Product_Service.Models.Entities;
+using Product_Service.Models.Eventos;
 using Product_Service.Models.Mappers;
 using Product_Service.Repository;
 
 namespace Product_Service.Service;
 
-public sealed class ProductService(IProductRepository repository)
+public sealed class ProductService(IProductRepository repository, IPublicadorEventos publicador)
 {
     public async Task<IReadOnlyList<ProductResponse>> GetAllProductsAsync()
     {
@@ -65,6 +67,16 @@ public sealed class ProductService(IProductRepository repository)
 
         ProductOfferEntity? offer = FindOffer(product, input);
 
+        // Los cambios de oferta se detectan comparando lo guardado con lo que
+        // llega, ANTES de pisar la oferta, y solo cuando ya existía (una oferta
+        // nueva no "baja" de nada). La decisión vive en una función pura. Ver
+        // docs/MENSAJERIA.md.
+        IReadOnlyList<(string Tipo, DatosCambioOferta Datos)> cambios = offer is null
+            ? []
+            : DecisionCambiosOferta.Evaluar(
+                DatosComunes(product, offer, input),
+                offer.Price, offer.Active, input.Price, input.Active);
+
         if (offer is null)
         {
             product.Offers.Add(CreateOffer(input));
@@ -82,8 +94,32 @@ public sealed class ProductService(IProductRepository repository)
         product.Description = Prefer(product.Description, input.Description);
         product.ProductImage = Prefer(product.ProductImage, input.Image);
         await repository.SaveChangesAsync();
+
+        // Después de guardar: el catálogo es la fuente de verdad y el aviso va
+        // detrás (best-effort, ver ADR-031).
+        foreach ((string tipo, DatosCambioOferta datos) in cambios)
+        {
+            await publicador.PublicarCambioOfertaAsync(tipo, datos);
+        }
+
         return product.ToResponse();
     }
+
+    /// <summary>
+    /// Arma los campos comunes del <c>data</c> (sin los de precio) a partir del
+    /// producto y la oferta. La imagen y la URL se toman de lo que llega, con la
+    /// guardada como respaldo.
+    /// </summary>
+    private static DatosCambioOferta DatosComunes(
+        ProductEntity product, ProductOfferEntity offer, ValidatedProduct input) => new()
+    {
+        ProductId = product.ProductId,
+        Slug = product.Slug,
+        Name = product.ProductName,
+        Image = input.Image ?? product.ProductImage ?? offer.ProductImage,
+        Store = offer.Store,
+        Url = input.Url
+    };
 
     public async Task<bool> UpdateProductAsync(int id, ProductRequest request)
     {
