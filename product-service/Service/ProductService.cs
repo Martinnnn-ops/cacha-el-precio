@@ -1,13 +1,15 @@
 using Product_Service.Exceptions;
+using Product_Service.Mensajeria;
 using Product_Service.Models.Domain;
 using Product_Service.Models.DTOs;
 using Product_Service.Models.Entities;
+using Product_Service.Models.Eventos;
 using Product_Service.Models.Mappers;
 using Product_Service.Repository;
 
 namespace Product_Service.Service;
 
-public sealed class ProductService(IProductRepository repository)
+public sealed class ProductService(IProductRepository repository, IPublicadorEventos publicador)
 {
     public async Task<IReadOnlyList<ProductResponse>> GetAllProductsAsync()
     {
@@ -65,6 +67,13 @@ public sealed class ProductService(IProductRepository repository)
 
         ProductOfferEntity? offer = FindOffer(product, input);
 
+        // Los cambios de oferta se detectan comparando lo guardado con lo que
+        // llega, ANTES de pisar la oferta, y solo cuando ya existía (una oferta
+        // nueva no "baja" de nada). Ver docs/MENSAJERIA.md.
+        IReadOnlyList<(string Tipo, DatosCambioOferta Datos)> cambios = offer is null
+            ? []
+            : DetectarCambios(product, offer, input);
+
         if (offer is null)
         {
             product.Offers.Add(CreateOffer(input));
@@ -82,7 +91,58 @@ public sealed class ProductService(IProductRepository repository)
         product.Description = Prefer(product.Description, input.Description);
         product.ProductImage = Prefer(product.ProductImage, input.Image);
         await repository.SaveChangesAsync();
+
+        // Después de guardar: el catálogo es la fuente de verdad y el aviso va
+        // detrás (best-effort, ver ADR-031).
+        foreach ((string tipo, DatosCambioOferta datos) in cambios)
+        {
+            await publicador.PublicarCambioOfertaAsync(tipo, datos);
+        }
+
         return product.ToResponse();
+    }
+
+    /// <summary>
+    /// Compara la oferta guardada con la que llega y arma los eventos del flujo 2.
+    /// Un mismo upsert puede bajar el precio y cambiar la disponibilidad a la vez:
+    /// en ese caso salen los dos eventos.
+    /// </summary>
+    private static List<(string Tipo, DatosCambioOferta Datos)> DetectarCambios(
+        ProductEntity product, ProductOfferEntity offer, ValidatedProduct input)
+    {
+        var cambios = new List<(string, DatosCambioOferta)>();
+
+        DatosCambioOferta Comunes() => new()
+        {
+            ProductId = product.ProductId,
+            Slug = product.Slug,
+            Name = product.ProductName,
+            Image = input.Image ?? product.ProductImage ?? offer.ProductImage,
+            Store = offer.Store,
+            Url = input.Url
+        };
+
+        if (input.Price < offer.Price)
+        {
+            int descuento = (int)Math.Round((offer.Price - input.Price) * 100.0 / offer.Price);
+            cambios.Add((TiposEvento.PrecioBajo, Comunes() with
+            {
+                PreviousPrice = offer.Price,
+                NewPrice = input.Price,
+                DiscountPct = descuento
+            }));
+        }
+
+        if (offer.Active && !input.Active)
+        {
+            cambios.Add((TiposEvento.OfertaAgotada, Comunes() with { LastPrice = input.Price }));
+        }
+        else if (!offer.Active && input.Active)
+        {
+            cambios.Add((TiposEvento.OfertaRepuesta, Comunes() with { Price = input.Price }));
+        }
+
+        return cambios;
     }
 
     public async Task<bool> UpdateProductAsync(int id, ProductRequest request)

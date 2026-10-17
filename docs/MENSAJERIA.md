@@ -100,7 +100,8 @@ sin cambios.
 Los tres los produce product-service en `UpsertProductAsync`, **solo cuando la oferta ya existía**,
 comparando lo guardado con lo que llega, antes de `ApplyOffer`. Si en un mismo upsert baja el precio
 y cambia la disponibilidad, se publican los dos eventos. Los consume notification-service (según el
-filtro) y la cola de auditoría (todos).
+filtro) y la cola de auditoría (todos). La publicación va **después** de guardar y es best-effort
+(cómo y por qué, en [ADR-031](adr/031-publicacion-cambios-oferta.md)).
 
 | Evento | Cuándo | `data` |
 |---|---|---|

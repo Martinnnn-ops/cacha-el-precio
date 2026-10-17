@@ -137,6 +137,14 @@ services:
     environment:
       ASPNETCORE_HTTP_PORTS: 8081
       ConnectionStrings__PostgreSql: "Host=postgres;Port=5432;Database=${DB_NAME:-cachaelprecio};Username=${DB_USER:-cachaelprecio};Password=${DB_PASSWORD};Search Path=product,public"
+      # Mensajería del flujo 2: publica los cambios de oferta en SNS. Credenciales
+      # por el rol de la EC2 en producción; en local salen del .env. Si el ARN
+      # viene vacío, product-service solo registra el evento y no publica.
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      SNS_CAMBIOS_OFERTA_ARN: ${SNS_CAMBIOS_OFERTA_ARN:-}
 
     depends_on:
       postgres:
