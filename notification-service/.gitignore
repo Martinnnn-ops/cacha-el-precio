@@ -1,0 +1,33 @@
+# Compilación de .NET
+bin/
+obj/
+
+# Archivos locales del IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Bases de datos y archivos locales de SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Cobertura, pruebas y paquetes
+TestResults/
+coverage/
+*.nupkg
+
+# Variables y secretos locales
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+
+# Metadatos del escritorio y sistema operativo
+.directory
+.DS_Store
+Thumbs.db
