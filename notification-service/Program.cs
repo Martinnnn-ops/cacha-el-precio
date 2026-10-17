@@ -1,8 +1,14 @@
 using Amazon;
 using Amazon.CognitoIdentityProvider;
+using Amazon.SQS;
 using Microsoft.EntityFrameworkCore;
+using Notification_Service.Consumidor;
+using Notification_Service.Correo;
 using Notification_Service.Data;
+using Notification_Service.Mensajeria;
+using Notification_Service.Repository;
 using Notification_Service.Seguidores;
+using Notification_Service.Service;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +23,13 @@ builder.Services.AddDbContext<NotificationDbContext>(options => options.UseNpgsq
     connectionString,
     postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", "notification")));
 
+// ─── AWS: region de la cadena de credenciales por defecto (rol de la EC2) ────
+string region = config["AWS_REGION"] ?? config["MENSAJERIA_REGION"] ?? "us-east-1";
+var regionEndpoint = RegionEndpoint.GetBySystemName(region);
+
+builder.Services.AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(regionEndpoint));
+builder.Services.AddSingleton<IColaMensajes, ColaMensajesSqs>();
+
 // ─── Seguidores (HTTP interno a product-service) ────────────────────────────
 string productUrl = config["PRODUCT_URL"] ?? "http://product-service:8081";
 builder.Services.AddHttpClient<ISeguidoresClient, SeguidoresClient>(http =>
@@ -26,17 +39,33 @@ builder.Services.AddHttpClient<ISeguidoresClient, SeguidoresClient>(http =>
 });
 
 // ─── sub -> email: Cognito si hay user pool, si no un mapa de configuracion ──
-string region = config["AWS_REGION"] ?? config["MENSAJERIA_REGION"] ?? "us-east-1";
 if (!string.IsNullOrWhiteSpace(config["COGNITO_USER_POOL_ID"]))
 {
     builder.Services.AddSingleton<IAmazonCognitoIdentityProvider>(
-        _ => new AmazonCognitoIdentityProviderClient(RegionEndpoint.GetBySystemName(region)));
+        _ => new AmazonCognitoIdentityProviderClient(regionEndpoint));
     builder.Services.AddScoped<IDirectorioCorreos, DirectorioCorreosCognito>();
 }
 else
 {
     builder.Services.AddScoped<IDirectorioCorreos, DirectorioCorreosConfig>();
 }
+
+// ─── Envio de correo segun CORREO_MODO ──────────────────────────────────────
+string correoModo = (config["CORREO_MODO"] ?? "log").ToLowerInvariant();
+if (correoModo == "smtp")
+{
+    if (string.IsNullOrWhiteSpace(config["SMTP_USUARIO"]) || string.IsNullOrWhiteSpace(config["SMTP_CLAVE"]))
+        throw new InvalidOperationException("CORREO_MODO=smtp exige SMTP_USUARIO y SMTP_CLAVE.");
+    builder.Services.AddSingleton<IEnviadorCorreo, EnviadorCorreoSmtp>();
+}
+else
+{
+    builder.Services.AddSingleton<IEnviadorCorreo, EnviadorCorreoLog>();
+}
+
+builder.Services.AddScoped<INotificacionesRepository, NotificacionesRepository>();
+builder.Services.AddScoped<ServicioNotificaciones>();
+builder.Services.AddHostedService<ConsumidorNotificaciones>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
