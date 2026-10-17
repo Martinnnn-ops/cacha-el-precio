@@ -69,10 +69,13 @@ public sealed class ProductService(IProductRepository repository, IPublicadorEve
 
         // Los cambios de oferta se detectan comparando lo guardado con lo que
         // llega, ANTES de pisar la oferta, y solo cuando ya existía (una oferta
-        // nueva no "baja" de nada). Ver docs/MENSAJERIA.md.
+        // nueva no "baja" de nada). La decisión vive en una función pura. Ver
+        // docs/MENSAJERIA.md.
         IReadOnlyList<(string Tipo, DatosCambioOferta Datos)> cambios = offer is null
             ? []
-            : DetectarCambios(product, offer, input);
+            : DecisionCambiosOferta.Evaluar(
+                DatosComunes(product, offer, input),
+                offer.Price, offer.Active, input.Price, input.Active);
 
         if (offer is null)
         {
@@ -103,47 +106,20 @@ public sealed class ProductService(IProductRepository repository, IPublicadorEve
     }
 
     /// <summary>
-    /// Compara la oferta guardada con la que llega y arma los eventos del flujo 2.
-    /// Un mismo upsert puede bajar el precio y cambiar la disponibilidad a la vez:
-    /// en ese caso salen los dos eventos.
+    /// Arma los campos comunes del <c>data</c> (sin los de precio) a partir del
+    /// producto y la oferta. La imagen y la URL se toman de lo que llega, con la
+    /// guardada como respaldo.
     /// </summary>
-    private static List<(string Tipo, DatosCambioOferta Datos)> DetectarCambios(
-        ProductEntity product, ProductOfferEntity offer, ValidatedProduct input)
+    private static DatosCambioOferta DatosComunes(
+        ProductEntity product, ProductOfferEntity offer, ValidatedProduct input) => new()
     {
-        var cambios = new List<(string, DatosCambioOferta)>();
-
-        DatosCambioOferta Comunes() => new()
-        {
-            ProductId = product.ProductId,
-            Slug = product.Slug,
-            Name = product.ProductName,
-            Image = input.Image ?? product.ProductImage ?? offer.ProductImage,
-            Store = offer.Store,
-            Url = input.Url
-        };
-
-        if (input.Price < offer.Price)
-        {
-            int descuento = (int)Math.Round((offer.Price - input.Price) * 100.0 / offer.Price);
-            cambios.Add((TiposEvento.PrecioBajo, Comunes() with
-            {
-                PreviousPrice = offer.Price,
-                NewPrice = input.Price,
-                DiscountPct = descuento
-            }));
-        }
-
-        if (offer.Active && !input.Active)
-        {
-            cambios.Add((TiposEvento.OfertaAgotada, Comunes() with { LastPrice = input.Price }));
-        }
-        else if (!offer.Active && input.Active)
-        {
-            cambios.Add((TiposEvento.OfertaRepuesta, Comunes() with { Price = input.Price }));
-        }
-
-        return cambios;
-    }
+        ProductId = product.ProductId,
+        Slug = product.Slug,
+        Name = product.ProductName,
+        Image = input.Image ?? product.ProductImage ?? offer.ProductImage,
+        Store = offer.Store,
+        Url = input.Url
+    };
 
     public async Task<bool> UpdateProductAsync(int id, ProductRequest request)
     {
