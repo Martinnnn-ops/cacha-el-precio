@@ -1,6 +1,41 @@
 # Bitácora del proyecto
 
-Última actualización: 14-10-2026.
+Última actualización: 17-10-2026.
+
+## 17-10 · EP3: flujo 2 completo — avisos por correo (T07, T08, T09) — Orion
+
+Quedó armado el **flujo 2** de la mensajería (producto que baja de precio, se agota o se repone →
+correo a quien lo sigue), en dos PR a `development`:
+
+**notification-service (T08 + T09) — PR #37.** Servicio nuevo en .NET 10 que consume la cola
+`cep-notificaciones`: valida el sobre, pregunta a product-service quién sigue la prenda
+(`GET /internal/personal/seguidores/{id}`, los «deseados»), traduce cada `sub` a su correo con
+Cognito `ListUsers` (caché 1 h, salta los no verificados) y manda un correo por persona con
+MailKit, **sin repetir** (tabla `notificaciones_enviadas (event_id, owner)`). Esquema propio
+`notification`; en local, sin AWS, va en modo log. Decisiones en
+[ADR-030](adr/030-notification-service.md): no toca el esquema `product`, y una dirección
+rechazada (SMTP 550/553) se salta esa persona en vez de mandar todo el evento a la DLQ.
+
+**product-service productor (T07) — PR #38.** En `UpsertProductAsync`, **solo cuando la oferta ya
+existía**, compara precio y `active` antes de `ApplyOffer` y publica `precio.bajo`,
+`oferta.agotada` u `oferta.repuesta` en el tópico SNS `cep-cambios-oferta`, con los atributos
+`type` y `discountPct` que el filtro de la cola necesita. El negocio habla con
+`IPublicadorEventos` (impl. SNS o log), nunca con el SDK. La decisión de qué eventos corresponden
+quedó en una **función pura** (`DecisionCambiosOferta.Evaluar`). La publicación va **después** de
+guardar y es best-effort: si SNS falla, el precio queda bien y solo se pierde el aviso; está
+anotado como limitación en el [ADR-029](adr/029-mensajeria-sqs-sns.md) y detallado en el nuevo
+[ADR-031](adr/031-publicacion-cambios-oferta.md) (el costo: sin outbox, ese aviso no se recupera).
+
+**Dos cosas más.** (1) Al mergear `development` en la rama de la T07, la resolución del conflicto
+borró sin querer la sección del notification-service en `.env.example`; se restauró para no
+quitarle esas variables a `development`. (2) Entró el **primer proyecto de tests .NET del repo**
+(`product-service.Tests`, xUnit): cubre la función pura (baja, subida, agotada, repuesta,
+baja+agotada, sin cambios y el redondeo de `discountPct`) y el borde de «oferta nueva no publica»,
+todo sin BD ni AWS. 11 casos en verde; la solución compila sin warnings.
+
+Nueva dependencia: `AWSSDK.SimpleNotificationService` en product-service. Pendiente: probar el
+flujo punta a punta con `docker compose up` (quedó sin correr acá) y confirmar en la EC2 que
+`LabRole` permite `cognito-idp:ListUsers`.
 
 ## 14-10 · EP3: sondeo de Academy, puerta /ingesta y cuenta nueva (T02 y T03) — Martín
 
