@@ -156,6 +156,49 @@ services:
     networks: [cep]
 
   # ───────────────────────────────────────────────────────────────────────────
+  #  Notification Service — avisos por correo (C#/.NET)
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Consume la cola SQS cep-notificaciones y le manda un correo a quien sigue la
+  #  prenda que cambió. Solo en la red interna; no se expone a internet. Resuelve
+  #  los seguidores por HTTP a product-service y el correo por Cognito.
+  #  Ver docs/MENSAJERIA.md y docs/adr/030-notification-service.md.
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: cep-notification-service
+    restart: unless-stopped
+
+    environment:
+      ASPNETCORE_HTTP_PORTS: 8082
+      ConnectionStrings__PostgreSql: "Host=postgres;Port=5432;Database=${DB_NAME:-cachaelprecio};Username=${DB_USER:-cachaelprecio};Password=${DB_PASSWORD};Search Path=notification,public"
+      # Host interno del compose; resuelve los seguidores por la red privada.
+      PRODUCT_URL: http://product-service:8081
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-}
+      # Salen de mensajeria.env (tools/crear-mensajeria.py). Si vienen vacías, el
+      # consumidor no arranca y el servicio igual sirve /health.
+      SQS_NOTIFICACIONES_URL: ${SQS_NOTIFICACIONES_URL:-}
+      SQS_NOTIFICACIONES_DLQ_URL: ${SQS_NOTIFICACIONES_DLQ_URL:-}
+      # log = escribe el correo en el log; smtp = Gmail real (exige SMTP_*).
+      CORREO_MODO: ${CORREO_MODO:-log}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_CLAVE: ${SMTP_CLAVE:-}
+      SITIO_URL: ${SITIO_URL:-https://www.cacha-el-precio.com}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:${NOTIFICATION_PORT:-8082}:8082"
+
+    networks: [cep]
+
+  # ───────────────────────────────────────────────────────────────────────────
   #  Scraper API — el servicio de scraping (Python/FastAPI)
   # ───────────────────────────────────────────────────────────────────────────
   #  Corre sobre Python 3.14 + FastAPI. Scrappea tiendas chilenas,

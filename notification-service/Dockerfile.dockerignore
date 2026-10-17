@@ -1,0 +1,12 @@
+**
+
+!notification-service/
+!notification-service/Notification-Service.csproj
+!notification-service/**/*.cs
+!notification-service/appsettings*.json
+
+# Mismos motivos que product-service: la lista blanca deja pasar **/*.cs, que
+# incluye los .cs generados en obj/ (apuntan a la cache de NuGet de la maquina
+# donde se compilo) y romperian el build dentro de la imagen.
+notification-service/obj/
+notification-service/bin/
