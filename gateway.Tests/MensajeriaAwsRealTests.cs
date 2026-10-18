@@ -151,7 +151,10 @@ public class MensajeriaAwsRealTests
         {
             var r = await sqs.ReceiveMessageAsync(new Sqs.ReceiveMessageRequest
             {
-                QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 5, VisibilityTimeout = 30
+                QueueUrl = url,
+                MaxNumberOfMessages = 10,
+                WaitTimeSeconds = 5,
+                VisibilityTimeout = 30
             }, Ct);
             foreach (var m in r.Messages ?? [])
             {
