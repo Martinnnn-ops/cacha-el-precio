@@ -177,7 +177,7 @@ trabajo**. Nunca antes.
 | Situación | Tipo | Qué hace el consumidor | Qué pasa con el mensaje |
 |---|---|---|---|
 | Se procesó bien | éxito | `DeleteMessage` | sale de la cola |
-| Base de datos caída, timeout, Gmail no responde | **recuperable** | no lo borra, registra el error | reaparece a los 60 s; al 5.º intento SQS lo mueve a la DLQ |
+| Base de datos caída, timeout, Gmail no responde | **recuperable** | no lo borra, registra el error | reaparece a los 60 s; en el último intento lo aparta el consumidor con diagnóstico (en product-service; en notification-service lo mueve SQS, sin atributos) |
 | JSON roto, `type`/`version` desconocido, falla de validación, correo de destino inválido | **definitivo** | lo envía a la DLQ **con atributos de diagnóstico** y lo borra de la cola original | queda en la DLQ sin gastar 5 reintentos |
 
 Atributos de diagnóstico que se agregan al mandar a la DLQ (además del cuerpo original intacto):
@@ -234,7 +234,8 @@ que valida el sobre (`type=oferta.capturada`, `version=1`) y guarda `data` con
 |---|---|---|
 | ok | se guardó | `DeleteMessage` |
 | dlq | JSON roto, `type`/`version` desconocido, `data` que no es una oferta, precio ≤ 0, campo obligatorio vacío, prenda infantil | a `cep-ofertas-crudas-dlq` con los 6 atributos de diagnóstico, y se borra |
-| reintento | base caída, timeout (incluido `TaskCanceledException`) | no se borra, se registra un warning; SQS lo reintenta y al 5.º intento lo aparta solo |
+| reintento | base caída, timeout (incluido `TaskCanceledException`) | no se borra, se registra un warning y SQS lo reintenta |
+| dlq-agotado | el mismo error recuperable en el **último** intento (`maxReceiveCount` de la cola, leído de su `RedrivePolicy`) | lo aparta el consumidor en la DLQ con `error-type=recuperable-agotado` y la razón del último error |
 
 Cada log lleva `eventId`, `MessageId`, el intento y el resultado. Sin `SQS_OFERTAS_CRUDAS_URL` el
 consumidor no arranca (registra «desactivado») y la API HTTP sigue igual. El negocio habla con

@@ -121,6 +121,49 @@ public class ConsumidorOfertasTests
         Assert.Empty(cola.EnDlq);
     }
 
+    // ── El ultimo intento lo aparta el consumidor, con diagnostico ───────
+
+    [Fact]
+    public async Task En_el_ultimo_intento_va_a_la_dlq_con_diagnostico_recuperable_agotado()
+    {
+        var (consumidor, cola, repo) = Armar();
+        repo.FallarAlGuardar = new TimeoutException("la base no respondio");
+
+        await consumidor.ManejarAsync(Mensaje(OfertaValida, intento: 5), CancellationToken.None);
+
+        var (id, diagnostico) = Assert.Single(cola.EnDlq);
+        Assert.Equal("m-1", id);
+        Assert.Equal("recuperable-agotado", diagnostico["error-type"]);
+        Assert.Equal("5 intentos sin exito; el ultimo: la base no respondio", diagnostico["error-reason"]);
+        Assert.Equal("TimeoutException", diagnostico["error-exception"]);
+        Assert.Equal("m-1", diagnostico["original-message-id"]);
+    }
+
+    [Fact]
+    public async Task Antes_del_ultimo_intento_sigue_reintentando()
+    {
+        var (consumidor, cola, repo) = Armar();
+        repo.FallarAlGuardar = new TimeoutException("la base no respondio");
+
+        await consumidor.ManejarAsync(Mensaje(OfertaValida, intento: 4), CancellationToken.None);
+
+        Assert.Empty(cola.EnDlq);
+        Assert.Empty(cola.Borrados);
+    }
+
+    [Fact]
+    public async Task Si_no_se_sabe_el_maximo_lo_deja_a_sqs()
+    {
+        var (consumidor, cola, repo) = Armar();
+        cola.MaxIntentos = null;     // cola sin DLQ, o RedrivePolicy ilegible
+        repo.FallarAlGuardar = new TimeoutException("la base no respondio");
+
+        await consumidor.ManejarAsync(Mensaje(OfertaValida, intento: 9), CancellationToken.None);
+
+        Assert.Empty(cola.EnDlq);
+        Assert.Empty(cola.Borrados);
+    }
+
     // ── Duplicados ───────────────────────────────────────────────────────
 
     [Fact]
@@ -137,7 +180,8 @@ public class ConsumidorOfertasTests
 
     // =====================================================================
 
-    private static MensajeCola Mensaje(string cuerpo, string id = "m-1") => new(id, cuerpo, "recibo-" + id, 1);
+    private static MensajeCola Mensaje(string cuerpo, string id = "m-1", int intento = 1) =>
+        new(id, cuerpo, "recibo-" + id, intento);
 
     private static (ConsumidorOfertas, ColaFalsa, RepositorioMemoria) Armar()
     {
@@ -161,6 +205,9 @@ public class ConsumidorOfertasTests
         public List<string> Borrados { get; } = [];
         public List<(string Id, IReadOnlyDictionary<string, string> Diagnostico)> EnDlq { get; } = [];
         public bool Habilitada => true;
+        public int? MaxIntentos { get; set; } = 5;
+
+        public Task<int?> MaxIntentosAsync(CancellationToken ct) => Task.FromResult(MaxIntentos);
 
         public Task<IReadOnlyList<MensajeCola>> RecibirAsync(CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<MensajeCola>>([]);
