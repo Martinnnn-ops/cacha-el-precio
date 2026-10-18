@@ -311,7 +311,10 @@ public sealed class AdministradorMensajeriaAws(
             MessageSystemAttributeNames = ["All"]
         }, ct));
 
-        return (r.Messages ?? []).Select(m => new MensajeDlq(
+        // Como nunca dejan de estar visibles, SQS puede devolver el MISMO mensaje
+        // varias veces en una sola lectura (visto contra AWS el 18-10): se dejan
+        // solo los distintos.
+        return (r.Messages ?? []).DistinctBy(m => m.MessageId).Select(m => new MensajeDlq(
             m.MessageId,
             m.Body,
             (m.MessageAttributes ?? []).ToDictionary(kv => kv.Key, kv => kv.Value.StringValue ?? ""),
@@ -325,20 +328,32 @@ public sealed class AdministradorMensajeriaAws(
         var urlDlq = await UrlDeColaAsync(dlq, ct) ?? throw new RecursoNoEncontradoException("la cola", dlq);
         var urlDestino = await UrlDeColaAsync(destino, ct) ?? throw new RecursoNoEncontradoException("la cola", destino);
 
-        // 1. Lo nativo: StartMessageMoveTask (el "redrive" de la consola).
+        // 1. Lo nativo: StartMessageMoveTask (el "redrive" de la consola). El
+        //    LabRole lo permite (comprobado el 18-10). Se espera a que termine para
+        //    devolver cuantos movio de verdad.
+        string? tarea = null;
         try
         {
+            string arnDlq = await ArnDeColaAsync(urlDlq, ct);
             var r = await sqs.StartMessageMoveTaskAsync(new Sqs.StartMessageMoveTaskRequest
             {
-                SourceArn = await ArnDeColaAsync(urlDlq, ct),
+                SourceArn = arnDlq,
                 DestinationArn = await ArnDeColaAsync(urlDestino, ct)
             }, ct);
-            log.LogInformation("Redrive {Dlq} -> {Destino} iniciado (tarea {Tarea})", dlq, destino, r.TaskHandle);
-            return new ResultadoReproceso(dlq, destino, "redrive", null, r.TaskHandle);
+            tarea = r.TaskHandle;
+            int? movidosNativo = await EsperarTareaAsync(arnDlq, ct);
+            log.LogInformation("Redrive {Dlq} -> {Destino}: {Movidos} mensajes (tarea {Tarea})", dlq, destino, movidosNativo, tarea);
+
+            // ⚠️ Visto contra AWS el 18-10: la tarea calcula cuantos mover con el
+            //    contador APROXIMADO de la DLQ, que tarda unos segundos en ponerse al
+            //    dia despues de que alguien la mira. Si el admin mira la DLQ y aprieta
+            //    redrive al tiro, la tarea termina "COMPLETED" con 0 de 0. En ese caso
+            //    se sigue con el plan B, que lee la cola de verdad.
+            if (movidosNativo is > 0)
+                return new ResultadoReproceso(dlq, destino, "redrive", movidosNativo, tarea);
         }
         catch (AmazonServiceException e) when (EsPermisoDenegado(e))
         {
-            // El Learner Lab puede no permitirlo (T02 lo dejo por comprobar).
             log.LogWarning("StartMessageMoveTask denegado ({Codigo}); se mueve a mano", e.ErrorCode);
         }
 
@@ -372,7 +387,23 @@ public sealed class AdministradorMensajeriaAws(
             }
         }
         log.LogInformation("Reproceso manual {Dlq} -> {Destino}: {Movidos} mensajes", dlq, destino, movidos);
-        return new ResultadoReproceso(dlq, destino, "manual", movidos, null);
+        return new ResultadoReproceso(dlq, destino, tarea is null ? "manual" : "redrive+manual", movidos, tarea);
+    }
+
+    // Espera (hasta ~20 s) a que la tarea de movimiento mas reciente de la DLQ
+    // termine, y devuelve cuantos mensajes movio. null si no alcanzo a terminar.
+    private async Task<int?> EsperarTareaAsync(string arnDlq, CancellationToken ct)
+    {
+        for (int i = 0; i < 20; i++)
+        {
+            var r = await Aws("consultar el redrive", () => sqs.ListMessageMoveTasksAsync(
+                new Sqs.ListMessageMoveTasksRequest { SourceArn = arnDlq, MaxResults = 1 }, ct));
+            var t = (r.Results ?? []).FirstOrDefault();
+            if (t is not null && t.Status is "COMPLETED" or "FAILED" or "CANCELLED")
+                return (int?)t.ApproximateNumberOfMessagesMoved ?? 0;
+            await Task.Delay(1000, ct);
+        }
+        return null;
     }
 
     // =======================================================================

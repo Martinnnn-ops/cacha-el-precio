@@ -35,13 +35,15 @@ public sealed class ServicioAdministracion(
         return colas.Select(c => Enriquecer(c, colas)).ToList();
     }
 
+    // La existencia se pregunta directo (GetQueueUrl responde al tiro) y no al
+    // listado: ListQueues es eventualmente consistente y una cola recien creada
+    // puede tardar en aparecer. El listado solo se usa para EsDlqDe.
     public async Task<ColaInfo> ObtenerColaAsync(string nombre, CancellationToken ct)
     {
         Validar(ValidadorSolicitudes.ValidarNombre(nombre, Prefijo));
-        var colas = await mensajeria.ListarColasAsync(ct);
-        var cola = colas.FirstOrDefault(c => c.Nombre == nombre)
+        var cola = await mensajeria.ObtenerColaAsync(nombre, ct)
             ?? throw new RecursoNoEncontradoException("la cola", nombre);
-        return Enriquecer(cola, colas);
+        return Enriquecer(cola, await mensajeria.ListarColasAsync(ct));
     }
 
     public async Task<ColaInfo> CrearColaAsync(CrearColaSolicitud s, CancellationToken ct)
@@ -77,10 +79,10 @@ public sealed class ServicioAdministracion(
     public async Task EliminarColaAsync(string nombre, bool forzar, CancellationToken ct)
     {
         Validar(ValidadorSolicitudes.ValidarNombre(nombre, Prefijo));
-        var colas = await mensajeria.ListarColasAsync(ct);
-        if (colas.All(c => c.Nombre != nombre))
+        if (await mensajeria.ObtenerColaAsync(nombre, ct) is null)
             throw new RecursoNoEncontradoException("la cola", nombre);
 
+        var colas = await mensajeria.ListarColasAsync(ct);
         var usuarias = colas.Where(c => c.Dlq?.Cola == nombre).Select(c => c.Nombre).ToList();
         if (usuarias.Count > 0)
             throw new ConflictoException(
@@ -210,7 +212,7 @@ public sealed class ServicioAdministracion(
             errores["topico"] = [$"El topico '{topico}' no existe."];
 
         var colas = await mensajeria.ListarColasAsync(ct);
-        if (colas.All(c => c.Nombre != cola))
+        if (await mensajeria.ObtenerColaAsync(cola, ct) is null)
             errores["cola"] = [$"La cola '{cola}' no existe."];
         else if (colas.Any(c => c.Dlq?.Cola == cola))
             errores["cola"] = [$"'{cola}' es una DLQ: no deberia recibir mensajes de un topico, solo los fallos de su cola."];
@@ -266,9 +268,10 @@ public sealed class ServicioAdministracion(
     private async Task<List<string>> ColasQueUsanDlqAsync(string dlq, CancellationToken ct)
     {
         Validar(ValidadorSolicitudes.ValidarNombre(dlq, Prefijo, "dlq"));
-        var colas = await mensajeria.ListarColasAsync(ct);
-        if (colas.All(c => c.Nombre != dlq))
+        if (await mensajeria.ObtenerColaAsync(dlq, ct) is null)
             throw new RecursoNoEncontradoException("la cola", dlq);
+
+        var colas = await mensajeria.ListarColasAsync(ct);
 
         var origenes = colas.Where(c => c.Dlq?.Cola == dlq).Select(c => c.Nombre).ToList();
         if (origenes.Count == 0)

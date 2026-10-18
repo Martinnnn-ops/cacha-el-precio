@@ -30,10 +30,35 @@ de product-service, incluidos los 11 de Orion). Las imágenes del gateway y de p
 construyen; el gateway en Docker responde `/health` 200 y 401 sin token; product-service sin URL
 de cola registra «desactivado», y con URL pero sin credenciales sigue arriba reintentando cada 5 s.
 
-**Pendiente (necesita AWS):** el «Listo cuando» de la T05 con la cola real (la oferta aparece en
-`GET /productos`, `price: -1` a la DLQ al primer intento, postgres detenido → 5 intentos y DLQ), el
-`.http` de la T11 con un token de admin, saber si Academy permite `StartMessageMoveTask` y volver a
-correr `crear-api-gateway.sh` para crear las rutas `/api/admin/mensajeria`.
+**Probado contra AWS (cuenta `731705830984`, mismo día).** Con product-service y
+notification-service corriendo en local contra las colas, el tópico y el Cognito reales:
+
+| Qué | Resultado |
+|---|---|
+| Permisos del `LabRole` (simulación IAM) | `cognito-idp:ListUsers`, `sqs:StartMessageMoveTask` y todo lo de SQS/SNS que usamos: *allowed* |
+| T05 · sobre válido por `POST /ingesta` con el token del scraper | en `GET /api/products` a los **4 s**, cola en 0 |
+| T05 · `price: -1` | a la DLQ en el **intento 1**, con los 6 atributos de diagnóstico |
+| T05 · postgres detenido | 5 reintentos (warning cada uno) y a la DLQ, ~5 min |
+| T05 · redrive con la base de vuelta | la oferta se guarda |
+| T07 (Orion) · baja 5% / baja 25% / agotada / repuesta | auditoría recibe las **4**, notificaciones **3** (la de 5% no pasa el filtro); contrato v1 crudo con `discountPct` 5 y 25 |
+| T08 + T09 (Orion) | `/health` y migración; `ListUsers` resuelve el correo; 3 correos (modo log), 3 filas en `notificaciones_enviadas` |
+| T09 · duplicado del mismo `eventId` | «Ya se le había avisado… se salta», sigue en 3 |
+| T09 · JSON roto | a `cep-notificaciones-dlq` con `error-type=definitivo` |
+| T11 · `MensajeriaAwsRealTests` (`CEP_AWS_REAL=1`) | 2/2: topología real sincronizada y aplicada «sin cambios»; ciclo crear → filtro → mirar DLQ → redrive → borrar |
+
+Lo que solo apareció contra AWS, y quedó corregido en la T11: (1) `ListQueues` tarda en mostrar
+una cola recién creada, así que la existencia se pregunta con `GetQueueUrl`; (2) mirar una cola con
+`VisibilityTimeout=0` puede devolver **el mismo mensaje varias veces** en una lectura; (3) el
+redrive nativo calcula cuánto mover con el contador **aproximado** de la DLQ: si alguien la acaba
+de mirar, termina `COMPLETED` con 0 de 0. Ahora se espera la tarea y, si movió 0, se sigue a mano.
+También se confirmó que mirar una cola **con** DLQ sube el contador de intentos hasta mandar los
+mensajes a la DLQ: por eso el panel no lo permite.
+
+**Pendiente:** desplegar en la EC2 (estaba encendida al probar) y volver a correr
+`crear-api-gateway.sh` para crear las rutas `/api/admin/mensajeria`; el `.http` de la T11 con un
+token de admin; el correo por SMTP de verdad (T10). En la plantilla de `oferta.agotada` de
+notification-service dice «cuando dejo de estar disponible» (falta la tilde de *dejó*): se le avisa
+a Orion.
 
 ## 17-10 · EP3: flujo 2 completo — avisos por correo (T07, T08, T09) — Orion
 
