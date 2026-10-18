@@ -99,6 +99,9 @@ http.interceptors.response.use(
             : 'Algo no salió bien. Vuelve a intentarlo.'),
       )
       traducido.status = status
+      // El cuerpo original, para quien necesite mas que el mensaje: el panel de
+      // mensajeria muestra el { campo, error } del servidor junto a cada campo.
+      traducido.datos = respuesta.data
 
       return Promise.reject(traducido)
     }

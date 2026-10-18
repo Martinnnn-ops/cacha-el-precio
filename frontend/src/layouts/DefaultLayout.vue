@@ -67,6 +67,7 @@ const categoriasDelPie = computed(() =>
       :tema="ui.tema"
       :temas="ui.TEMAS"
       :usuario="cuenta.usuario"
+      :es-admin="cuenta.esAdmin"
       @cambiar-tema="ui.elegirTema"
       @cerrar-sesion="cuenta.cerrarSesion"
     />
