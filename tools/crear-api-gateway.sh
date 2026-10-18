@@ -385,13 +385,15 @@ d = {
     "CredentialsArn": os.environ["ROL"],
     # El cuerpo del POST llega tal cual a la cola: es el sobre oferta.capturada.
     "RequestParameters": {"QueueUrl": os.environ["COLA"], "MessageBody": "$request.body"},
+    # Tambien al actualizar: sin el subtipo, API Gateway la valida como una
+    # integracion HTTP comun y responde "Invalid integration URI" (visto el 18-10).
+    "IntegrationSubtype": "SQS-SendMessage",
 }
 existente = os.environ.get("EXISTENTE", "")
 if existente and existente != "None":
     d["IntegrationId"] = existente
 else:
-    d.update({"IntegrationType": "AWS_PROXY", "IntegrationSubtype": "SQS-SendMessage",
-              "PayloadFormatVersion": "1.0"})
+    d.update({"IntegrationType": "AWS_PROXY", "PayloadFormatVersion": "1.0"})
 print(json.dumps(d))
 PYJSON
 if [[ "$I_INGESTA_EXISTENTE" != "None" && -n "$I_INGESTA_EXISTENTE" ]]; then
