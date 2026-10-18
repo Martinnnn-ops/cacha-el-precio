@@ -140,6 +140,21 @@ public class ConsumidorOfertasTests
     }
 
     [Fact]
+    public async Task El_diagnostico_usa_la_causa_de_fondo_y_no_el_envoltorio_de_EF()
+    {
+        var (consumidor, cola, repo) = Armar();
+        repo.FallarAlGuardar = new InvalidOperationException(
+            "An exception has been raised that is likely due to a transient failure.",
+            new System.Net.Sockets.SocketException(111));
+
+        await consumidor.ManejarAsync(Mensaje(OfertaValida, intento: 5), CancellationToken.None);
+
+        var (_, diagnostico) = Assert.Single(cola.EnDlq);
+        Assert.Equal("SocketException", diagnostico["error-exception"]);
+        Assert.DoesNotContain("transient failure", diagnostico["error-reason"]);
+    }
+
+    [Fact]
     public async Task Antes_del_ultimo_intento_sigue_reintentando()
     {
         var (consumidor, cola, repo) = Armar();

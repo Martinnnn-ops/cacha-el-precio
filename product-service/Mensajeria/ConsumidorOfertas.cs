@@ -84,8 +84,11 @@ public sealed class ConsumidorOfertas(
             {
                 log.LogWarning(e, "Resultado=dlq-agotado MessageId={MessageId} intento={Intento} de {Max}: {Mensaje}",
                     mensaje.MessageId, mensaje.ApproximateReceiveCount, m, e.Message);
+                // La causa util esta ADENTRO: EF envuelve el error de Npgsql en un
+                // "transient failure" generico (visto en la EC2 el 18-10).
+                var causa = e.GetBaseException();
                 await cola.EnviarADlqAsync(mensaje, Diagnostico(mensaje, "recuperable-agotado",
-                    $"{m} intentos sin exito; el ultimo: {e.Message}", e), ct);
+                    $"{m} intentos sin exito; el ultimo: {causa.Message}", causa), ct);
                 return;
             }
 
