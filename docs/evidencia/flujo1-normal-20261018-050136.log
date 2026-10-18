@@ -1,0 +1,31 @@
+EVIDENCIA DEL FLUJO 1 (normal) — Cacha el Precio · T06
+Fecha:    2026-10-18T05:01:36-03:00
+Cuenta:   731705830984      EC2: 100.60.227.130      Rama: development ff876f0 docs: mensajeria del EP3 en los README de cada modulo y en el indice 
+Camino:   scraper-api (MODO_PUBLICACION=cola) -> POST /ingesta -> SQS cep-ofertas-crudas -> product-service -> PostgreSQL
+Medido:   el catalogo A TRAVES del API Gateway (https://mcxw9tpe13.execute-api.us-east-1.amazonaws.com/prod/productos)
+Barrido:  falabella, limite 20
+=======================================================================
+
+1. ANTES
+   productos en el sitio: 0   ·   ofertas de falabella: 0
+   05:01:43  cep-ofertas-crudas  visibles/en-proceso: 0 / 0   ·   DLQ visibles: 1
+
+2. SE LANZA EL BARRIDO (POST /scrape/falabella?limite=20 en scraper-api)
+   {"estado":"encolado","tienda":"falabella","urls":6}
+   05:02:02  cep-ofertas-crudas  visibles/en-proceso: 0 / 0   ·   DLQ visibles: 1
+   05:02:16  cep-ofertas-crudas  visibles/en-proceso: 0 / 0   ·   DLQ visibles: 1
+   05:02:30  cep-ofertas-crudas  visibles/en-proceso: 0 / 0   ·   DLQ visibles: 1
+   barrido terminado: {"resumen":"[falabella] 6/6 URLs, 353 guardados, 325 cambios de precio, 9 fuera del catálogo (edad o vestimenta), 0 imagenes procesadas, 353 sincronizados, 0 sin producto, 0 fallos de descarga, 0 fallos de guardado, 0 fallos de imagen, 0 fallos de sync, 31.6s","urls_pedidas":6,"guardados":353,"cambios_de_precio":325,"productos_descartados":9,"imagenes_procesadas":0,"sincronizados":353,"sin_producto":0,"fallos_de_descarga":0,"fallos_de_guardado":0,"fallos_de_imagen":0,"fallos_de_sync":0,"segundos":31.6}
+
+3. LA COLA SE VACIA
+   05:02:39  cep-ofertas-crudas  visibles/en-proceso: 3 / 1   ·   DLQ visibles: 1
+
+4. DESPUES
+   productos en el sitio: 0 -> 224   ·   ofertas de falabella: 0 -> 224
+   ofertas guardadas por el consumidor (Resultado=ok en product-service): 353
+   ultimas lineas del consumidor:
+     Resultado=ok eventId=4b9c9a13-4364-441c-8993-42cd509d764f MessageId=3731cedf-7432-4de9-a6f6-04f1176ecbe6 intento=1
+     Resultado=ok eventId=f64e0d55-338a-4eaa-9b1e-d242499422ed MessageId=92d896b5-a74e-4706-83a7-a223b6e9e87b intento=1
+     Resultado=ok eventId=bc801497-8e3f-4503-91ab-1db97ef53003 MessageId=d89c7279-9286-44c0-b3d4-f9b42b61edb7 intento=1
+
+Evidencia guardada en docs/evidencia/flujo1-normal-20261018-050136.log

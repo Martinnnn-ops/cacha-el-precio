@@ -125,18 +125,54 @@ def construir_servicio(cfg: Settings, repo) -> ScraperService:
             ),
         )
 
-    sync_service = None
-    if cfg.product_service_url:
-        from scraper.infrastructure.http.product_service_client import ProductServiceClient
-        from scraper.services.product_service_sync import ProductServiceSync
+    return ScraperService(
+        scrapers, repo, delay=demora, image_service=image_service, sync_service=construir_sync(cfg)
+    )
 
-        sync_service = ProductServiceSync(
-            ProductServiceClient(cfg.product_service_url, timeout=cfg.http_timeout)
+
+def construir_sync(cfg: Settings):
+    """
+    Donde se publican las prendas. El barrido no lo sabe: ProductServiceSync
+    recibe un cliente con sincronizar_producto() y no le importa cual es.
+      · MODO_PUBLICACION=cola -> POST /ingesta -> SQS (EP3, flujo 1)
+      · MODO_PUBLICACION=http -> POST /api/products (lo de siempre)
+    """
+    from scraper.services.product_service_sync import ProductServiceSync
+
+    if cfg.modo_publicacion == "cola":
+        faltan = cfg.faltantes_para_cola()
+        if faltan:
+            # Mejor reventar al arrancar que barrer 20 tiendas y perderlo todo.
+            raise SystemExit(
+                "MODO_PUBLICACION=cola, pero faltan: " + ", ".join(faltan)
+                + ". Salen de api-gateway.env y cognito.env (ver docs/MENSAJERIA.md)."
+            )
+        import httpx
+
+        from scraper.infrastructure.http.ingesta_cola_client import IngestaColaClient, TokenCognito
+
+        # faltantes_para_cola() ya comprobo que ninguno viene vacio.
+        url_ingesta = cfg.api_gateway_url_ingesta or ""
+        http = httpx.Client(timeout=cfg.http_timeout)
+        token = TokenCognito(
+            cfg.url_token_cognito() or "",
+            cfg.cognito_scraper_client_id or "",
+            cfg.cognito_scraper_client_secret or "",
+            cfg.cognito_scraper_scope or "",
+            http,
+        )
+        log.info("Publicacion por la cola: %s", url_ingesta)
+        return ProductServiceSync(
+            IngestaColaClient(url_ingesta, token, http, reintentos=cfg.http_max_retries)
         )
 
-    return ScraperService(
-        scrapers, repo, delay=demora, image_service=image_service, sync_service=sync_service
-    )
+    if cfg.product_service_url:
+        from scraper.infrastructure.http.product_service_client import ProductServiceClient
+
+        return ProductServiceSync(
+            ProductServiceClient(cfg.product_service_url, timeout=cfg.http_timeout)
+        )
+    return None
 
 
 # De donde saca cada tienda sus URLs de producto.

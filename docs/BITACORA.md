@@ -1,6 +1,96 @@
 # Bitácora del proyecto
 
-Última actualización: 17-10-2026.
+Última actualización: 18-10-2026.
+
+## 18-10 · EP3: consumidor del flujo 1 y administración de mensajería (T05 y T11) — Martín
+
+**T05 · consumidor de ofertas.** product-service ahora vacía `cep-ofertas-crudas`:
+`ConsumidorOfertas` lee con long polling y `ProcesadorOfertaCapturada` valida el sobre y guarda con
+`UpsertProductAsync`, sin tocar ese método. Tres salidas, igual que el consumidor de Orion: se
+borra al guardar; JSON roto, `type`/`version` desconocido o una oferta que no pasa la validación del
+catálogo van a la DLQ con los 6 atributos de diagnóstico; una base caída o un timeout dejan el
+mensaje en la cola para que SQS lo reintente. Un detalle que salió probando: `TaskCanceledException`
+(el timeout de una consulta) hereda de `OperationCanceledException`, y el primer filtro lo dejaba
+escapar en vez de tratarlo como recuperable. 13 tests nuevos, incluido el duplicado.
+
+**T11 · administración de mensajería.** Panel en el gateway bajo `/api/admin/mensajeria`, solo para
+el grupo `admin`: consultar colas (con mensajes, DLQ e intentos), tópicos con sus filtros y lo que
+hay en una DLQ; crear y borrar colas, tópicos y suscripciones; redrive; y aplicar o comparar
+`topologia.json` desde la aplicación. El panel también deja mirar `cep-auditoria-precios` (la copia
+sin filtro de todos los cambios), pero no una cola con DLQ: para SQS mirar es una recepción y
+sumaría intentos hasta mandar mensajes sanos a la DLQ. La primera versión era un servicio aparte; se movió al
+gateway para seguir la tarjeta y no sumar un contenedor ([ADR-032](adr/032-administracion-de-mensajeria.md)).
+Toda la lógica de AWS queda detrás de `IAdministradorMensajeria`, con una implementación en memoria
+para programar la vista (T12) sin cuenta de AWS. 87 tests en `gateway.Tests`: reglas, validación y
+25 por HTTP contra el gateway completo (401, 403, 400 con `{ campo, error }`, 409 y la topología
+aplicada dos veces sin duplicar nada).
+
+**Probado en local:** la solución compila sin warnings y pasan los 111 tests (87 del gateway y 24
+de product-service, incluidos los 11 de Orion). Las imágenes del gateway y de product-service se
+construyen; el gateway en Docker responde `/health` 200 y 401 sin token; product-service sin URL
+de cola registra «desactivado», y con URL pero sin credenciales sigue arriba reintentando cada 5 s.
+
+**Probado contra AWS (cuenta `731705830984`, mismo día).** Con product-service y
+notification-service corriendo en local contra las colas, el tópico y el Cognito reales:
+
+| Qué | Resultado |
+|---|---|
+| Permisos del `LabRole` (simulación IAM) | `cognito-idp:ListUsers`, `sqs:StartMessageMoveTask` y todo lo de SQS/SNS que usamos: *allowed* |
+| T05 · sobre válido por `POST /ingesta` con el token del scraper | en `GET /api/products` a los **4 s**, cola en 0 |
+| T05 · `price: -1` | a la DLQ en el **intento 1**, con los 6 atributos de diagnóstico |
+| T05 · postgres detenido | 5 reintentos (warning cada uno) y a la DLQ, ~5 min |
+| T05 · redrive con la base de vuelta | la oferta se guarda |
+| T07 (Orion) · baja 5% / baja 25% / agotada / repuesta | auditoría recibe las **4**, notificaciones **3** (la de 5% no pasa el filtro); contrato v1 crudo con `discountPct` 5 y 25 |
+| T08 + T09 (Orion) | `/health` y migración; `ListUsers` resuelve el correo; 3 correos (modo log), 3 filas en `notificaciones_enviadas` |
+| T09 · duplicado del mismo `eventId` | «Ya se le había avisado… se salta», sigue en 3 |
+| T09 · JSON roto | a `cep-notificaciones-dlq` con `error-type=definitivo` |
+| T11 · `MensajeriaAwsRealTests` (`CEP_AWS_REAL=1`) | 2/2: topología real sincronizada y aplicada «sin cambios»; ciclo crear → filtro → mirar DLQ → redrive → borrar |
+
+Lo que solo apareció contra AWS, y quedó corregido en la T11: (1) `ListQueues` tarda en mostrar
+una cola recién creada, así que la existencia se pregunta con `GetQueueUrl`; (2) mirar una cola con
+`VisibilityTimeout=0` puede devolver **el mismo mensaje varias veces** en una lectura; (3) el
+redrive nativo calcula cuánto mover con el contador **aproximado** de la DLQ: si alguien la acaba
+de mirar, termina `COMPLETED` con 0 de 0. Ahora se espera la tarea y, si movió 0, se sigue a mano.
+También se confirmó que mirar una cola **con** DLQ sube el contador de intentos hasta mandar los
+mensajes a la DLQ: por eso el panel no lo permite.
+
+**T04 · el scraper publica en la cola.** Nuevo `IngestaColaClient` con el mismo método que el
+cliente de Product Service: el barrido no se tocó y `MODO_PUBLICACION=cola|http` (http por defecto)
+decide. Token de Cognito reutilizado, un reintento ante 401, 3 ante 5xx/timeout y un 4xx que solo
+hace fallar esa prenda. 20 tests nuevos (186 en el scraper, `ruff` y `mypy` limpios). Probado contra
+AWS: con la configuración real publicó por `/ingesta` y el sobre llegó a la cola con el contrato v1.
+
+**Despliegue (avance de la T06).** Revisando cómo llegaría todo a la EC2 apareció que
+`desplegar.sh` **no pasaba ninguna variable de la mensajería** al `.env` del servidor: allá el
+consumidor de ofertas, la publicación en SNS y el consumidor de correos habrían quedado apagados,
+sin un solo error. Ahora lee `mensajeria.env` (si falta, corre `crear-mensajeria.py` o se detiene),
+suma `COGNITO_USER_POOL_ID`, deja el scraper en modo cola con su client y el correo en `log` salvo
+que se despliegue con `CORREO_MODO=smtp SMTP_USUARIO=... SMTP_CLAVE=...`. Se comprobó también que
+las credenciales vacías del compose no rompen la cadena del SDK (cae al rol de la máquina).
+
+**T06 · flujo 1 desplegado y probado en la EC2.** `crear-api-gateway.sh` creó las rutas
+`/api/admin/mensajeria` (y se le corrigió un error que repetía en cada corrida al actualizar la
+integración de `/ingesta`). `RAMA=feature/admin-mensajeria ./tools/desplegar.sh --solo-backend`
+levantó los 6 servicios con la mensajería encendida: ConsumidorOfertas y ConsumidorNotificaciones
+escuchando, el panel en modo `aws` y el scraper en modo cola. Las dos pruebas de la tarjeta, con
+`tools/probar-flujo1.sh`, que deja la evidencia en `docs/evidencia/`:
+
+| Prueba | Resultado |
+|---|---|
+| Normal (`flujo1-normal-20261018-050136.log`) | barrido de Falabella: 353 prendas publicadas por `/ingesta` y 353 guardadas por el consumidor, la cola en 0 y el sitio, medido por el API Gateway, pasa de 0 a 224 productos |
+| Resiliencia (`flujo1-resiliencia-20261018-050338.log`) | con product-service detenido el barrido publica igual: **352 prendas esperando en la cola**; al encenderlo baja a 0 en ~30 s y vuelven a ser 353 publicadas = 353 guardadas, sin pérdidas |
+
+Las cifras no son iguales y no es un error: 353 es lo que se publicó y se guardó, 325 son las
+ofertas distintas en la base (un mismo SKU aparece en varias páginas del listado y la segunda vez
+se actualiza) y 224 los productos del sitio (agrupa las ofertas de un mismo modelo). La tarjeta
+decía «un scrape de 20»: `limite=20` cuenta páginas del listado, no prendas. En la de resiliencia
+una prenda se procesó en su intento 2: SQS entrega «al menos una vez» y guardarla dos veces no
+cambia nada (idempotencia, ver MENSAJERIA.md › Duplicados).
+
+**Pendiente:** el `.http` de la T11 con un token de admin contra el API Gateway; el `.http` de la T11 con un
+token de admin; el correo por SMTP de verdad (T10). En la plantilla de `oferta.agotada` de
+notification-service dice «cuando dejo de estar disponible» (falta la tilde de *dejó*): se le avisa
+a Orion.
 
 ## 17-10 · EP3: flujo 2 completo — avisos por correo (T07, T08, T09) — Orion
 

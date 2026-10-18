@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CachaElPrecio.Gateway.Mensajeria;
 using CachaElPrecio.Gateway.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -21,6 +22,10 @@ builder.Services.AddHttpClient<ProductServiceProxy>(client =>
 {
     AllowAutoRedirect = false
 });
+// Administración de mensajería (EP3, T11): colas, tópicos, reglas y DLQ. Solo
+// para el grupo admin. MENSAJERIA_MODO=aws en la EC2; memoria para programar
+// sin una cuenta de AWS. Ver docs/MENSAJERIA.md y ADR-032.
+string modoMensajeria = builder.Services.AddAdministracionMensajeria(builder.Configuration);
 builder.Services.AddHealthChecks();
 
 builder.Services
@@ -103,7 +108,8 @@ var app = builder.Build();
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/mi-cuenta") ||
-        context.Request.Path.StartsWithSegments("/seguimiento"))
+        context.Request.Path.StartsWithSegments("/seguimiento") ||
+        context.Request.Path.StartsWithSegments("/api/admin"))
         context.Response.Headers.CacheControl = "no-store";
     await next(context);
 });
@@ -117,7 +123,11 @@ MapProductRoutes(app);
 MapIdentityRoutes(app);
 MapFollowRoutes(app);
 MapPersonalRoutes(app);
+// Mismo 403 por rol que /api/admin/diagnostico: el API Gateway exige un token
+// válido y acá se exige el grupo admin de Cognito.
+app.MapAdministracionMensajeria();
 
+await app.PrepararMensajeriaAsync(modoMensajeria);
 app.Run();
 
 static void MapProductRoutes(WebApplication app)

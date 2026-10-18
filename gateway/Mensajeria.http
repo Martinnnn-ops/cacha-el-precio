@@ -1,0 +1,181 @@
+# Administración de mensajería (EP3 · T11) — demo de casos válidos e inválidos.
+#
+# @base: en AWS, la URL del API Gateway (api-gateway.env, API_GATEWAY_URL).
+#        En local, el gateway levantado con MENSAJERIA_MODO=memoria.
+# @token: access_token de un usuario del grupo admin. Se saca con:
+#   aws cognito-idp admin-initiate-auth --auth-flow ADMIN_USER_PASSWORD_AUTH ...
+#   (ver tools/crear-cognito.sh). Con un usuario sin el grupo admin todo da 403.
+#
+# Lo mismo está automatizado en gateway.Tests/AdministracionMensajeriaHttpTests.cs.
+
+@base = http://localhost:8080
+@token = pega-aca-el-access-token
+@admin = {{base}}/api/admin/mensajeria
+
+###############################################################################
+# 1. Consultar
+###############################################################################
+
+### Qué se administra y en qué modo (aws / memoria)
+GET {{admin}}
+Authorization: Bearer {{token}}
+
+### Colas: mensajes visibles y en proceso, DLQ asociada y maxReceiveCount
+GET {{admin}}/colas
+Authorization: Bearer {{token}}
+
+### Tópicos con sus suscripciones y filtros
+GET {{admin}}/topicos
+Authorization: Bearer {{token}}
+
+### Lo que hay en la DLQ del flujo 1, sin borrarlo (con su diagnóstico)
+GET {{admin}}/colas/cep-ofertas-crudas-dlq/mensajes
+Authorization: Bearer {{token}}
+
+### La auditoría: copia sin filtro de todos los cambios (demo de las reglas de distribución:
+### una baja de 5% aparece acá y NO en cep-notificaciones)
+GET {{admin}}/colas/cep-auditoria-precios/mensajes
+Authorization: Bearer {{token}}
+
+### topologia.json contra lo que existe de verdad
+GET {{admin}}/topologia
+Authorization: Bearer {{token}}
+
+###############################################################################
+# 2. Gestionar (casos válidos)
+###############################################################################
+
+### Aplicar la topología (idempotente: la segunda vez todo sale "sin cambios")
+POST {{admin}}/topologia/aplicar
+Authorization: Bearer {{token}}
+
+### Crear una DLQ de prueba → 201
+POST {{admin}}/colas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "cep-demo-dlq", "retencionSegundos": 1209600 }
+
+### Crear una cola que aparta sus fallos en esa DLQ tras 3 intentos → 201
+POST {{admin}}/colas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "cep-demo", "visibilidadSegundos": 45, "dlq": "cep-demo-dlq", "maxIntentos": 3 }
+
+### Regla de distribución: solo los agotados del tópico llegan a cep-demo → 201
+POST {{admin}}/suscripciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "topico": "cep-cambios-oferta", "cola": "cep-demo", "filtro": { "type": ["oferta.agotada"] } }
+
+### Cambiar el filtro: ahora bajas de 30% o más → 200
+PUT {{admin}}/suscripciones/cep-cambios-oferta/cep-demo
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "filtro": { "type": ["precio.bajo"], "discountPct": [{ "numeric": [">=", 30] }] } }
+
+### Devolver los mensajes de la DLQ del flujo 1 a cep-ofertas-crudas → 200
+POST {{admin}}/colas/cep-ofertas-crudas-dlq/redrive
+Authorization: Bearer {{token}}
+
+### Limpiar la demo (en este orden: regla, cola, DLQ) → 204
+DELETE {{admin}}/suscripciones/cep-cambios-oferta/cep-demo
+Authorization: Bearer {{token}}
+
+###
+DELETE {{admin}}/colas/cep-demo
+Authorization: Bearer {{token}}
+
+###
+DELETE {{admin}}/colas/cep-demo-dlq
+Authorization: Bearer {{token}}
+
+###############################################################################
+# 3. Casos inválidos → 400 { campo, error }
+###############################################################################
+
+### 400 · nombre sin el prefijo cep-
+POST {{admin}}/colas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "ofertas" }
+
+### 400 · nombre con mayúsculas y guion bajo
+POST {{admin}}/colas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "cep-Ofertas_Crudas" }
+
+### 400 · la DLQ indicada no existe
+POST {{admin}}/colas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "cep-demo", "dlq": "cep-no-existe", "maxIntentos": 3 }
+
+### 400 · maxIntentos fuera de 1..10
+POST {{admin}}/colas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "cep-demo", "dlq": "cep-ofertas-crudas-dlq", "maxIntentos": 11 }
+
+### 400 · visibilidad sobre 43200 s (12 h)
+POST {{admin}}/colas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "cep-demo", "visibilidadSegundos": 50000 }
+
+### 400 · el filtro usa un atributo que nadie publica
+POST {{admin}}/suscripciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "topico": "cep-cambios-oferta", "cola": "cep-auditoria-precios", "filtro": { "tienda": ["paris"] } }
+
+### 400 · el filtro pide un type que no existe
+POST {{admin}}/suscripciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "topico": "cep-cambios-oferta", "cola": "cep-auditoria-precios", "filtro": { "type": ["precio.subio"] } }
+
+###############################################################################
+# 4. Conflictos → 409
+###############################################################################
+
+### 409 · la cola ya existe
+POST {{admin}}/colas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "cep-ofertas-crudas" }
+
+### 409 · es la DLQ de otra cola (ni forzando)
+DELETE {{admin}}/colas/cep-ofertas-crudas-dlq?forzar=true
+Authorization: Bearer {{token}}
+
+### 409 · el tópico tiene suscripciones
+DELETE {{admin}}/topicos/cep-cambios-oferta?forzar=true
+Authorization: Bearer {{token}}
+
+### 409 · mirar una cola con DLQ sumaría intentos y podría mandar mensajes sanos a la DLQ
+GET {{admin}}/colas/cep-ofertas-crudas/mensajes
+Authorization: Bearer {{token}}
+
+### 409 · lo declarado en topologia.json solo se borra con ?forzar=true
+DELETE {{admin}}/suscripciones/cep-cambios-oferta/cep-auditoria-precios
+Authorization: Bearer {{token}}
+
+###############################################################################
+# 5. Sin permiso
+###############################################################################
+
+### 401 · sin token
+GET {{admin}}/colas

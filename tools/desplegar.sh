@@ -53,8 +53,24 @@ set -a; . "$RAIZ/infra.env"; . "$RAIZ/cognito.env"
 [ -f "$RAIZ/api-gateway.env" ] && . "$RAIZ/api-gateway.env"
 # El secreto que Caddy exige en el 8080. Lo genera crear-api-gateway.sh.
 [ -f "$RAIZ/borde.env" ] && . "$RAIZ/borde.env"
+# Las colas y el topico del EP3. Los genera crear-mensajeria.py.
+[ -f "$RAIZ/mensajeria.env" ] && . "$RAIZ/mensajeria.env"
 set +a
 verde "  infra.env y cognito.env leidos"
+# Sin mensajeria.env el sistema arrancaria igual, pero con TODA la mensajeria
+# apagada y sin ningun error visible: el consumidor de ofertas no arranca,
+# product-service no publica en SNS y notification-service no lee su cola.
+# Por eso, si falta, se crea aca (crear-mensajeria.py es idempotente) y si
+# eso falla, se detiene el despliegue.
+if [[ -z "${SQS_OFERTAS_CRUDAS_URL:-}" ]]; then
+  gris "  no hay mensajeria.env: lo genero con tools/crear-mensajeria.py"
+  REGION="$INFRA_REGION" python3 "$RAIZ/tools/crear-mensajeria.py" >/dev/null \
+    || { rojo "  fallo crear-mensajeria.py; correlo a mano para ver el error"; exit 1; }
+  set -a; . "$RAIZ/mensajeria.env"; set +a
+  [[ -n "${SQS_OFERTAS_CRUDAS_URL:-}" ]] \
+    || { rojo "  mensajeria.env no trae SQS_OFERTAS_CRUDAS_URL; revisa topologia.json"; exit 1; }
+fi
+verde "  mensajeria.env leido (cola ${SQS_OFERTAS_CRUDAS_URL##*/})"
 
 LLAVE="${LLAVE:-$HOME/labsuser.pem}"
 [[ -f "$LLAVE" ]] || { rojo "  no encuentro la llave en $LLAVE"; \
@@ -107,6 +123,28 @@ CADDY_HTTPS_PORT=443
 APP_ENV=production
 AWS_REGION=$INFRA_REGION
 BORDE_SECRETO=$BORDE_SECRETO
+# Mensajeria del EP3 (de mensajeria.env). Vacias = consumidores apagados.
+COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID
+MENSAJERIA_MODO=aws
+SQS_OFERTAS_CRUDAS_URL=${SQS_OFERTAS_CRUDAS_URL:-}
+SQS_OFERTAS_CRUDAS_DLQ_URL=${SQS_OFERTAS_CRUDAS_DLQ_URL:-}
+SQS_NOTIFICACIONES_URL=${SQS_NOTIFICACIONES_URL:-}
+SQS_NOTIFICACIONES_DLQ_URL=${SQS_NOTIFICACIONES_DLQ_URL:-}
+SNS_CAMBIOS_OFERTA_ARN=${SNS_CAMBIOS_OFERTA_ARN:-}
+# Flujo 1: el scraper publica por POST /ingesta (API Gateway -> SQS) con su
+# client de Cognito. Sin api-gateway.env queda en http (directo a Product Service).
+MODO_PUBLICACION=${MODO_PUBLICACION:-$([[ -n "${API_GATEWAY_URL_INGESTA:-}" ]] && echo cola || echo http)}
+API_GATEWAY_URL_INGESTA=${API_GATEWAY_URL_INGESTA:-}
+COGNITO_DOMINIO=${COGNITO_DOMINIO:-}
+COGNITO_REGION=${COGNITO_REGION:-$INFRA_REGION}
+COGNITO_SCRAPER_CLIENT_ID=${COGNITO_SCRAPER_CLIENT_ID:-}
+COGNITO_SCRAPER_CLIENT_SECRET=${COGNITO_SCRAPER_CLIENT_SECRET:-}
+# Correo: log por defecto. Para Gmail real, al desplegar:
+#   CORREO_MODO=smtp SMTP_USUARIO=... SMTP_CLAVE=... ./tools/desplegar.sh
+# (por variables y no por un archivo, para que la clave no termine en el repo).
+CORREO_MODO=${CORREO_MODO:-log}
+SMTP_USUARIO=${SMTP_USUARIO:-}
+SMTP_CLAVE=${SMTP_CLAVE:-}
 ENV
 verde "  .env armado (apunta al pool $COGNITO_USER_POOL_ID)"
 

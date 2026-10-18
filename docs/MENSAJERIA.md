@@ -5,7 +5,8 @@ Cómo se comunican los servicios por colas y tópicos. La decisión y sus porqu�
 cambia, se avisa al equipo antes de tocar el código.
 
 - **Topología** (colas, tópicos, reglas): [`infra/mensajeria/topologia.json`](../infra/mensajeria/topologia.json). Es el único lugar donde se declaran.
-- **Crear todo en tu cuenta:** `python3 tools/crear-mensajeria.py` (`--estado`, `--borrar`).
+- **Crear todo en tu cuenta:** `python3 tools/crear-mensajeria.py` (`--estado`, `--borrar`), o desde la
+  aplicación con `POST /api/admin/mensajeria/topologia/aplicar` (ver [Administración](#administración-t11)).
 - **Sondeo de Academy:** `python3 tools/probar-mensajeria-academy.py` (¿API Gateway → SQS con LabRole?).
   ✅ Respondió que sí el 14-10-2026: **opción A**.
 - **La puerta `POST /ingesta`** la crea `tools/crear-api-gateway.sh` (integración `SQS-SendMessage`
@@ -42,7 +43,7 @@ flowchart LR
 | `cep-cambios-oferta` | tópico SNS | product-service | 2 suscripciones | fan-out; el tipo de cambio va en el atributo `type` |
 | `cep-notificaciones` | cola | SNS (filtro: baja ≥ 10%, agotada o repuesta) | notification-service | DLQ tras 5 |
 | `cep-notificaciones-dlq` | DLQ | SQS | — | retención 14 días |
-| `cep-auditoria-precios` | cola | SNS (sin filtro) | (opcional) métricas | recibe todo: sirve para pillar precios sospechosos del scraper y para demostrar la regla de distribución |
+| `cep-auditoria-precios` | cola | SNS (sin filtro) | el equipo, desde el panel (`GET /api/admin/mensajeria/colas/cep-auditoria-precios/mensajes`) | recibe todo: sirve para pillar precios sospechosos del scraper y para demostrar la regla de distribución |
 
 ## Sobre común
 
@@ -202,6 +203,68 @@ SQS Standard entrega **al menos una vez**: el mismo mensaje puede llegar dos vec
   Antes de enviar revisa la tabla `notificaciones_enviadas` con la clave
   `(seguimiento, eventId)`: un duplicado de SQS trae el mismo `eventId`. Si ya está, borra el
   mensaje sin reenviar.
+
+## Productor de ofertas (scraper, flujo 1)
+
+Con `MODO_PUBLICACION=cola`, el scraper deja cada prenda en `POST /ingesta` en vez de mandarla a
+`POST /api/products` (`http`, por defecto en local). El barrido no cambia: `ProductServiceSync`
+recibe un cliente con `sincronizar_producto()` y no sabe cuál le tocó; `main.construir_sync` elige
+`IngestaColaClient` o `ProductServiceClient`.
+
+- **Token:** `client_credentials` del client del scraper con el scope `ingesta`; se reutiliza hasta
+  60 s antes de vencer. Ante un 401 pide uno nuevo **una vez** y reintenta.
+- **Sobre:** `oferta.capturada` v1 con un `eventId` nuevo por prenda; `data` es el mismo payload
+  del modo `http`.
+- **Errores:** 200 = encolada. Otro 4xx falla solo esa prenda y el barrido sigue. 5xx o timeout se
+  reintenta hasta 3 veces con espera creciente.
+- **Si falta configuración** en modo cola (`API_GATEWAY_URL_INGESTA`, `COGNITO_DOMINIO`,
+  `COGNITO_SCRAPER_CLIENT_ID/SECRET/SCOPE`), el scraper no arranca y dice cuál falta.
+
+`tools/desplegar.sh` deja el servidor en modo cola cuando tiene `api-gateway.env`. Pruebas en
+`scraper-service/tests/unit/infrastructure/test_ingesta_cola_client.py`.
+
+## Consumidor de ofertas (product-service, flujo 1)
+
+`ConsumidorOfertas` (un `BackgroundService`) lee `cep-ofertas-crudas` con long polling de 20 s, de a
+10 mensajes. Por cada uno abre un scope nuevo y le pasa el cuerpo a `ProcesadorOfertaCapturada`,
+que valida el sobre (`type=oferta.capturada`, `version=1`) y guarda `data` con
+`UpsertProductAsync`, **sin modificar ese método**: es el mismo camino que `POST /api/products`.
+
+| Salida | Cuándo | Qué hace |
+|---|---|---|
+| ok | se guardó | `DeleteMessage` |
+| dlq | JSON roto, `type`/`version` desconocido, `data` que no es una oferta, precio ≤ 0, campo obligatorio vacío, prenda infantil | a `cep-ofertas-crudas-dlq` con los 6 atributos de diagnóstico, y se borra |
+| reintento | base caída, timeout (incluido `TaskCanceledException`) | no se borra, se registra un warning; SQS lo reintenta y al 5.º intento lo aparta solo |
+
+Cada log lleva `eventId`, `MessageId`, el intento y el resultado. Sin `SQS_OFERTAS_CRUDAS_URL` el
+consumidor no arranca (registra «desactivado») y la API HTTP sigue igual. El negocio habla con
+`IColaMensajes`, igual que notification-service. Probado en
+`product-service.Tests/ConsumidorOfertasTests.cs`.
+
+## Administración (T11)
+
+Panel para consultar y gestionar la mensajería, en el gateway bajo `/api/admin/mensajeria`. Exige el
+grupo `admin` de Cognito (403 sin él). Decisión en [ADR-032](adr/032-administracion-de-mensajeria.md);
+demo con casos válidos e inválidos en [`gateway/Mensajeria.http`](../gateway/Mensajeria.http).
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /colas` · `GET /colas/{nombre}` | Mensajes visibles, en proceso y demorados, DLQ y `maxIntentos`, de qué colas es DLQ |
+| `POST /colas` · `DELETE /colas/{nombre}` | Crear (con DLQ opcional) y borrar |
+| `GET /colas/{nombre}/mensajes` | Lo que hay en una DLQ (con su diagnóstico) o en `cep-auditoria-precios`, **sin borrarlo**. Solo colas sin DLQ propia: para SQS mirar es una recepción y suma intentos (409) |
+| `POST /colas/{dlq}/redrive` | Devolver los mensajes de la DLQ a su cola (`?destino=` si la usan varias) |
+| `GET /topicos` · `POST` · `DELETE /topicos/{nombre}` | Tópicos con sus suscripciones y filtros |
+| `GET /suscripciones` · `POST` · `PUT` · `DELETE /suscripciones/{topico}/{cola}` | Reglas de distribución; al suscribir se ajusta la política de la cola |
+| `GET /topologia` | `topologia.json` contra lo que existe (falta, distinta, extra) |
+| `POST /topologia/aplicar` | Crea lo que falta y corrige lo distinto. Idempotente; no borra lo extra |
+
+Errores: `400 { estado, error, mensaje, errores: [{ campo, error }] }` cuando la forma está mal
+(nombre sin `cep-` o con mayúsculas, rangos de AWS, `maxIntentos` fuera de 1..10, filtro sobre un
+atributo que nadie publica o con un `type` que no existe, DLQ o tópico inexistente) y `409` cuando
+choca con lo que hay (ya existe, es DLQ de otra, tiene suscripciones, está declarado en
+`topologia.json` y no se pidió `?forzar=true`). Un permiso que el LabRole niega sale como `502`.
+
+`MENSAJERIA_MODO=memoria` simula todo sin AWS (por defecto si no se configura); en la EC2 va `aws`.
 
 ## Correo (notification-service)
 

@@ -9,6 +9,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
+    <!-- Administración de mensajería (T11). Mismas versiones que los otros servicios. -->
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.100.18" />
+    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="4.0.100.19" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gateway.Tests" />
   </ItemGroup>
 
 </Project>

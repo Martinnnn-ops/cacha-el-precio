@@ -116,6 +116,17 @@ es un olvido:
 conserva UTC sin depender de la zona horaria de la EC2. Los productos existentes reciben la hora
 de aplicación de la migración; los nuevos se fechan explícitamente en el servicio.
 
+## Mensajería (EP3)
+
+- **Consume** `cep-ofertas-crudas` (flujo 1): `ConsumidorOfertas` guarda cada `oferta.capturada`
+  con el mismo `UpsertProductAsync` del `POST`. Éxito → se borra; error definitivo → DLQ con
+  diagnóstico; base caída o timeout → reintento. Sin `SQS_OFERTAS_CRUDAS_URL` no arranca.
+- **Publica** en `cep-cambios-oferta` (flujo 2) las bajas, agotados y reposiciones de una oferta
+  que ya existía ([ADR-031](../docs/adr/031-publicacion-cambios-oferta.md)). Sin
+  `SNS_CAMBIOS_OFERTA_ARN` solo lo registra en el log.
+
+Contrato y criterio de errores en [`docs/MENSAJERIA.md`](../docs/MENSAJERIA.md).
+
 ## Migraciones
 
 ```bash

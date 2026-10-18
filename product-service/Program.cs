@@ -2,6 +2,7 @@ using Scalar.AspNetCore;
 using Asp.Versioning;
 using Amazon;
 using Amazon.SimpleNotificationService;
+using Amazon.SQS;
 using Product_Service.Data;
 using Microsoft.EntityFrameworkCore;
 using Product_Service.Mensajeria;
@@ -39,6 +40,18 @@ else
 
 builder.Services.AddScoped<ProductService>();
 
+// ─── Mensajería: consume las ofertas del scraper (flujo 1 del EP3) ───────────
+// Sin URL de la cola (local, sin AWS) el consumidor no se registra y el POST
+// /api/products sigue funcionando igual. Ver docs/MENSAJERIA.md y ADR-029.
+builder.Services.AddScoped<ProcesadorOfertaCapturada>();
+if (!string.IsNullOrWhiteSpace(config["SQS_OFERTAS_CRUDAS_URL"]))
+{
+    string region = config["AWS_REGION"] ?? config["MENSAJERIA_REGION"] ?? "us-east-1";
+    builder.Services.AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(RegionEndpoint.GetBySystemName(region)));
+    builder.Services.AddSingleton<IColaMensajes, ColaMensajesSqs>();
+    builder.Services.AddHostedService<ConsumidorOfertas>();
+}
+
 builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion = new ApiVersion(1, 0);
@@ -52,6 +65,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+
+if (string.IsNullOrWhiteSpace(config["SQS_OFERTAS_CRUDAS_URL"]))
+    app.Logger.LogWarning("ConsumidorOfertas desactivado: SQS_OFERTAS_CRUDAS_URL viene vacia (la API HTTP sigue igual)");
 
 using (IServiceScope scope = app.Services.CreateScope())
 {
