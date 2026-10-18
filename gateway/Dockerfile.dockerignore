@@ -3,6 +3,7 @@
 !gateway/
 !gateway/Gateway.csproj
 !gateway/**/*.cs
+!infra/mensajeria/topologia.json
 
 # Artefactos de una compilación local. La lista blanca de arriba deja pasar
 # **/*.cs, y eso incluye los .cs generados dentro de obj/ —AssemblyInfo y

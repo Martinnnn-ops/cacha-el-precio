@@ -114,6 +114,14 @@ services:
       COGNITO_ISSUER: "${COGNITO_ISSUER:?falta COGNITO_ISSUER, pega cognito.env en el .env}"
       COGNITO_CLIENT_IDS_VALIDOS: "${COGNITO_CLIENT_IDS_VALIDOS:?falta COGNITO_CLIENT_IDS_VALIDOS}"
       COGNITO_WRITE_SCOPE: "${COGNITO_SCRAPER_SCOPE:-https://api.cachaelprecio.cl/ingesta}"
+      # Administracion de mensajeria (EP3, T11): /api/admin/mensajeria, solo
+      # para el grupo admin. aws = SQS/SNS de verdad; memoria = simulado, para
+      # programar sin cuenta de AWS. Credenciales por el rol de la EC2.
+      MENSAJERIA_MODO: ${MENSAJERIA_MODO:-aws}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
 
     depends_on:
       - product-service

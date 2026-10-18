@@ -338,6 +338,10 @@ I_CUENTA="$(integracion /mi-cuenta)"
 I_DESEADO="$(integracion '/mi-cuenta/deseados/{id}')"
 I_OUTFIT="$(integracion '/mi-cuenta/outfits/{id}')"
 I_ADMIN="$(integracion /api/admin/diagnostico)";       gris "  /api/admin/...   -> $I_ADMIN"
+# Administracion de mensajeria (EP3, T11, ADR-032): todo lo que cuelga de
+# /api/admin/mensajeria va al gateway tal cual; {proxy} es el resto del camino.
+I_MENSAJERIA="$(integracion /api/admin/mensajeria)"
+I_MENSAJERIA_RESTO="$(integracion '/api/admin/mensajeria/{proxy}')"; gris "  /api/admin/mensajeria/* -> $I_MENSAJERIA_RESTO"
 
 # ---------------------------------------------------------------------------
 # La puerta de la ingesta: POST /ingesta -> cola cep-ofertas-crudas (EP3, ADR-029).
@@ -503,6 +507,13 @@ ruta "DELETE /mi-cuenta/outfits/{id}"   "$I_OUTFIT"      jwt
 # El 403 por rol lo resuelve el BFF leyendo cognito:groups; el API Gateway solo
 # comprueba que haya un token valido. Son dos capas distintas a proposito.
 ruta "GET /api/admin/diagnostico"      "$I_ADMIN"       jwt
+# Lo mismo para la administracion de mensajeria: token valido aca, grupo
+# admin en el BFF. Metodo por metodo y no ANY: un ANY con authorizer tambien
+# atrapa el OPTIONS del preflight y le responderia 401, rompiendo el CORS.
+ruta "GET /api/admin/mensajeria"       "$I_MENSAJERIA"  jwt
+for metodo in GET POST PUT DELETE; do
+  ruta "$metodo /api/admin/mensajeria/{proxy+}" "$I_MENSAJERIA_RESTO" jwt
+done
 
 # Escrituras: exigen el scope `ingesta`, que solo tiene el client del scraper.
 # De aca sale el 403 de la demo, con un token perfectamente valido.

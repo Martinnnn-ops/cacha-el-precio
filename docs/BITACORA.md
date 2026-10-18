@@ -1,6 +1,39 @@
 # Bitácora del proyecto
 
-Última actualización: 17-10-2026.
+Última actualización: 18-10-2026.
+
+## 18-10 · EP3: consumidor del flujo 1 y administración de mensajería (T05 y T11) — Martín
+
+**T05 · consumidor de ofertas.** product-service ahora vacía `cep-ofertas-crudas`:
+`ConsumidorOfertas` lee con long polling y `ProcesadorOfertaCapturada` valida el sobre y guarda con
+`UpsertProductAsync`, sin tocar ese método. Tres salidas, igual que el consumidor de Orion: se
+borra al guardar; JSON roto, `type`/`version` desconocido o una oferta que no pasa la validación del
+catálogo van a la DLQ con los 6 atributos de diagnóstico; una base caída o un timeout dejan el
+mensaje en la cola para que SQS lo reintente. Un detalle que salió probando: `TaskCanceledException`
+(el timeout de una consulta) hereda de `OperationCanceledException`, y el primer filtro lo dejaba
+escapar en vez de tratarlo como recuperable. 13 tests nuevos, incluido el duplicado.
+
+**T11 · administración de mensajería.** Panel en el gateway bajo `/api/admin/mensajeria`, solo para
+el grupo `admin`: consultar colas (con mensajes, DLQ e intentos), tópicos con sus filtros y lo que
+hay en una DLQ; crear y borrar colas, tópicos y suscripciones; redrive; y aplicar o comparar
+`topologia.json` desde la aplicación. El panel también deja mirar `cep-auditoria-precios` (la copia
+sin filtro de todos los cambios), pero no una cola con DLQ: para SQS mirar es una recepción y
+sumaría intentos hasta mandar mensajes sanos a la DLQ. La primera versión era un servicio aparte; se movió al
+gateway para seguir la tarjeta y no sumar un contenedor ([ADR-032](adr/032-administracion-de-mensajeria.md)).
+Toda la lógica de AWS queda detrás de `IAdministradorMensajeria`, con una implementación en memoria
+para programar la vista (T12) sin cuenta de AWS. 87 tests en `gateway.Tests`: reglas, validación y
+25 por HTTP contra el gateway completo (401, 403, 400 con `{ campo, error }`, 409 y la topología
+aplicada dos veces sin duplicar nada).
+
+**Probado en local:** la solución compila sin warnings y pasan los 111 tests (87 del gateway y 24
+de product-service, incluidos los 11 de Orion). Las imágenes del gateway y de product-service se
+construyen; el gateway en Docker responde `/health` 200 y 401 sin token; product-service sin URL
+de cola registra «desactivado», y con URL pero sin credenciales sigue arriba reintentando cada 5 s.
+
+**Pendiente (necesita AWS):** el «Listo cuando» de la T05 con la cola real (la oferta aparece en
+`GET /productos`, `price: -1` a la DLQ al primer intento, postgres detenido → 5 intentos y DLQ), el
+`.http` de la T11 con un token de admin, saber si Academy permite `StartMessageMoveTask` y volver a
+correr `crear-api-gateway.sh` para crear las rutas `/api/admin/mensajeria`.
 
 ## 17-10 · EP3: flujo 2 completo — avisos por correo (T07, T08, T09) — Orion
 
