@@ -145,6 +145,10 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       SNS_CAMBIOS_OFERTA_ARN: ${SNS_CAMBIOS_OFERTA_ARN:-}
+      # Flujo 1: consume las ofertas que el scraper deja en la cola. Si la URL viene
+      # vacia, el consumidor no arranca y el POST /api/products sigue igual.
+      SQS_OFERTAS_CRUDAS_URL: ${SQS_OFERTAS_CRUDAS_URL:-}
+      SQS_OFERTAS_CRUDAS_DLQ_URL: ${SQS_OFERTAS_CRUDAS_DLQ_URL:-}
 
     depends_on:
       postgres:
