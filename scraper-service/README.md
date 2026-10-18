@@ -27,6 +27,14 @@ Dos formas de ejecutarlo, por diseno:
 El scrapeo no ocurre dentro de la peticion HTTP: tarda demasiado. La
 API responde `202 Accepted` y trabaja en segundo plano.
 
+Cada prenda se publica segun `MODO_PUBLICACION`: `http` la manda directo a
+Product Service (`POST /api/products`) y `cola` la deja en `POST /ingesta`
+del API Gateway, que la encola en SQS (EP3, flujo 1): si Product Service esta
+caido, la prenda espera en la cola. El modo cola necesita
+`API_GATEWAY_URL_INGESTA` y el client del scraper en Cognito
+(`COGNITO_DOMINIO`, `COGNITO_SCRAPER_CLIENT_ID/SECRET/SCOPE`); si falta algo,
+no arranca. Detalle en `docs/MENSAJERIA.md`.
+
 ## Puesta en marcha
 
 ```bash

@@ -20,6 +20,8 @@ PRODUCT_URL=http://localhost:8081
 COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxx
 COGNITO_CLIENT_IDS_VALIDOS=client_web,client_pruebas
 COGNITO_WRITE_SCOPE=https://api.cachaelprecio.cl/ingesta
+MENSAJERIA_MODO=memoria        # aws en la EC2 (LabRole); memoria = simulado, sin AWS
+TOPOLOGIA_RUTA=                # opcional; por defecto busca infra/mensajeria/topologia.json
 ```
 
 El último valor debe coincidir con `COGNITO_SCRAPER_SCOPE`, generado por
@@ -55,6 +57,7 @@ interno viajaría hasta el navegador de cada usuario.
 | `GET /seguimiento` · `POST`/`DELETE /seguimiento/{id}` | autenticada | **401** |
 | `GET /api/yo` | autenticada | **401** |
 | `GET /api/admin/diagnostico` | grupo `admin` | **401** |
+| `/api/admin/mensajeria/...` (colas, tópicos, suscripciones, DLQ, topología) | grupo `admin` | **401** · 403 sin el grupo |
 | `GET /health` | pública | 200 |
 
 Dos rutas piden explicación:
@@ -70,6 +73,15 @@ Dos rutas piden explicación:
   carga útil.
 
 Si Product Service no responde, el gateway devuelve un `502` JSON estable.
+
+### Administración de mensajería (EP3, T11)
+
+Panel para consultar y gestionar colas SQS, tópicos SNS, reglas de distribución y DLQ, en
+`gateway/Mensajeria/`. Es la única pieza que crea o borra recursos de mensajería, siempre detrás de
+`IAdministradorMensajeria`. Rutas, errores y reglas en
+[`docs/MENSAJERIA.md`](../docs/MENSAJERIA.md#administración-t11); la decisión de que viva aquí, en el
+[ADR-032](../docs/adr/032-administracion-de-mensajeria.md); la demo con casos válidos e inválidos,
+en [`Mensajeria.http`](Mensajeria.http). La imagen lleva `infra/mensajeria/topologia.json`.
 
 ### URLs canónicas de Product Service V2
 
