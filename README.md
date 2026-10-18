@@ -21,12 +21,15 @@ Frontend Vue ──▶ API Gateway ──▶ Caddy ──▶ Gateway ASP.NET Cor
                  JWT · CORS      403 si no                │
                  50 req/s        viene del borde          ▼
                                                   Product Service C# ──┐
-                                                          ▲
-                                                          │ HTTP / API v1
-Scraper Python ──▶ PostgreSQL + S3 ◀───────────────────────┘
-                   schemas scraper/product
-                        │
-                        └──▶ S3 respaldos (privado, cada hora)
+                                                       ▲        │      │
+                        flujo 1 · SQS cep-ofertas-crudas        │ SNS  │
+Scraper Python ──▶ POST /ingesta ──────────────────────┘        ▼      │
+      │                                       cep-cambios-oferta ──▶ Notification Service ──▶ correo
+      ▼                                                 flujo 2 · SQS cep-notificaciones
+PostgreSQL + S3 ◀──────────────────────────────────────────────────────┘
+schemas scraper/product/notification
+      │
+      └──▶ S3 respaldos (privado, cada hora)
 ```
 
 El API Gateway no es una opción: la EC2 responde **403** a cualquier petición que no traiga el
@@ -40,6 +43,14 @@ de C# no pretende ser universal: en este equipo reduce el riesgo de entrega porq
 tiene más experiencia con C# que con Java, y permite compartir herramientas, configuración,
 inyección de dependencias, autenticación y patrones asíncronos entre el gateway y Product Service.
 
+**Mensajería (EP3):** el scraper ya no le entrega las prendas a Product Service por HTTP: las deja
+en una cola SQS por `POST /ingesta`, y si Product Service está caído esperan ahí sin perderse
+(probado en la EC2, `docs/evidencia/flujo1-*`). Los cambios de una oferta (baja, agotada, repuesta)
+salen por un tópico SNS hacia Notification Service, que avisa por correo a quien sigue la prenda.
+Colas, tópicos y reglas se declaran en un solo archivo (`infra/mensajeria/topologia.json`) y se
+administran desde el gateway (`/api/admin/mensajeria`, grupo admin). Detalle en
+[MENSAJERÍA](docs/MENSAJERIA.md) y el [ADR-029](docs/adr/029-mensajeria-sqs-sns.md).
+
 Se retiraron `price-service`, RabbitMQ y las migraciones SQL de servicios que nunca las consumían.
 `price-service` era un proceso vacío: desplegarlo aumentaba superficie operativa sin poseer una
 capacidad real. El historial sigue siendo responsabilidad del scraper hasta que su carga o ciclo
@@ -49,8 +60,10 @@ real y se necesiten reintentos o backpressure. La decisión completa y sus costo
 
 | Pieza | Tecnología | Persistencia |
 |---|---|---|
-| Gateway/BFF | ASP.NET Core 10 | seguimiento temporal en memoria |
+| Gateway/BFF | ASP.NET Core 10 | seguimiento temporal en memoria; administra la mensajería |
 | Product Service | ASP.NET Core 10 + EF Core | PostgreSQL, esquema `product` |
+| Notification Service | ASP.NET Core 10 + EF Core + MailKit | PostgreSQL, esquema `notification` |
+| Mensajería | Amazon SQS + SNS | administrada por AWS; topología en `infra/mensajeria/` |
 | Scraper | Python 3.14 + FastAPI | PostgreSQL; imágenes en S3 |
 | Identidad | AWS Cognito | administrada por AWS |
 | Entrada pública | API Gateway + Caddy | — |
@@ -62,7 +75,9 @@ que un servicio consulte las tablas internas del otro.
 
 ## Contrato entre scraper y Product Service
 
-El scraper sincroniza por HTTP usando `Version: 1.0`. `canonicalKey` agrupa el mismo modelo entre
+El scraper publica cada oferta según `MODO_PUBLICACION`: `cola` (en el servidor) la envuelve en el
+sobre `oferta.capturada` y la deja en `POST /ingesta`; `http` (por defecto en local) la manda
+directo con `Version: 1.0`. En los dos casos el contenido es el mismo. `canonicalKey` agrupa el mismo modelo entre
 tiendas y `(store, externalId)` identifica cada oferta. `POST /api/products` es un upsert que
 agrega o actualiza una oferta con precio, tallas alfabéticas/numéricas, URL, imagen y estado.
 
@@ -112,6 +127,7 @@ docker compose ps
 |---|---:|---|
 | Gateway | 8080, a través de Caddy | `http://localhost:8080/health` |
 | Product Service | 8081, solo loopback | `http://localhost:8081/health` |
+| Notification Service | 8082, solo loopback | `http://localhost:8082/health` |
 | Scraper API | 8000, solo loopback | `http://localhost:8000/health` |
 | PostgreSQL | 5432, solo loopback | healthcheck de Compose |
 
@@ -180,6 +196,7 @@ BACKEND_URL=http://127.0.0.1:8080 npm run humo
 | [ADR-020](docs/adr/020-csharp-y-simplificacion-de-servicios.md) | migración a C# y simplificación |
 | [ADR-025](docs/adr/025-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta en PostgreSQL |
 | [TAREAS](docs/TAREAS.md) | estado, prioridades y flujo de trabajo |
+| [MENSAJERÍA](docs/MENSAJERIA.md) | colas, tópicos, contratos, errores y administración (EP3) |
 | [BITÁCORA](docs/BITACORA.md) | avances y evidencia cronológica |
 | [INTEGRACIÓN](docs/INTEGRACION.md) | deuda descubierta al integrar ramas anteriores |
 | [IDENTIDAD](docs/IDENTIDAD.md) | Cognito, tokens y autorización |

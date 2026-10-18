@@ -41,7 +41,7 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 | **Mensajería del EP3: colas, tópicos, contratos, errores, administración** | `docs/MENSAJERIA.md` | 302 líneas |
 | Qué se hizo cada semana | `docs/BITACORA.md` | 1081 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
-| Presentar el proyecto a alguien de afuera | `README.md` | 155 líneas |
+| Presentar el proyecto a alguien de afuera | `README.md` | 215 líneas |
 
 Y el README de cada módulo, que es el más corto y el que más rinde cuando la tarea es sobre ese
 módulo en concreto:

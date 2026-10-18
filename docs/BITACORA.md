@@ -68,8 +68,26 @@ suma `COGNITO_USER_POOL_ID`, deja el scraper en modo cola con su client y el cor
 que se despliegue con `CORREO_MODO=smtp SMTP_USUARIO=... SMTP_CLAVE=...`. Se comprobó también que
 las credenciales vacías del compose no rompen la cadena del SDK (cae al rol de la máquina).
 
-**Pendiente:** desplegar en la EC2 (estaba encendida al probar) y volver a correr
-`crear-api-gateway.sh` para crear las rutas `/api/admin/mensajeria`; el `.http` de la T11 con un
+**T06 · flujo 1 desplegado y probado en la EC2.** `crear-api-gateway.sh` creó las rutas
+`/api/admin/mensajeria` (y se le corrigió un error que repetía en cada corrida al actualizar la
+integración de `/ingesta`). `RAMA=feature/admin-mensajeria ./tools/desplegar.sh --solo-backend`
+levantó los 6 servicios con la mensajería encendida: ConsumidorOfertas y ConsumidorNotificaciones
+escuchando, el panel en modo `aws` y el scraper en modo cola. Las dos pruebas de la tarjeta, con
+`tools/probar-flujo1.sh`, que deja la evidencia en `docs/evidencia/`:
+
+| Prueba | Resultado |
+|---|---|
+| Normal (`flujo1-normal-20261018-050136.log`) | barrido de Falabella: 353 prendas publicadas por `/ingesta` y 353 guardadas por el consumidor, la cola en 0 y el sitio, medido por el API Gateway, pasa de 0 a 224 productos |
+| Resiliencia (`flujo1-resiliencia-20261018-050338.log`) | con product-service detenido el barrido publica igual: **352 prendas esperando en la cola**; al encenderlo baja a 0 en ~30 s y vuelven a ser 353 publicadas = 353 guardadas, sin pérdidas |
+
+Las cifras no son iguales y no es un error: 353 es lo que se publicó y se guardó, 325 son las
+ofertas distintas en la base (un mismo SKU aparece en varias páginas del listado y la segunda vez
+se actualiza) y 224 los productos del sitio (agrupa las ofertas de un mismo modelo). La tarjeta
+decía «un scrape de 20»: `limite=20` cuenta páginas del listado, no prendas. En la de resiliencia
+una prenda se procesó en su intento 2: SQS entrega «al menos una vez» y guardarla dos veces no
+cambia nada (idempotencia, ver MENSAJERIA.md › Duplicados).
+
+**Pendiente:** el `.http` de la T11 con un token de admin contra el API Gateway; el `.http` de la T11 con un
 token de admin; el correo por SMTP de verdad (T10). En la plantilla de `oferta.agotada` de
 notification-service dice «cuando dejo de estar disponible» (falta la tilde de *dejó*): se le avisa
 a Orion.

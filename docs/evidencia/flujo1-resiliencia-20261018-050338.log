@@ -1,0 +1,58 @@
+EVIDENCIA DEL FLUJO 1 (resiliencia) — Cacha el Precio · T06
+Fecha:    2026-10-18T05:03:38-03:00
+Cuenta:   731705830984      EC2: 100.60.227.130
+Codigo:   ff876f0 docs: mensajeria del EP3 en los README de cada modulo y en el indice   origin/feature/admin-mensajeria 
+Camino:   scraper-api (MODO_PUBLICACION=cola) -> POST /ingesta -> SQS cep-ofertas-crudas -> product-service -> PostgreSQL
+Medido:   el catalogo A TRAVES del API Gateway (https://mcxw9tpe13.execute-api.us-east-1.amazonaws.com/prod/productos)
+Barrido:  falabella, limite 20
+=======================================================================
+
+1. ANTES
+   productos en el sitio: 224   ·   ofertas de falabella: 224
+   05:03:46  cep-ofertas-crudas  visibles/en-proceso: 0 / 0   ·   DLQ visibles: 1
+
+2. SE DETIENE product-service (el consumidor de la cola)
+    Container cep-product-service Stopping 
+    Container cep-product-service Stopped 
+   product-service: exited
+
+3. SE LANZA EL BARRIDO (POST /scrape/falabella?limite=20 en scraper-api)
+   {"estado":"encolado","tienda":"falabella","urls":6}
+   05:04:07  cep-ofertas-crudas  visibles/en-proceso: 116 / 1   ·   DLQ visibles: 1
+   05:04:22  cep-ofertas-crudas  visibles/en-proceso: 0 / 0   ·   DLQ visibles: 1
+   barrido terminado: {"resumen":"[falabella] 6/6 URLs, 353 guardados, 0 cambios de precio, 9 fuera del catálogo (edad o vestimenta), 0 imagenes procesadas, 353 sincronizados, 0 sin producto, 0 fallos de descarga, 0 fallos de guardado, 0 fallos de imagen, 0 fallos de sync, 25.9s","urls_pedidas":6,"guardados":353,"cambios_de_precio":0,"productos_descartados":9,"imagenes_procesadas":0,"sincronizados":353,"sin_producto":0,"fallos_de_descarga":0,"fallos_de_guardado":0,"fallos_de_imagen":0,"fallos_de_sync":0,"segundos":25.9}
+
+4. CON product-service DETENIDO, las prendas esperan en la cola (no se pierden)
+   05:04:30  cep-ofertas-crudas  visibles/en-proceso: 352 / 1   ·   DLQ visibles: 1
+   GET /productos con el servicio caido: - (se espera error: el catalogo esta apagado)
+
+5. SE VUELVE A ENCENDER product-service
+    Container cep-postgres Waiting 
+    Container cep-postgres Healthy 
+    Container cep-product-service Starting 
+    Container cep-product-service Started 
+
+6. LA COLA SE VACIA
+   05:04:40  cep-ofertas-crudas  visibles/en-proceso: 58 / 9
+   05:04:46  cep-ofertas-crudas  visibles/en-proceso: 342 / 10
+   05:04:52  cep-ofertas-crudas  visibles/en-proceso: 116 / 1
+   05:04:58  cep-ofertas-crudas  visibles/en-proceso: 0 / 1
+   05:05:04  cep-ofertas-crudas  visibles/en-proceso: 352 / 1
+   05:05:11  cep-ofertas-crudas  visibles/en-proceso: 0 / 0
+   05:05:17  cep-ofertas-crudas  visibles/en-proceso: 0 / 0
+   05:05:21  cep-ofertas-crudas  visibles/en-proceso: 0 / 0   ·   DLQ visibles: 1
+
+7. DESPUES
+   productos en el sitio: 224 -> 224   ·   ofertas de falabella: 224 -> 224
+   prendas publicadas por el scraper (sincronizados): 353
+   ofertas guardadas por el consumidor (Resultado=ok en product-service): 353
+   ofertas distintas de falabella en la base (tienda + SKU): 325
+   (publicadas = guardadas: no se perdio ninguna. Las distintas son menos porque un
+    mismo SKU aparece en varias paginas del listado y la segunda vez se actualiza;
+    el sitio muestra menos productos porque agrupa las ofertas de un mismo modelo.)
+   ultimas lineas del consumidor:
+     Resultado=ok eventId=b50c9807-a5d3-4317-a62e-1b2f7b644bcd MessageId=2a6605c6-00ca-4bc8-a06b-dd36184d9939 intento=1
+     Resultado=ok eventId=a6af97e4-819e-4aa1-828b-03694922afc7 MessageId=71c56d44-99da-4eba-9808-25392da8bb52 intento=1
+     Resultado=ok eventId=8b6f54b4-e6ea-40a5-aaa5-348a1d637b83 MessageId=e9ae6de8-0079-4ec1-ae54-0de8c247f0a5 intento=2
+
+Evidencia guardada en docs/evidencia/flujo1-resiliencia-20261018-050338.log
