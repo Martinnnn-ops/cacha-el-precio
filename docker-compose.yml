@@ -241,6 +241,16 @@ services:
       # El scraper publica los productos en el Product Service por su API,
       # no tocando su base. Esta URL es el host interno del compose.
       PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL:-http://product-service:8081}
+      # Flujo 1 del EP3: con MODO_PUBLICACION=cola cada prenda va a POST /ingesta
+      # (API Gateway -> SQS cep-ofertas-crudas) con el token del client del
+      # scraper, en vez de ir directo a Product Service. http = lo de siempre.
+      MODO_PUBLICACION: ${MODO_PUBLICACION:-http}
+      API_GATEWAY_URL_INGESTA: ${API_GATEWAY_URL_INGESTA:-}
+      COGNITO_DOMINIO: ${COGNITO_DOMINIO:-}
+      COGNITO_REGION: ${COGNITO_REGION:-us-east-1}
+      COGNITO_SCRAPER_CLIENT_ID: ${COGNITO_SCRAPER_CLIENT_ID:-}
+      COGNITO_SCRAPER_CLIENT_SECRET: ${COGNITO_SCRAPER_CLIENT_SECRET:-}
+      COGNITO_SCRAPER_SCOPE: ${COGNITO_SCRAPER_SCOPE:-}
 
     ports:
       - "127.0.0.1:${SCRAPER_API_PORT:-8000}:8000"

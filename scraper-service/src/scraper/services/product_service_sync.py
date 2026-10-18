@@ -16,14 +16,24 @@ para mostrarse completo: url (el boton "ver en tienda"), imagen y marca.
 from __future__ import annotations
 
 import logging
+from typing import Protocol
 
 from scraper.domain.catalog_policy import clave_generica, marca_catalogo, motivo_infantil
 from scraper.domain.categoria import clasificacion_de
 from scraper.domain.product import Product
 from scraper.domain.product_identity import canonical_key
-from scraper.infrastructure.http.product_service_client import ProductServiceClient
 
 log = logging.getLogger(__name__)
+
+
+class ClientePublicacion(Protocol):
+    """
+    Donde se deja cada prenda. Hoy hay dos: ProductServiceClient (POST
+    /api/products) e IngestaColaClient (POST /ingesta -> cola SQS). El
+    sincronizador no sabe cual le toco: lo decide MODO_PUBLICACION.
+    """
+
+    def sincronizar_producto(self, payload: dict) -> dict: ...
 
 
 class ProductServiceSync:
@@ -34,7 +44,7 @@ class ProductServiceSync:
     Adapta el producto del scraper al contrato ingles de Product Service.
     """
 
-    def __init__(self, cliente: ProductServiceClient) -> None:
+    def __init__(self, cliente: ClientePublicacion) -> None:
         self._cliente = cliente
 
     def sincronizar(self, producto: Product) -> bool:

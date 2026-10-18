@@ -54,6 +54,20 @@ de mirar, termina `COMPLETED` con 0 de 0. Ahora se espera la tarea y, si movió 
 También se confirmó que mirar una cola **con** DLQ sube el contador de intentos hasta mandar los
 mensajes a la DLQ: por eso el panel no lo permite.
 
+**T04 · el scraper publica en la cola.** Nuevo `IngestaColaClient` con el mismo método que el
+cliente de Product Service: el barrido no se tocó y `MODO_PUBLICACION=cola|http` (http por defecto)
+decide. Token de Cognito reutilizado, un reintento ante 401, 3 ante 5xx/timeout y un 4xx que solo
+hace fallar esa prenda. 20 tests nuevos (186 en el scraper, `ruff` y `mypy` limpios). Probado contra
+AWS: con la configuración real publicó por `/ingesta` y el sobre llegó a la cola con el contrato v1.
+
+**Despliegue (avance de la T06).** Revisando cómo llegaría todo a la EC2 apareció que
+`desplegar.sh` **no pasaba ninguna variable de la mensajería** al `.env` del servidor: allá el
+consumidor de ofertas, la publicación en SNS y el consumidor de correos habrían quedado apagados,
+sin un solo error. Ahora lee `mensajeria.env` (si falta, corre `crear-mensajeria.py` o se detiene),
+suma `COGNITO_USER_POOL_ID`, deja el scraper en modo cola con su client y el correo en `log` salvo
+que se despliegue con `CORREO_MODO=smtp SMTP_USUARIO=... SMTP_CLAVE=...`. Se comprobó también que
+las credenciales vacías del compose no rompen la cadena del SDK (cae al rol de la máquina).
+
 **Pendiente:** desplegar en la EC2 (estaba encendida al probar) y volver a correr
 `crear-api-gateway.sh` para crear las rutas `/api/admin/mensajeria`; el `.http` de la T11 con un
 token de admin; el correo por SMTP de verdad (T10). En la plantilla de `oferta.agotada` de

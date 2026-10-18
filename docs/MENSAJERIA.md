@@ -204,6 +204,25 @@ SQS Standard entrega **al menos una vez**: el mismo mensaje puede llegar dos vec
   `(seguimiento, eventId)`: un duplicado de SQS trae el mismo `eventId`. Si ya está, borra el
   mensaje sin reenviar.
 
+## Productor de ofertas (scraper, flujo 1)
+
+Con `MODO_PUBLICACION=cola`, el scraper deja cada prenda en `POST /ingesta` en vez de mandarla a
+`POST /api/products` (`http`, por defecto en local). El barrido no cambia: `ProductServiceSync`
+recibe un cliente con `sincronizar_producto()` y no sabe cuál le tocó; `main.construir_sync` elige
+`IngestaColaClient` o `ProductServiceClient`.
+
+- **Token:** `client_credentials` del client del scraper con el scope `ingesta`; se reutiliza hasta
+  60 s antes de vencer. Ante un 401 pide uno nuevo **una vez** y reintenta.
+- **Sobre:** `oferta.capturada` v1 con un `eventId` nuevo por prenda; `data` es el mismo payload
+  del modo `http`.
+- **Errores:** 200 = encolada. Otro 4xx falla solo esa prenda y el barrido sigue. 5xx o timeout se
+  reintenta hasta 3 veces con espera creciente.
+- **Si falta configuración** en modo cola (`API_GATEWAY_URL_INGESTA`, `COGNITO_DOMINIO`,
+  `COGNITO_SCRAPER_CLIENT_ID/SECRET/SCOPE`), el scraper no arranca y dice cuál falta.
+
+`tools/desplegar.sh` deja el servidor en modo cola cuando tiene `api-gateway.env`. Pruebas en
+`scraper-service/tests/unit/infrastructure/test_ingesta_cola_client.py`.
+
 ## Consumidor de ofertas (product-service, flujo 1)
 
 `ConsumidorOfertas` (un `BackgroundService`) lee `cep-ofertas-crudas` con long polling de 20 s, de a

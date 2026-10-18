@@ -13,6 +13,7 @@ Las claves son las mismas que ya estan en .env.example.
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -56,6 +57,41 @@ class Settings(BaseSettings):
     # catalogo (sync por API HTTP). Si no, el scraper solo guarda en su
     # propia base y el frontend no ve datos nuevos.
     product_service_url: str | None = None
+
+    # --- Publicacion de ofertas (EP3, flujo 1) ---
+    # http = POST /api/products directo a Product Service (lo de siempre).
+    # cola = POST /ingesta del API Gateway, que deja la prenda en la cola
+    #        cep-ofertas-crudas; si Product Service esta caido, no se pierde.
+    # Con cola hacen falta la URL de la ingesta y el client del scraper en
+    # Cognito (client_credentials, scope ingesta). Ver docs/MENSAJERIA.md.
+    modo_publicacion: Literal["http", "cola"] = "http"
+    api_gateway_url_ingesta: str | None = None
+    cognito_token_url: str | None = None
+    cognito_dominio: str | None = None
+    cognito_region: str | None = None
+    cognito_scraper_client_id: str | None = None
+    cognito_scraper_client_secret: str | None = None
+    cognito_scraper_scope: str | None = None
+
+    def url_token_cognito(self) -> str | None:
+        """La de COGNITO_TOKEN_URL, o la que se arma con el dominio de Cognito."""
+        if self.cognito_token_url:
+            return self.cognito_token_url
+        if self.cognito_dominio:
+            region = self.cognito_region or self.aws_region
+            return f"https://{self.cognito_dominio}.auth.{region}.amazoncognito.com/oauth2/token"
+        return None
+
+    def faltantes_para_cola(self) -> list[str]:
+        """Las variables que faltan para publicar en la cola (vacia = todo listo)."""
+        requeridas = {
+            "API_GATEWAY_URL_INGESTA": self.api_gateway_url_ingesta,
+            "COGNITO_DOMINIO o COGNITO_TOKEN_URL": self.url_token_cognito(),
+            "COGNITO_SCRAPER_CLIENT_ID": self.cognito_scraper_client_id,
+            "COGNITO_SCRAPER_CLIENT_SECRET": self.cognito_scraper_client_secret,
+            "COGNITO_SCRAPER_SCOPE": self.cognito_scraper_scope,
+        }
+        return [nombre for nombre, valor in requeridas.items() if not valor]
 
     # --- almacenamiento S3 ---
     aws_region: str = "us-east-1"
