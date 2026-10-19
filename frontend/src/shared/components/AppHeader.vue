@@ -17,6 +17,8 @@ const props = defineProps({
   tema: { type: String, default: 'sistema' },
   temas: { type: Array, default: () => ['sistema', 'claro', 'oscuro'] },
   usuario: { type: Object, default: null },
+  // Solo cambia que enlaces se muestran: el backend exige el grupo igual.
+  esAdmin: { type: Boolean, default: false },
 })
 
 const seleccion = defineModel('tiendasActivas', {
@@ -221,6 +223,9 @@ const iniciales = computed(() => {
               <p class="menu__titulo">{{ usuario.nombre ?? usuario.correo }}</p>
               <RouterLink class="menu__opcion" :to="{ name: 'mi-armario' }" @click="cerrar()">
                 Mi armario · deseados y outfits
+              </RouterLink>
+              <RouterLink v-if="esAdmin" class="menu__opcion" :to="{ name: 'admin-mensajeria' }" @click="cerrar()">
+                Mensajería · colas y reglas
               </RouterLink>
 
               <button

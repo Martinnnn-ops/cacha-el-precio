@@ -267,6 +267,12 @@ choca con lo que hay (ya existe, es DLQ de otra, tiene suscripciones, está decl
 
 `MENSAJERIA_MODO=memoria` simula todo sin AWS (por defecto si no se configura); en la EC2 va `aws`.
 
+**Pantalla (T12):** `/admin/mensajeria` en el frontend (`frontend/src/modules/admin/`), enlazada en el menú
+de la cuenta solo para el grupo `admin`. Muestra las colas (se refrescan cada 10 s), los tópicos con sus
+filtros, los mensajes de una DLQ o de la auditoría con su diagnóstico y el botón de redrive; crea colas,
+tópicos y reglas mostrando junto a cada campo el `{ campo, error }` del servidor, y pide escribir el nombre
+para borrar. El grupo se lee del access token solo para decidir qué mostrar: el gateway responde 403 igual.
+
 ## Correo (notification-service)
 
 Interfaz `IEnviadorCorreo` con dos implementaciones, elegidas por configuración:
