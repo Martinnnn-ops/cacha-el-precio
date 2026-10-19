@@ -6,8 +6,9 @@ namespace Product_Service.Mensajeria;
 // cada mensaje:
 //   exito         -> se borra de la cola (el ACK);
 //   definitivo    -> va a la DLQ con atributos de diagnostico y se borra;
-//   recuperable   -> no se borra, reaparece a los 60 s y SQS reintenta; al 5.o
-//                    intento SQS lo mueve solo a la DLQ (topologia.json).
+//   recuperable   -> no se borra, reaparece a los 60 s y SQS reintenta; en el
+//                    ultimo intento (maxReceiveCount de la cola) va a la DLQ con
+//                    diagnostico "recuperable-agotado".
 // Si la cola no esta configurada (URL vacia), no arranca y el servicio sigue
 // atendiendo HTTP como antes. Mismo patron que ConsumidorNotificaciones.
 public sealed class ConsumidorOfertas(
@@ -63,7 +64,8 @@ public sealed class ConsumidorOfertas(
         {
             log.LogWarning(e, "Resultado=dlq MessageId={MessageId} intento={Intento} razon={Razon}",
                 mensaje.MessageId, mensaje.ApproximateReceiveCount, e.Razon);
-            await cola.EnviarADlqAsync(mensaje, Diagnostico(mensaje, e), ct);
+            await cola.EnviarADlqAsync(mensaje,
+                Diagnostico(mensaje, "definitivo", e.Razon, e.InnerException ?? e), ct);
         }
         // TaskCanceledException hereda de OperationCanceledException y es un timeout
         // de la base: tambien es recuperable. Solo se deja pasar si el servicio se
@@ -71,20 +73,38 @@ public sealed class ConsumidorOfertas(
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
             // Recuperable (NpgsqlException, TimeoutException, TaskCanceledException...):
-            // no se borra. Reaparece tras la visibilidad (60 s) y al 5.o intento SQS
-            // lo mueve solo a la DLQ. Un warning y no un error: es el camino previsto.
+            // no se borra y reaparece tras la visibilidad (60 s). Un warning y no un
+            // error: es el camino previsto.
+            //
+            // En el ULTIMO intento lo aparta el consumidor y no SQS: si lo moviera
+            // SQS, llegaria a la DLQ sin ningun atributo y desde el panel no se
+            // sabria por que fallo. Asi queda con la razon del ultimo error.
+            int? max = await cola.MaxIntentosAsync(ct);
+            if (max is int m && mensaje.ApproximateReceiveCount >= m)
+            {
+                log.LogWarning(e, "Resultado=dlq-agotado MessageId={MessageId} intento={Intento} de {Max}: {Mensaje}",
+                    mensaje.MessageId, mensaje.ApproximateReceiveCount, m, e.Message);
+                // La causa util esta ADENTRO: EF envuelve el error de Npgsql en un
+                // "transient failure" generico (visto en la EC2 el 18-10).
+                var causa = e.GetBaseException();
+                await cola.EnviarADlqAsync(mensaje, Diagnostico(mensaje, "recuperable-agotado",
+                    $"{m} intentos sin exito; el ultimo: {causa.Message}", causa), ct);
+                return;
+            }
+
             log.LogWarning(e, "Resultado=reintento MessageId={MessageId} intento={Intento}: {Mensaje}",
                 mensaje.MessageId, mensaje.ApproximateReceiveCount, e.Message);
         }
     }
 
-    private static Dictionary<string, string> Diagnostico(MensajeCola mensaje, ErrorDefinitivoException e) => new()
-    {
-        ["error-type"] = "definitivo",
-        ["error-reason"] = e.Razon,
-        ["error-exception"] = (e.InnerException ?? e).GetType().Name,
-        ["failed-by"] = "product-service",
-        ["failed-at"] = DateTimeOffset.UtcNow.ToString("O"),
-        ["original-message-id"] = mensaje.MessageId
-    };
+    private static Dictionary<string, string> Diagnostico(
+        MensajeCola mensaje, string tipo, string razon, Exception causa) => new()
+        {
+            ["error-type"] = tipo,
+            ["error-reason"] = razon,
+            ["error-exception"] = causa.GetType().Name,
+            ["failed-by"] = "product-service",
+            ["failed-at"] = DateTimeOffset.UtcNow.ToString("O"),
+            ["original-message-id"] = mensaje.MessageId
+        };
 }

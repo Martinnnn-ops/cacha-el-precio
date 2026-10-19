@@ -127,6 +127,60 @@ public class MensajeriaAwsRealTests
         Assert.Null(await ObtenerSiExiste(dlq));
     }
 
+    [FactAws]
+    public async Task Redrive_con_un_consumidor_que_rechaza_todo_no_hace_ping_pong()
+    {
+        // Lo que paso en la EC2 el 18-10: el consumidor devuelve a la DLQ, como
+        // mensaje NUEVO, todo lo que el redrive le entrega. El redrive tiene que
+        // mover solo lo que ya estaba y responder antes de los 30 s del borde.
+        string sufijo = Guid.NewGuid().ToString("N")[..6];
+        string dlq = $"cep-prueba-{sufijo}-dlq", cola = $"cep-prueba-{sufijo}";
+        using var apagar = new CancellationTokenSource();
+        Task? rechazador = null;
+        try
+        {
+            await servicio.CrearColaAsync(new CrearColaSolicitud(dlq, null, 1209600, 0, null, null), Ct);
+            await servicio.CrearColaAsync(new CrearColaSolicitud(cola, 30, null, 1, dlq, 3), Ct);
+            string urlDlq = await Url(dlq), urlCola = await Url(cola);
+            for (int i = 0; i < 3; i++)
+                await sqs.SendMessageAsync(urlDlq, $$"""{"eventId":"pp{{i}}","type":"oferta.capturada"}""", Ct);
+            await Task.Delay(2000, Ct);
+
+            rechazador = Task.Run(async () =>
+            {
+                while (!apagar.IsCancellationRequested)
+                {
+                    var r = await sqs.ReceiveMessageAsync(new Sqs.ReceiveMessageRequest
+                    {
+                        QueueUrl = urlCola,
+                        MaxNumberOfMessages = 10,
+                        WaitTimeSeconds = 1
+                    }, CancellationToken.None);
+                    foreach (var m in r.Messages ?? [])
+                    {
+                        await sqs.SendMessageAsync(urlDlq, m.Body, CancellationToken.None);
+                        await sqs.DeleteMessageAsync(urlCola, m.ReceiptHandle, CancellationToken.None);
+                    }
+                }
+            });
+
+            var reloj = System.Diagnostics.Stopwatch.StartNew();
+            var resultado = await servicio.ReprocesarDlqAsync(dlq, null, Ct);
+            reloj.Stop();
+
+            Assert.True(reloj.Elapsed < TimeSpan.FromSeconds(25), $"tardo {reloj.Elapsed.TotalSeconds:F1} s");
+            Assert.True(resultado.MensajesMovidos is null or <= 3,
+                $"movio {resultado.MensajesMovidos} con el metodo {resultado.Metodo}: ping-pong");
+        }
+        finally
+        {
+            apagar.Cancel();
+            if (rechazador is not null) await rechazador;
+            await Insistir(() => servicio.EliminarColaAsync(cola, true, Ct));
+            await Insistir(() => servicio.EliminarColaAsync(dlq, true, Ct));
+        }
+    }
+
     // =====================================================================
 
     private Task Publicar(string arnTopico, string tipo, string cuerpo) =>

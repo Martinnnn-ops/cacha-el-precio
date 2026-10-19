@@ -1,0 +1,69 @@
+EVIDENCIA DE LA MENSAJERIA EN LA EC2 — Cacha el Precio · T13
+Fecha:    2026-10-18T18:58:42-03:00
+Cuenta:   731705830984      EC2: 100.60.227.130
+Codigo:   41826d3 Merge pull request #40 from Martinnnn-ops/feature/admin-mensajeria origin/development
+Medido:   A TRAVES del API Gateway (https://mcxw9tpe13.execute-api.us-east-1.amazonaws.com/prod)
+========================================================================
+
+A. ADMINISTRACION DE MENSAJERIA (T11)
+   — quien puede entrar —
+   OK    sin token -> 401
+   OK    usuario sin el grupo admin -> 403
+   OK    admin -> 200 — 5 colas
+   — consultar —
+     cep-auditoria-precios    visibles    4 · en proceso   0 · sin DLQ
+     cep-notificaciones       visibles    0 · en proceso   0 · DLQ cep-notificaciones-dlq tras 5
+     cep-notificaciones-dlq   visibles    1 · en proceso   0 · es DLQ de cep-notificaciones
+     cep-ofertas-crudas       visibles    0 · en proceso   0 · DLQ cep-ofertas-crudas-dlq tras 5
+     cep-ofertas-crudas-dlq   visibles    1 · en proceso   0 · es DLQ de cep-ofertas-crudas
+   OK    GET /topicos con sus reglas
+     cep-cambios-oferta -> cep-auditoria-precios  filtro: recibe todo
+     cep-cambios-oferta -> cep-notificaciones     filtro: {"$or": [{"type": ["precio.bajo"], "discountPct": [{"numeric": [">=", 10]}]}, {"type": ["oferta.agotada", "oferta.repuesta"]}]}
+   OK    GET /topologia: AWS igual a topologia.json
+   — validacion: 400 con { campo, error } —
+   OK    400 · nombre sin el prefijo cep- — nombre: Debe empezar con 'cep-'. Solo se administran los recursos de Cacha el Precio.
+   OK    400 · nombre con mayusculas y guion bajo — nombre: Solo minusculas, numeros y guiones simples entre palabras (ejemplo: cep-ofertas-crudas).
+   OK    400 · la DLQ indicada no existe — dlq: La DLQ 'cep-no-existe' no existe. Creala primero.
+   OK    400 · maxIntentos fuera de 1..10 — maxIntentos: Debe estar entre 1 y 10.
+   OK    400 · visibilidad sobre 12 h — visibilidadSegundos: Debe estar entre 0 y 43200 segundos (12 horas).
+   OK    400 · filtro sobre un atributo que nadie publica — filtro: filtro.tienda: 'tienda' no es un atributo que publiquen los productores. Se puede filtrar por: type, d
+   OK    400 · filtro con un type que no existe — filtro: filtro.type: el tipo 'precio.subio' no existe. Tipos publicados: precio.bajo, oferta.agotada, oferta.r
+   — conflictos: 409 —
+   OK    409 · la cola ya existe — La cola 'cep-ofertas-crudas' ya existe.
+   OK    409 · es la DLQ de otra cola (ni forzando) — 'cep-ofertas-crudas-dlq' es la DLQ de cep-ofertas-crudas. Quitale la DLQ a esas colas antes de borra
+   OK    409 · el topico tiene suscripciones — 'cep-cambios-oferta' tiene 2 suscripcion(es). Eliminalas primero: borrar el topico dejaria a esas co
+   OK    409 · mirar una cola con DLQ sumaria intentos — 'cep-ofertas-crudas' tiene DLQ (cep-ofertas-crudas-dlq tras 5 intentos): mirarla cuenta como una rec
+   OK    409 · lo declarado en topologia.json pide ?forzar=true — La regla 'cep-cambios-oferta -> cep-auditoria-precios' esta declarada en topologia.json. Si de verda
+   — gestionar: crear y borrar destinos y reglas —
+   OK    201 · crear la DLQ
+   OK    201 · crear la cola con su DLQ tras 3 intentos
+   OK    201 · regla: solo los agotados llegan a la cola
+   OK    200 · cambiar el filtro: bajas de 30% o mas
+   OK    204 · borrar la regla
+   OK    204 · borrar la cola
+   OK    204 · borrar la DLQ (cuando SQS ya no lista la cola que la usaba)
+
+B. FLUJO 1 CON ERROR: una oferta invalida por POST /ingesta
+   OK    POST /ingesta con price -1 -> 200 (encolado) — eventId e4b02885-1f20-492f-8067-c37188531fc3
+   OK    llega a cep-ofertas-crudas-dlq y se ve en el panel
+   OK    con error-type=definitivo al primer intento — validacion: El precio no puede ser cero ni negativo.
+     diagnostico: {"error-exception": "PriceValueException", "error-reason": "validacion: El precio no puede ser cero ni negativo.", "error-type": "definitivo", "failed-at": "2026-10-18T21:59:21.2389591+00:00", "failed-by": "product-service", "original-message-id": "2f5b24ae-c5f1-4947-8251-16566f8ffb0d"}
+
+C. FLUJO 2 EN LA EC2: cambio de precio -> SNS -> regla -> correo
+   producto 1 «Polera Básica Hombre Manga Corta 100% Algodón» · falabella/136036472 a $4990
+   OK    el admin sigue el producto (POST /seguimiento/{id})
+   OK    baja de 5% ($4990 -> $4740) por la cola
+   OK    la auditoria (sin filtro) recibe precio.bajo con discountPct 5 — {"productId": 1, "slug": "polera-basica-hombre-manga-corta-100-algodon", "name": "Polera Básica Hombre Manga Corta 100% 
+   OK    notification-service NO avisa la baja de 5% (no pasa el filtro >= 10%) — correos: 0
+   OK    baja de 30% ($4740 -> $3318) por la cola
+   OK    la auditoria recibe precio.bajo con discountPct 30
+   OK    notification-service en la EC2 genera el correo para quien sigue el producto — Bajó 30% · Polera Básica Hombre Manga Corta 100% Algodón
+   OK    se restaura el precio original ($4990): una subida no publica nada
+
+D. REDRIVE DESDE EL PANEL
+   FALLA POST /colas/cep-ofertas-crudas-dlq/redrive -> 200 — metodo None, None movidos a None
+   OK    lo invalido vuelve a la DLQ (reintentar no lo arregla)
+
+========================================================================
+RESULTADO: 1 comprobacion(es) fallida(s)
+Evidencia guardada en docs/evidencia/mensajeria-ec2-20261018-185842.log

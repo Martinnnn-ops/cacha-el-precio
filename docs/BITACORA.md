@@ -2,6 +2,45 @@
 
 Última actualización: 18-10-2026.
 
+## 18-10 (tarde) · EP3: pruebas de punta a punta en la EC2 (T13), DLQ con diagnóstico y vista del panel (T12) — Martín
+
+**T06 cerrada al pie de la letra.** Con el PR #40 mergeado, `./tools/desplegar.sh --solo-backend`
+**sin `RAMA=`** levantó `development` en la EC2 con la mensajería encendida y la base intacta.
+
+**T13 · `tools/probar-mensajeria.py`**: todo por el API Gateway, con tokens reales de Cognito (usuarios
+de prueba de `crear-cognito.sh`). Evidencia en `docs/evidencia/mensajeria-ec2-*.log`; la última corrida,
+**41/41**:
+
+| Bloque | Qué se comprobó |
+|---|---|
+| A · panel (T11) | 401 sin token, 403 sin el grupo admin, 200 con el admin; colas, tópicos con filtros y topología sincronizada; 7 casos inválidos con `{ campo, error }`; 5 conflictos 409; crear y borrar una cola con su DLQ y una regla con filtro |
+| B · flujo 1 con error | `price: -1` por `/ingesta` → DLQ al primer intento con `definitivo`, visto desde el panel |
+| C · flujo 2 en la EC2 | el admin sigue un producto real; baja de 5 % → solo auditoría y **ningún** correo; baja de 30 % → auditoría y el correo «Bajó 30 %» de notification-service **en la EC2**; precio restaurado |
+| D · redrive desde el panel | responde en ~2 s y lo inválido vuelve a la DLQ con una falla nueva |
+| E · último intento | postgres detenido: 4 reintentos y en el 5.º el consumidor lo aparta con `recuperable-agotado` |
+
+**Lo que encontraron las pruebas, y quedó corregido:**
+
+- **Ping-pong del redrive.** La primera corrida (`mensajeria-ec2-20261018-185842.log`) dio 503: con el
+  consumidor corriendo, lo que el redrive devolvía y seguía siendo inválido volvía a la DLQ como mensaje
+  nuevo, y el movimiento manual lo volvía a mover: 1000 movimientos con 2 mensajes, 50 s, y el API
+  Gateway corta a los 30. Ahora solo se devuelve lo que llegó a la DLQ antes de apretar redrive
+  (`SentTimestamp`), con topes de tiempo, y si la tarea nativa sigue en curso no se mueve a mano. Hay
+  una regresión contra AWS con un «consumidor que rechaza todo».
+- **DLQ sin diagnóstico.** Lo que agotaba los reintentos lo movía SQS, sin atributos. Ahora el
+  consumidor lo aparta en el último intento (el máximo se lee de la `RedrivePolicy` de la cola) con
+  `recuperable-agotado` y la causa de fondo: EF envuelve el error de Npgsql en un «transient failure»
+  genérico que no explica nada. En notification-service queda como antes (lo mueve SQS): se le propone
+  a Orion.
+- Detalle pendiente: cuando la tarea nativa de redrive termina, su contador aproximado puede decir
+  «0 movidos» aunque los mensajes sí volvieron.
+
+**T12 · vista del panel** (rama `feature/vista-admin-mensajeria`): `/admin/mensajeria` en el frontend,
+solo para el grupo admin. Build y humo limpios; la capa de servicios se probó contra el gateway real
+(listado, 400 por campo, 409 con su mensaje, DLQ con diagnóstico, 403 sin el grupo). El login del sitio
+es solo con Google: para verla, la cuenta de Google del admin tiene que estar en el grupo `admin` de
+Cognito.
+
 ## 18-10 · EP3: consumidor del flujo 1 y administración de mensajería (T05 y T11) — Martín
 
 **T05 · consumidor de ofertas.** product-service ahora vacía `cep-ofertas-crudas`:

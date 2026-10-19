@@ -328,9 +328,16 @@ public sealed class AdministradorMensajeriaAws(
         var urlDlq = await UrlDeColaAsync(dlq, ct) ?? throw new RecursoNoEncontradoException("la cola", dlq);
         var urlDestino = await UrlDeColaAsync(destino, ct) ?? throw new RecursoNoEncontradoException("la cola", destino);
 
+        // Solo se devuelven los mensajes que ya estaban en la DLQ al apretar redrive.
+        // Visto en la EC2 el 18-10: con el consumidor corriendo, lo que se devuelve y
+        // sigue siendo invalido vuelve a la DLQ al tiro como mensaje NUEVO; sin este
+        // corte, el plan B lo volvia a mover en un ping-pong hasta el tope (1000
+        // movimientos y 50 s, que el API Gateway corta a los 30 s con un 503).
+        long inicio = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
         // 1. Lo nativo: StartMessageMoveTask (el "redrive" de la consola). El
-        //    LabRole lo permite (comprobado el 18-10). Se espera a que termine para
-        //    devolver cuantos movio de verdad.
+        //    LabRole lo permite (comprobado el 18-10). Mueve lo que habia al
+        //    empezar y termina solo, asi que no tiene ping-pong.
         string? tarea = null;
         try
         {
@@ -342,14 +349,20 @@ public sealed class AdministradorMensajeriaAws(
             }, ct);
             tarea = r.TaskHandle;
             int? movidosNativo = await EsperarTareaAsync(arnDlq, ct);
-            log.LogInformation("Redrive {Dlq} -> {Destino}: {Movidos} mensajes (tarea {Tarea})", dlq, destino, movidosNativo, tarea);
+            log.LogInformation("Redrive {Dlq} -> {Destino}: {Movidos} mensajes (tarea {Tarea})",
+                dlq, destino, movidosNativo?.ToString() ?? "en curso", tarea);
+
+            // Sigue en curso: se responde ya (el API Gateway corta a los 30 s) y no
+            // se mueve nada a mano, para no competir con la tarea.
+            if (movidosNativo is null)
+                return new ResultadoReproceso(dlq, destino, "redrive", null, tarea);
 
             // ⚠️ Visto contra AWS el 18-10: la tarea calcula cuantos mover con el
             //    contador APROXIMADO de la DLQ, que tarda unos segundos en ponerse al
             //    dia despues de que alguien la mira. Si el admin mira la DLQ y aprieta
             //    redrive al tiro, la tarea termina "COMPLETED" con 0 de 0. En ese caso
             //    se sigue con el plan B, que lee la cola de verdad.
-            if (movidosNativo is > 0)
+            if (movidosNativo > 0)
                 return new ResultadoReproceso(dlq, destino, "redrive", movidosNativo, tarea);
         }
         catch (AmazonServiceException e) when (EsPermisoDenegado(e))
@@ -359,21 +372,35 @@ public sealed class AdministradorMensajeriaAws(
 
         // 2. Plan B: recibir, reenviar y borrar, de a 10. El mensaje solo se borra
         //    de la DLQ despues de que el reenvio salio bien (mismo criterio de ACK).
+        //    Con tope de tiempo, para responder siempre antes de los 30 s del borde.
         int movidos = 0;
-        while (movidos < 1000)
+        var limite = DateTime.UtcNow.AddSeconds(15);
+        while (DateTime.UtcNow < limite)
         {
             var lote = await Aws($"leer {dlq}", () => sqs.ReceiveMessageAsync(new Sqs.ReceiveMessageRequest
             {
                 QueueUrl = urlDlq,
                 MaxNumberOfMessages = 10,
                 WaitTimeSeconds = 1,
-                MessageAttributeNames = ["All"]
+                VisibilityTimeout = 30,
+                MessageAttributeNames = ["All"],
+                MessageSystemAttributeNames = ["SentTimestamp"]
             }, ct));
             var mensajes = lote.Messages ?? [];
             if (mensajes.Count == 0) break;
 
+            bool soloNuevos = true;
             foreach (var m in mensajes)
             {
+                // Llego a la DLQ despues de apretar redrive: es uno que se acaba de
+                // devolver y volvio a fallar. Se deja visible y no se toca.
+                if (long.TryParse(Texto(m.Attributes ?? [], "SentTimestamp"), out long llegada) && llegada >= inicio)
+                {
+                    await Aws($"liberar en {dlq}", () => sqs.ChangeMessageVisibilityAsync(urlDlq, m.ReceiptHandle, 0, ct));
+                    continue;
+                }
+
+                soloNuevos = false;
                 await Aws($"reenviar a {destino}", () => sqs.SendMessageAsync(new Sqs.SendMessageRequest
                 {
                     QueueUrl = urlDestino,
@@ -385,16 +412,17 @@ public sealed class AdministradorMensajeriaAws(
                 await Aws($"borrar de {dlq}", () => sqs.DeleteMessageAsync(urlDlq, m.ReceiptHandle, ct));
                 movidos++;
             }
+            if (soloNuevos) break;
         }
         log.LogInformation("Reproceso manual {Dlq} -> {Destino}: {Movidos} mensajes", dlq, destino, movidos);
         return new ResultadoReproceso(dlq, destino, tarea is null ? "manual" : "redrive+manual", movidos, tarea);
     }
 
-    // Espera (hasta ~20 s) a que la tarea de movimiento mas reciente de la DLQ
+    // Espera (hasta ~8 s) a que la tarea de movimiento mas reciente de la DLQ
     // termine, y devuelve cuantos mensajes movio. null si no alcanzo a terminar.
     private async Task<int?> EsperarTareaAsync(string arnDlq, CancellationToken ct)
     {
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < 8; i++)
         {
             var r = await Aws("consultar el redrive", () => sqs.ListMessageMoveTasksAsync(
                 new Sqs.ListMessageMoveTasksRequest { SourceArn = arnDlq, MaxResults = 1 }, ct));
