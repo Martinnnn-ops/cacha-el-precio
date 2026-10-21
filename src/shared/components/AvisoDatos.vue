@@ -64,12 +64,12 @@ const mensaje = computed(() => {
        leyendo, sin interrumpir a quien navega con teclado o lector. -->
   <div
     v-if="visible"
-    class="aviso"
-    :class="{ 'aviso--suave': desactualizado || !conectado }"
+    class="aviso-datos"
+    :class="{ 'aviso-datos--suave': desactualizado || !conectado }"
     role="status"
     aria-live="polite"
   >
-    <span class="aviso__texto">{{ mensaje }}</span>
+    <span class="aviso-datos__texto">{{ mensaje }}</span>
 
     <BaseButton
       v-if="conectado"
@@ -84,7 +84,11 @@ const mensaje = computed(() => {
 </template>
 
 <style scoped>
-.aviso {
+/* "aviso-datos" y no "aviso": las vistas tienen su propio .aviso (el de "no
+   encontramos nada", con 56–64 px de relleno), y el estilo scoped de una vista
+   también alcanza la raíz de sus componentes hijos. Con el mismo nombre esta
+   franja heredaba ese relleno y medía 160 px de alto para una sola línea. */
+.aviso-datos {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -101,10 +105,10 @@ const mensaje = computed(() => {
 }
 /* Datos viejos o sin red no es un error rojo: la página funciona, sólo que con
    lo último que se pudo traer. */
-.aviso--suave {
+.aviso-datos--suave {
   border-left-color: var(--cep-rate);
 }
-.aviso__texto {
+.aviso-datos__texto {
   font-size: var(--cep-fs-sm);
   line-height: var(--cep-lh-snug);
 }

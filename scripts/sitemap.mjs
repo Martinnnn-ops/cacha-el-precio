@@ -31,7 +31,7 @@ const VERSION = env.VITE_API_VERSION ?? '1.0'
 // Rutas que NO deben indexarse. Coincide con lo que bloquea robots.txt: las
 // pantallas de sesión no aportan nada en un buscador y sólo generan
 // resultados que no llevan a ninguna parte.
-const EXCLUIDAS = new Set(['login', 'registro', 'retorno-google', 'no-encontrado'])
+const EXCLUIDAS = new Set(['login', 'registro', 'retorno-google', 'no-encontrado', 'mi-armario'])
 
 // Cada cuánto merece la pena que un buscador vuelva a mirar.
 const FRECUENCIA = {
@@ -105,8 +105,9 @@ try {
   // que además no corresponde a ningún producto. Verificado con el backend
   // levantado: 3 productos, 3 entradas idénticas.
   //
-  // Adaptando, el slug es exactamente el que construye la aplicación en el
-  // navegador, porque sale de la misma función sobre los mismos datos.
+  // Adaptando, el slug es exactamente el canónico que Product Service incluye
+  // en la fila y que la aplicación usa en el navegador. Para respuestas
+  // antiguas sin ese campo se conserva el generador anterior como respaldo.
   const urlsProductos = adaptarProductos(productos)
     .map((producto) =>
       [

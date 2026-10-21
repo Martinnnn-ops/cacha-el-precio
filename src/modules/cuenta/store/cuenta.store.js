@@ -46,6 +46,21 @@ export const useCuentaStore = defineStore('cuenta', () => {
   const error = ref(null)
 
   const autenticado = computed(() => usuario.value !== null)
+
+  // Los grupos de Cognito viajan en el access token (cognito:groups). Se leen
+  // SOLO para decidir que pantallas mostrar: quien manda es el backend, que
+  // valida la firma y responde 403 igual (ver gateway/README.md).
+  const grupos = computed(() => {
+    if (!usuario.value) return []
+    try {
+      const token = leer(CLAVE_TOKEN)
+      const carga = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+      return JSON.parse(atob(carga))['cognito:groups'] ?? []
+    } catch {
+      return []
+    }
+  })
+  const esAdmin = computed(() => grupos.value.includes('admin'))
   const disponible = computed(() => GOOGLE_CONFIGURADO)
 
   const iniciales = computed(() => {
@@ -138,6 +153,8 @@ export const useCuentaStore = defineStore('cuenta', () => {
     entrando,
     error,
     autenticado,
+    grupos,
+    esAdmin,
     disponible,
     iniciales,
     entrarConGoogle,

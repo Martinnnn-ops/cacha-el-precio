@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
@@ -6,23 +6,37 @@ import {
   obtenerProductos,
   obtenerTiendas,
 } from '@/modules/comparador/services/comparador.service'
-import { TIENDAS } from '@/modules/comparador/data/tiendas'
+import { TIENDAS_MOCK } from '@/modules/comparador/data/tiendas'
+import { USAR_MOCK } from '@/core/api/http'
+import { formatearPrecio } from '@/shared/utils/formato'
 import { ahorroMaximo, precioMasBajo } from '@/shared/utils/precios'
+import { clasificarTalla } from '@/shared/utils/tallas'
 
 // Estado del módulo comparador. El store orquesta y guarda; no sabe de HTTP ni
 // de URLs — para eso llama al servicio.
 const CLAVE_TIENDAS = 'cep:tiendas'
 
+// Con qué tiendas arranca la aplicación antes de que responda el catálogo.
+//
+// Contra la API real es una lista VACÍA, y es a propósito: las tiendas del
+// catálogo se derivan de los productos (`cargarTiendas`, que App.vue dispara al
+// arrancar). Antes arrancaba con las cinco de los datos de ejemplo, así que
+// durante el primer instante el filtro ofrecía Zara y Mango —que no tienen
+// scraper— y omitía Falabella, Hites, La Polar y Sparta, que sí.
+const TIENDAS_INICIALES = USAR_MOCK ? TIENDAS_MOCK : []
+
 function leerPreferencia() {
   try {
     const guardado = JSON.parse(localStorage.getItem(CLAVE_TIENDAS) ?? 'null')
 
-    if (Array.isArray(guardado) && guardado.length > 0) return guardado
+    if (Array.isArray(guardado) && guardado.length > 0) {
+      return { ids: guardado, explicita: true }
+    }
   } catch {
     // Almacenamiento bloqueado o valor corrupto: se cae al valor por defecto.
   }
 
-  return TIENDAS.map((t) => t.id)
+  return { ids: TIENDAS_INICIALES.map((t) => t.id), explicita: false }
 }
 
 function guardarPreferencia(ids) {
@@ -34,11 +48,13 @@ function guardarPreferencia(ids) {
 }
 
 export const useComparadorStore = defineStore('comparador', () => {
+  const preferenciaInicial = leerPreferencia()
   // ——— estado ———
-  const productos = ref([])
+  // Las respuestas se reemplazan completas: no necesitamos miles de proxies anidados.
+  const productos = shallowRef([])
   // La lista de tiendas ya no es una constante: con backend se deriva del
   // campo `store`, y con datos de ejemplo son las cinco de siempre.
-  const tiendas = ref(TIENDAS)
+  const tiendas = ref(TIENDAS_INICIALES)
   const producto = ref(null)
   const busqueda = ref('')
   const categoria = ref('')
@@ -46,7 +62,15 @@ export const useComparadorStore = defineStore('comparador', () => {
   // defecto en un comparador: si alguien viene a ver precios, lo primero que
   // quiere arriba es el más bajo.
   const orden = ref('barato')
-  // Tope de precio. null = sin tope.
+  // Paginación de los resultados filtrados. Todo el catálogo llega de una sola
+  // vez (ver `cargarProductos`), así que paginar acá es cortar el arreglo ya
+  // filtrado en pedazos — no hay una página que pedirle al backend.
+  const paginaActual = ref(1)
+  const itemsPorPagina = ref(20)
+  // Presupuesto: piso y techo. null = sin límite en ese extremo. Se guardan por
+  // separado porque "desde $10.000" y "hasta $10.000" son búsquedas distintas,
+  // y con un solo control la única forma de pedir la primera era adivinarla.
+  const precioMinimo = ref(null)
   const precioMaximo = ref(null)
   // Marcas elegidas. Vacío = todas.
   const marcas = ref([])
@@ -58,7 +82,8 @@ export const useComparadorStore = defineStore('comparador', () => {
   // lista escrita a mano.
   const atributos = ref({})
   // Preferencia del usuario, persistida: qué tiendas quiere ver en toda la web.
-  const tiendasActivas = ref(leerPreferencia())
+  const tiendasActivas = ref(preferenciaInicial.ids)
+  let preferenciaExplicita = preferenciaInicial.explicita
   const cargando = ref(false)
   const error = ref(null)
   // Marca de tiempo de la última carga con éxito. Sólo se mueve cuando la
@@ -73,6 +98,7 @@ export const useComparadorStore = defineStore('comparador', () => {
       marcas.value.length > 0 ||
       talla.value !== '' ||
       Object.keys(atributos.value).length > 0 ||
+      precioMinimo.value !== null ||
       precioMaximo.value !== null ||
       tiendasActivas.value.length !== tiendas.value.length,
   )
@@ -102,8 +128,11 @@ export const useComparadorStore = defineStore('comparador', () => {
       puestos.push({ tipo: `atributo:${clave}`, etiqueta: `${clave}: ${valor}` }),
     )
 
-    if (precioMaximo.value !== null) {
-      puestos.push({ tipo: 'precio', etiqueta: `hasta ${precioMaximo.value}` })
+    if (precioMinimo.value !== null || precioMaximo.value !== null) {
+      const desde = precioMinimo.value !== null ? `desde ${formatearPrecio(precioMinimo.value)}` : ''
+      const hasta = precioMaximo.value !== null ? `hasta ${formatearPrecio(precioMaximo.value)}` : ''
+
+      puestos.push({ tipo: 'precio', etiqueta: [desde, hasta].filter(Boolean).join(' · ') })
     }
 
     if (tiendasActivas.value.length !== tiendas.value.length) {
@@ -144,8 +173,33 @@ export const useComparadorStore = defineStore('comparador', () => {
       .sort((a, b) => b.total - a.total || a.nombre.localeCompare(b.nombre))
   })
 
+  // ¿Se muestran las ofertas de esta tienda?
+  //
+  // Mientras el catálogo no ha respondido, `tiendas` está vacío y todavía no se
+  // sabe qué tiendas existen. En ese momento NO se filtra por tienda: filtrar
+  // contra una lista vacía descartaría todas las ofertas y la primera pintada
+  // saldría en blanco, que se lee como «no hay productos» y no como «espera».
+  function tiendaVisible(id) {
+    return tiendas.value.length === 0 || tiendasActivas.value.includes(id)
+  }
+
   // ——— facetas: qué se puede filtrar, según lo que hay ———
   //
+  // ¿El precio más bajo del producto cae dentro del presupuesto? Un producto
+  // sin ninguna oferta con stock no puede cumplir un rango de precio.
+  function dentroDelPresupuesto(p) {
+    const masBajo = precioMasBajo(p)
+
+    if (masBajo === null) {
+      return precioMinimo.value === null && precioMaximo.value === null
+    }
+
+    return (
+      (precioMinimo.value === null || masBajo.precio >= precioMinimo.value) &&
+      (precioMaximo.value === null || masBajo.precio <= precioMaximo.value)
+    )
+  }
+
   // Se calculan sobre los productos que pasan TODOS los demás filtros menos el
   // propio. Así los conteos son los de verdad y no se ofrece una opción que
   // dejaría la pantalla vacía.
@@ -153,6 +207,8 @@ export const useComparadorStore = defineStore('comparador', () => {
     const texto = busqueda.value.trim().toLowerCase()
 
     return productos.value.filter((p) => {
+      if (!dentroDelPresupuesto(p)) return false
+
       if (
         texto !== '' &&
         !`${p.marca} ${p.nombre} ${p.categoria}`.toLowerCase().includes(texto)
@@ -207,19 +263,12 @@ export const useComparadorStore = defineStore('comparador', () => {
       suyas.forEach((t) => cuenta.set(t, (cuenta.get(t) ?? 0) + 1))
     })
 
-    // Numéricas por número, de letra por el orden de siempre.
-    const ORDEN = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-
+    // Cada talla con su sistema, y ordenadas dentro de él. Antes el orden solo
+    // conocía XS…XXL: con "38 CL", "8.5 US" o "3XL" la comparación devolvía
+    // -1 y la lista salía revuelta, con 60 pastillas sin orden en la barra.
     return [...cuenta.entries()]
-      .map(([nombre, total]) => ({ nombre, total }))
-      .sort((a, b) => {
-        const na = Number(a.nombre)
-        const nb = Number(b.nombre)
-
-        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
-
-        return ORDEN.indexOf(a.nombre) - ORDEN.indexOf(b.nombre)
-      })
+      .map(([nombre, total]) => ({ nombre, total, ...clasificarTalla(nombre) }))
+      .sort((a, b) => a.grupo - b.grupo || a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es'))
   })
 
   // Atributos que de verdad sirven para filtrar: los que aparecen en más de un
@@ -273,7 +322,10 @@ export const useComparadorStore = defineStore('comparador', () => {
     if (tipo === 'busqueda') busqueda.value = ''
     if (tipo === 'categoria') categoria.value = ''
     if (tipo === 'talla') talla.value = ''
-    if (tipo === 'precio') precioMaximo.value = null
+    if (tipo === 'precio') {
+      precioMinimo.value = null
+      precioMaximo.value = null
+    }
     if (tipo === 'tiendas') marcarTodasLasTiendas()
     if (tipo.startsWith('marca:')) alternarMarca(tipo.slice(6))
 
@@ -325,16 +377,13 @@ export const useComparadorStore = defineStore('comparador', () => {
           ([clave, valor]) => valorDeSpec(p, clave) === valor,
         )
 
-        // El tope se mide contra el precio más bajo del producto: si en alguna
-        // tienda cabe en el presupuesto, el producto entra.
-        const masBajo = precioMasBajo(p)
-        const coincidePrecio =
-          precioMaximo.value === null ||
-          (masBajo !== null && masBajo.precio <= precioMaximo.value)
+        // El rango se mide contra el precio más bajo del producto: si en alguna
+        // tienda cae dentro, el producto entra.
+        const coincidePrecio = dentroDelPresupuesto(p)
 
         // Un producto entra si alguna de las tiendas marcadas lo vende.
         const coincideTienda = p.precios.some((oferta) =>
-          tiendasActivas.value.includes(oferta.tienda),
+          tiendaVisible(oferta.tienda),
         )
 
         return (
@@ -352,7 +401,7 @@ export const useComparadorStore = defineStore('comparador', () => {
         // Sólo las ofertas de las tiendas marcadas: si el usuario descartó
         // H&M, el "más barato" no puede seguir siendo el de H&M.
         precios: p.precios.filter((oferta) =>
-          tiendasActivas.value.includes(oferta.tienda),
+          tiendaVisible(oferta.tienda),
         ),
       }))
       .sort((a, b) => {
@@ -388,6 +437,21 @@ export const useComparadorStore = defineStore('comparador', () => {
 
   const totalResultados = computed(() => productosFiltrados.value.length)
 
+  // Cuántas páginas caben con el tamaño de página actual. Al menos 1, para no
+  // mostrar "página 1 de 0" cuando el filtro no deja ningún producto.
+  const totalPaginas = computed(() =>
+    Math.max(1, Math.ceil(productosFiltrados.value.length / itemsPorPagina.value)),
+  )
+
+  // El pedazo que de verdad pinta la grilla. `productosFiltrados` sigue
+  // siendo la lista completa filtrada — la usan `totalResultados` y las
+  // facetas de arriba — esto es sólo la página actual de esa lista.
+  const productosPagina = computed(() => {
+    const inicio = (paginaActual.value - 1) * itemsPorPagina.value
+
+    return productosFiltrados.value.slice(inicio, inicio + itemsPorPagina.value)
+  })
+
   // Índice por id. Como Map y no como find(): el armador lo consulta una vez
   // por ranura en cada recálculo, y recorrer el catálogo entero cada vez se
   // nota cuando hay cientos de prendas.
@@ -410,7 +474,24 @@ export const useComparadorStore = defineStore('comparador', () => {
 
   // Se persiste desde un watch y no dentro de cada acción: así también se
   // guarda cuando la cabecera escribe la lista entera con v-model.
-  watch(tiendasActivas, guardarPreferencia, { deep: true })
+  watch(
+    tiendasActivas,
+    (ids) => {
+      preferenciaExplicita = true
+      guardarPreferencia(ids)
+    },
+    { deep: true },
+  )
+
+  // Cualquier cambio en qué se muestra —un filtro, el orden, o que el catálogo
+  // se haya vuelto a cargar— puede dejar la página actual sin sentido, o
+  // directamente vacía si antes había más páginas que ahora. Se vuelve a la 1
+  // cada vez que la lista filtrada cambia, en vez de en cada acción por
+  // separado: así no hay que acordarse de resetear en cada sitio nuevo que
+  // toque un filtro.
+  watch(productosFiltrados, () => {
+    paginaActual.value = 1
+  })
 
   // ——— derivados de la portada ———
   // La portada respeta la PREFERENCIA de tiendas (es una elección deliberada
@@ -422,12 +503,12 @@ export const useComparadorStore = defineStore('comparador', () => {
   const visibles = computed(() =>
     productos.value
       .filter((p) =>
-        p.precios.some((o) => tiendasActivas.value.includes(o.tienda)),
+        p.precios.some((o) => tiendaVisible(o.tienda)),
       )
       .map((p) => ({
         ...p,
         precios: p.precios.filter((o) =>
-          tiendasActivas.value.includes(o.tienda),
+          tiendaVisible(o.tienda),
         ),
       })),
   )
@@ -510,7 +591,9 @@ export const useComparadorStore = defineStore('comparador', () => {
       )
 
       tiendasActivas.value =
-        validas.length > 0 ? validas : lista.map((t) => t.id)
+        !preferenciaExplicita || validas.length === 0
+          ? lista.map((t) => t.id)
+          : validas
     } catch {
       // Si la consulta de productos falla se sigue con la lista por defecto:
       // dejar la cabecera sin ninguna tienda que ofrecer.
@@ -521,7 +604,7 @@ export const useComparadorStore = defineStore('comparador', () => {
   // de que llegue la respuesta, la primera no debe pisar a la segunda.
   let peticion = 0
 
-  async function cargarProducto(id) {
+  async function cargarProducto(slug) {
     const actual = ++peticion
 
     cargando.value = true
@@ -529,7 +612,7 @@ export const useComparadorStore = defineStore('comparador', () => {
     producto.value = null
 
     try {
-      const resultado = await obtenerProducto(id)
+      const resultado = await obtenerProducto(slug)
 
       if (actual !== peticion) return
 
@@ -571,8 +654,22 @@ export const useComparadorStore = defineStore('comparador', () => {
     marcas.value = []
     talla.value = ''
     atributos.value = {}
+    precioMinimo.value = null
     precioMaximo.value = null
     marcarTodasLasTiendas()
+  }
+
+  // Ir a una página concreta, acotada a lo que de verdad existe: nunca antes
+  // de la 1 ni después de la última con el tamaño de página actual.
+  function irAPagina(pagina) {
+    paginaActual.value = Math.min(Math.max(1, pagina), totalPaginas.value)
+  }
+
+  // Cambiar cuántos ítems caben por página. Se vuelve a la página 1: con un
+  // tamaño distinto, "página 3" ya no apunta al mismo pedazo de la lista.
+  function cambiarItemsPorPagina(n) {
+    itemsPorPagina.value = n
+    paginaActual.value = 1
   }
 
   return {
@@ -582,6 +679,9 @@ export const useComparadorStore = defineStore('comparador', () => {
     busqueda,
     categoria,
     orden,
+    paginaActual,
+    itemsPorPagina,
+    precioMinimo,
     precioMaximo,
     marcas,
     talla,
@@ -600,6 +700,8 @@ export const useComparadorStore = defineStore('comparador', () => {
     atributosDisponibles,
     productosFiltrados,
     totalResultados,
+    totalPaginas,
+    productosPagina,
     comparacionDisponible,
     datosDesactualizados,
     masRecientes,
@@ -620,5 +722,7 @@ export const useComparadorStore = defineStore('comparador', () => {
     ponerAtributo,
     quitarFiltro,
     limpiarFiltros,
+    irAPagina,
+    cambiarItemsPorPagina,
   }
 })

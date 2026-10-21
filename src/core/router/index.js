@@ -39,6 +39,12 @@ router.beforeEach((to) => {
     }
   }
 
+  // Pantallas de administracion: sin el grupo admin no se muestran. El backend
+  // responde 403 de todas formas; esto solo evita ensenar una pantalla vacia.
+  if (to.meta.soloAdmin && !cuenta.esAdmin) {
+    return { name: 'inicio' }
+  }
+
   return true
 })
 

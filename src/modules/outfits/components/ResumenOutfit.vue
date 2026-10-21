@@ -1,11 +1,14 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useCuentaStore } from '@/modules/cuenta/store/cuenta.store'
+import { useColeccionStore } from '@/modules/cuenta/store/coleccion.store'
 import { storeToRefs } from 'pinia'
 
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import { nombreParte } from '@/modules/outfits/data/partes'
 import { useOutfitStore } from '@/modules/outfits/store/outfit.store'
+import BotonGoogle from '@/modules/cuenta/components/BotonGoogle.vue'
 import BaseButton from '@/shared/components/BaseButton.vue'
 import BaseTicket from '@/shared/components/BaseTicket.vue'
 import EnlaceTienda from '@/shared/components/EnlaceTienda.vue'
@@ -14,8 +17,22 @@ import { formatearPrecio } from '@/shared/utils/formato'
 // Desglose y totales del outfit. Es la pantalla que responde a la pregunta que
 // trae a alguien aquí: dónde compro cada cosa y cuánto me sale.
 const outfit = useOutfitStore()
-const { desglose, total, tiendasImplicadas, mejorTiendaUnica, ahorroRepartiendo } =
-  storeToRefs(outfit)
+const cuenta = useCuentaStore()
+const coleccion = useColeccionStore()
+const nombre = ref('')
+const guardado = ref(false)
+async function guardar() {
+  guardado.value = await coleccion.guardarOutfit(nombre.value, outfit)
+}
+const {
+  desglose,
+  total,
+  tiendasImplicadas,
+  mejorTiendaUnica,
+  ahorroRepartiendo,
+  tallaRopa,
+  tallaCalzado,
+} = storeToRefs(outfit)
 
 const { nombreTienda, colorTienda } = useTiendas()
 
@@ -29,7 +46,17 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
 
 <template>
   <BaseTicket class="resumen">
-    <h2 class="display resumen__titulo">Tu outfit</h2>
+    <div class="resumen__cabecera">
+      <div>
+        <p class="eyebrow resumen__eyebrow">Resumen de compra</p>
+        <h2 class="display resumen__titulo">Tu outfit</h2>
+      </div>
+
+      <span v-if="tallaRopa || tallaCalzado" class="resumen__tallas">
+        <span v-if="tallaRopa" class="mono resumen__talla">Ropa {{ tallaRopa }}</span>
+        <span v-if="tallaCalzado" class="mono resumen__talla">Calzado {{ tallaCalzado }}</span>
+      </span>
+    </div>
 
     <p v-if="desglose.length === 0" class="muted resumen__vacio">
       Ve eligiendo prendas y aquí verás cuánto cuesta y dónde comprar cada una.
@@ -123,18 +150,62 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
       >
         Empezar de nuevo
       </BaseButton>
+      <form v-if="cuenta.autenticado" class="guardar" @submit.prevent="guardar">
+        <label for="nombre-outfit">Guardar esta combinación</label>
+        <input id="nombre-outfit" v-model="nombre" required maxlength="80" placeholder="Ej. Para la U" @input="guardado = false" />
+        <BaseButton type="submit" :disabled="coleccion.ocupado || !nombre.trim()">Guardar outfit</BaseButton>
+        <p v-if="guardado" role="status">Guardado en <RouterLink :to="{ name: 'mi-armario' }">Mi armario</RouterLink>.</p>
+        <p v-if="coleccion.error" role="alert">{{ coleccion.error }}</p>
+      </form>
+      <BotonGoogle
+        v-else
+        class="resumen__google"
+        texto="Entra con Google para guardar tu outfit"
+        :cargando="cuenta.entrando"
+        @click="cuenta.entrarConGoogle('/armar')"
+      />
     </template>
   </BaseTicket>
 </template>
 
 <style scoped>
+.guardar { display: grid; gap: .75rem; margin-top: 1rem; }
+.resumen__google { margin-top: var(--cep-sp-4); }
+.guardar input { width: 100%; padding: .75rem; background: var(--cep-bg); color: var(--cep-ink);
+  border: 1px solid var(--cep-line-media); border-radius: var(--cep-r-sm); }
 .resumen {
   position: sticky;
   top: var(--cep-sp-4);
+  border-top: 3px solid var(--cep-accent);
+}
+.resumen__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--cep-sp-3);
+  margin-bottom: var(--cep-sp-4);
+}
+.resumen__eyebrow {
+  margin-bottom: var(--cep-sp-05);
 }
 .resumen__titulo {
-  margin: 0 0 var(--cep-sp-4);
+  margin: 0;
   font-size: var(--cep-fs-xl);
+}
+.resumen__talla {
+  padding: var(--cep-sp-1) var(--cep-sp-2);
+  background: var(--cep-wash);
+  border: 1px solid var(--cep-line-media);
+  border-radius: var(--cep-r-sm);
+  color: var(--cep-muted);
+  font-size: var(--cep-fs-xs);
+  white-space: nowrap;
+}
+.resumen__tallas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--cep-sp-1);
 }
 .resumen__vacio {
   margin: 0;

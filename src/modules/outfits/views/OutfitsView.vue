@@ -74,7 +74,7 @@ onMounted(() => catalogo.cargarProductos())
         </div>
       </section>
 
-      <AdSlot :bloque="BLOQUE_LISTADO" :alto="110" />
+      <AdSlot :bloque="BLOQUE_LISTADO" :alto="96" class="galeria__anuncio" />
 
       <section v-if="FIJAS.length > 0" class="seccion">
         <h2 class="seccion-titulo">Combinaciones elegidas</h2>
@@ -112,6 +112,9 @@ onMounted(() => catalogo.cargarProductos())
 .seccion__nota {
   margin: 0 0 var(--cep-sp-4);
   font-size: var(--cep-fs-xs);
+}
+.galeria__anuncio {
+  margin-block: var(--cep-sp-2);
 }
 .rejilla {
   display: grid;

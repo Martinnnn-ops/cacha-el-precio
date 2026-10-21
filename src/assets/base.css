@@ -89,6 +89,8 @@
   --cep-on-accent: #ffffff;
   --cep-accent: #1e4a85;
   --cep-exito: #2f6b4f;
+  /* El corazón de "Guardar": 5.3:1 sobre la tarjeta blanca (y 5.2:1 el de noche). */
+  --cep-deseado: #c2306f;
   --cep-alerta: #b23a2b;
   --cep-rate: #b8863c;
 
@@ -144,6 +146,7 @@
   --cep-on-accent: #10161d;
   --cep-accent: #6fa8dc;
   --cep-exito: #5fbb8d;
+  --cep-deseado: #f27aa9;
   /* Estos dos se aclaran un punto respecto de antes. Al subir la tarjeta a
      #322e28 el fondo bajo el texto es más claro, y con los valores viejos
      (#9c9686 y #e2775f) el contraste caía a 4.57 y 4.52: aprobado raspado y
@@ -190,6 +193,8 @@ body {
      la columna ya estrecha. Hacen falta los dos. */
   overflow-wrap: break-word;
   background: var(--cep-bg);
+  background-image: radial-gradient(var(--cep-line) 0.7px, transparent 0.7px);
+  background-size: var(--cep-sp-6) var(--cep-sp-6);
   color: var(--cep-ink);
   font-family: var(--cep-font-sans);
   font-size: var(--cep-fs-md);
@@ -198,6 +203,10 @@ body {
   transition:
     background var(--cep-dur-2) var(--cep-ease),
     color var(--cep-dur-2) var(--cep-ease);
+}
+::selection {
+  background: color-mix(in srgb, var(--cep-accent) 24%, transparent);
+  color: var(--cep-ink);
 }
 h1,
 h2,
@@ -369,9 +378,21 @@ textarea {
   color: var(--cep-muted);
 }
 .seccion-titulo {
+  position: relative;
   margin: 0 0 var(--cep-sp-3);
+  padding-left: var(--cep-sp-3);
   font-family: var(--cep-font-display);
   font-size: var(--cep-fs-xl);
+}
+.seccion-titulo::before {
+  content: '';
+  position: absolute;
+  top: 0.12em;
+  bottom: 0.12em;
+  left: 0;
+  width: var(--cep-sp-05);
+  background: var(--cep-accent);
+  border-radius: var(--cep-r-pill);
 }
 .divisor {
   height: 1px;

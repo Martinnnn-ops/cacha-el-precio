@@ -4,6 +4,7 @@
 // Vive separado de index.js a propósito. index.js llama a createWebHistory(),
 // que toca `window` al importarse: si el mapa estuviera ahí, no se podría
 // importar desde un test ni desde un render en servidor.
+import adminRoutes from '@/modules/admin/routes'
 import comparadorRoutes from '@/modules/comparador/routes'
 import compararRoutes from '@/modules/comparar/routes'
 import cuentaRoutes from '@/modules/cuenta/routes'
@@ -16,6 +17,7 @@ export const routes = [
   ...cuentaRoutes,
   ...outfitsRoutes,
   ...legalRoutes,
+  ...adminRoutes,
 
   {
     path: '/:pathMatch(.*)*',

@@ -10,7 +10,7 @@ import ProductoCard from '@/modules/comparador/components/ProductoCard.vue'
 import ProductoCardSkeleton from '@/modules/comparador/components/ProductoCardSkeleton.vue'
 import AdSlot from '@/shared/components/AdSlot.vue'
 import AvisoDatos from '@/shared/components/AvisoDatos.vue'
-import BaseButton from '@/shared/components/BaseButton.vue'
+import BasePaginacion from '@/shared/components/BasePaginacion.vue'
 import BaseSearchInput from '@/shared/components/BaseSearchInput.vue'
 
 // Anuncio del listado. Va DESPUÉS de los primeros resultados, no antes: quien
@@ -25,12 +25,27 @@ const store = useComparadorStore()
 // siempre a partir de 900px, así que no hace falta escuchar el tamaño.
 const filtrosAbiertos = ref(false)
 
+// Cómo se ve la grilla: "comoda" (tres por fila, una en el teléfono) o "densa"
+// (cuatro, y dos en el teléfono) para recorrer más prendas sin bajar tanto.
+// Se recuerda en este navegador; si el almacenamiento está bloqueado, parte
+// en cómoda y listo.
+const CLAVE_VISTA = 'cep:vista-catalogo'
+const vista = ref('comoda')
+try {
+  if (localStorage.getItem(CLAVE_VISTA) === 'densa') vista.value = 'densa'
+} catch { /* sin almacenamiento: vale el valor por defecto */ }
+watch(vista, (v) => {
+  try { localStorage.setItem(CLAVE_VISTA, v) } catch { /* idem */ }
+})
+
 // storeToRefs para el estado (mantiene la reactividad al desestructurar);
 // las acciones se toman directas del store.
 const {
   busqueda,
   categoria,
   orden,
+  paginaActual,
+  itemsPorPagina,
   tiendas,
   tiendasActivas,
   filtrosActivos,
@@ -39,9 +54,16 @@ const {
   actualizadoEn,
   datosDesactualizados,
   productosFiltrados,
+  productosPagina,
   totalResultados,
   hayFiltros,
 } = storeToRefs(store)
+
+// El anuncio entra después de dos filas completas en escritorio (tres
+// tarjetas por fila), DENTRO de la página actual. Va como un ítem más de la
+// misma rejilla: antes había dos <div class="grilla"> y la segunda reiniciaba
+// las filas, así que en vista densa la última fila quedaba con huecos.
+const CORTE_ANUNCIO = 6
 
 onMounted(() => store.cargarProductos())
 
@@ -66,8 +88,8 @@ watch(
       <h1 class="comparador__titulo">Compara antes de comprar</h1>
 
       <p class="comparador__bajada">
-        El mismo producto en Ripley, Paris, Zara, H&amp;M y Mango, con la tienda
-        más barata destacada.
+        Reunimos las tiendas disponibles y destacamos dónde conviene comprar
+        cada prenda.
       </p>
 
       <BaseSearchInput
@@ -142,15 +164,48 @@ watch(
             {{ totalResultados === 1 ? 'prenda' : 'prendas' }}
           </p>
 
-          <label class="orden">
-            <span class="orden__etiqueta mono">Ordenar por</span>
-            <select v-model="orden" class="orden__control">
-              <option value="barato">Precio: de menor a mayor</option>
-              <option value="caro">Precio: de mayor a menor</option>
-              <option value="nuevo">Lo más reciente</option>
-              <option value="visto">Lo más visto</option>
-            </select>
-          </label>
+          <div class="controles">
+            <label class="orden">
+              <span class="orden__etiqueta mono">Ordenar por</span>
+              <span class="orden__caja">
+                <select v-model="orden" class="orden__control" aria-label="Ordenar por">
+                  <option value="barato">Menor precio</option>
+                  <option value="caro">Mayor precio</option>
+                  <option value="nuevo">Lo más reciente</option>
+                  <option value="visto">Lo más visto</option>
+                </select>
+              </span>
+            </label>
+
+            <!-- Dos botones redondos con el dibujo de la grilla: tres bloques
+                 grandes o cuatro chicos. -->
+            <div class="vista" role="group" aria-label="Tamaño de las tarjetas">
+              <button
+                type="button"
+                class="vista__boton"
+                :aria-pressed="vista === 'comoda'"
+                title="Tarjetas grandes"
+                @click="vista = 'comoda'"
+              >
+                <span class="vista__dibujo vista__dibujo--comoda" aria-hidden="true">
+                  <i /><i /><i />
+                </span>
+                <span class="sr-only">Tarjetas grandes</span>
+              </button>
+              <button
+                type="button"
+                class="vista__boton"
+                :aria-pressed="vista === 'densa'"
+                title="Ver más prendas"
+                @click="vista = 'densa'"
+              >
+                <span class="vista__dibujo vista__dibujo--densa" aria-hidden="true">
+                  <i /><i /><i /><i />
+                </span>
+                <span class="sr-only">Ver más prendas</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <ul v-if="filtrosActivos.length > 0" class="puestos">
@@ -168,18 +223,38 @@ watch(
         </ul>
 
 
-          <div class="grilla">
-            <ProductoCard
-              v-for="producto in productosFiltrados"
-              :key="producto.id"
-              :producto="producto"
+          <div class="grilla" :class="{ 'grilla--densa': vista === 'densa' }">
+            <template v-for="(producto, i) in productosPagina" :key="producto.id">
+              <AdSlot
+                v-if="i === CORTE_ANUNCIO"
+                :bloque="BLOQUE_LISTADO"
+                :alto="110"
+                class="grilla__anuncio"
+              />
+
+              <ProductoCard
+                :producto="producto"
+                :densa="vista === 'densa'"
+              />
+            </template>
+
+            <!-- Si la página no llega a siete prendas, el anuncio va al final
+                 en vez de desaparecer: sigue viéndose una sola vez por bloque. -->
+            <AdSlot
+              v-if="productosPagina.length <= CORTE_ANUNCIO"
+              :bloque="BLOQUE_LISTADO"
+              :alto="110"
+              class="grilla__anuncio"
             />
           </div>
 
-          <AdSlot
-            :bloque="BLOQUE_LISTADO"
-            :alto="110"
-            class="resultados__anuncio"
+          <BasePaginacion
+            class="resultados__paginacion"
+            :pagina-actual="paginaActual"
+            :items-por-pagina="itemsPorPagina"
+            :total-items="totalResultados"
+            @update:pagina-actual="store.irAPagina"
+            @update:items-por-pagina="store.cambiarItemsPorPagina"
           />
         </template>
       </div>
@@ -188,7 +263,11 @@ watch(
 </template>
 
 <style scoped>
-.resultados__anuncio {
+.grilla__anuncio {
+  grid-column: 1 / -1;
+}
+
+.resultados__paginacion {
   margin-top: var(--cep-sp-6);
 }
 
@@ -206,6 +285,11 @@ watch(
   color: var(--cep-muted);
 }
 
+.controles {
+  display: flex;
+  align-items: center;
+  gap: var(--cep-sp-3);
+}
 .orden {
   display: inline-flex;
   align-items: center;
@@ -217,15 +301,105 @@ watch(
   text-transform: uppercase;
   color: var(--cep-muted);
 }
+/* El select se dibuja como las pastillas del sitio, con el mismo chevrón
+   que los filtros, en vez de la caja cuadrada del sistema operativo. */
+.orden__caja {
+  position: relative;
+  display: inline-flex;
+}
+.orden__caja::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
 .orden__control {
+  appearance: none;
   min-height: var(--cep-control-h-sm);
-  padding: 0 var(--cep-sp-2);
+  padding: 0 var(--cep-sp-8) 0 var(--cep-sp-3);
   background: var(--cep-surface);
   color: var(--cep-ink);
   border: 1px solid var(--cep-line-fuerte);
-  border-radius: var(--cep-r-sm);
+  border-radius: var(--cep-r-pill);
+  font: inherit;
   font-size: var(--cep-fs-sm);
   cursor: pointer;
+  transition: border-color var(--cep-dur-1) var(--cep-ease);
+}
+.orden__control:hover {
+  border-color: var(--cep-ink);
+}
+
+/* En el teléfono los controles ocupan su propia fila, repartidos a lo ancho,
+   y la etiqueta se esconde: el select ya dice lo que hace. */
+@media (max-width: 719px) {
+  .controles {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .orden__etiqueta {
+    display: none;
+  }
+}
+
+.vista {
+  display: inline-flex;
+  gap: var(--cep-sp-1);
+  padding: 3px;
+  border: 1px solid var(--cep-line-media);
+  border-radius: var(--cep-r-pill);
+}
+.vista__boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--cep-muted);
+  cursor: pointer;
+  transition:
+    background var(--cep-dur-1) var(--cep-ease),
+    color var(--cep-dur-1) var(--cep-ease);
+}
+.vista__boton:hover {
+  color: var(--cep-ink);
+}
+.vista__boton[aria-pressed='true'] {
+  background: var(--cep-ink);
+  color: var(--cep-on-ink);
+}
+/* El dibujo de la grilla, con cuadritos de CSS. */
+.vista__dibujo {
+  display: grid;
+  gap: 2px;
+}
+.vista__dibujo i {
+  display: block;
+  border-radius: 1.5px;
+  background: currentColor;
+}
+.vista__dibujo--comoda {
+  grid-template-columns: repeat(3, 4px);
+}
+.vista__dibujo--comoda i {
+  height: 12px;
+}
+.vista__dibujo--densa {
+  grid-template-columns: repeat(2, 5px);
+}
+.vista__dibujo--densa i {
+  height: 5px;
 }
 
 /* Filtros puestos: cada uno se quita por su cuenta. */
@@ -315,6 +489,27 @@ watch(
 .comparador__lateral--plegado {
   display: none;
 }
+/* En el teléfono el panel aparece deslizándose bajo el botón "Filtrar", en
+   vez de saltar de golpe. */
+@media (max-width: 899px) {
+  .comparador__lateral:not(.comparador__lateral--plegado) {
+    animation: desplegar-filtros var(--cep-dur-3) var(--cep-ease);
+    /* El panel desplegado hacía crecer la página entera: para llegar a la
+       última sección había que bajar por todo el catálogo. Ahora se desplaza
+       por dentro y el scroll de la página queda quieto. */
+    max-height: calc(100dvh - 140px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: var(--cep-sp-2);
+  }
+}
+@keyframes desplegar-filtros {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
 
 @media (min-width: 900px) {
   .comparador__cuerpo {
@@ -322,7 +517,32 @@ watch(
   }
   .comparador__lateral {
     position: sticky;
-    top: 24px;
+    top: 84px;
+    max-height: calc(100dvh - 100px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: var(--cep-sp-2);
+    /* La barra de desplazamiento no se ve hasta que el mouse entra al panel,
+       y aun así delgada y del color de las líneas. Antes había tres a la vista
+       (panel, marcas y una horizontal) y se comían la columna. */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color var(--cep-dur-2) var(--cep-ease);
+  }
+  .comparador__lateral:hover,
+  .comparador__lateral:focus-within {
+    scrollbar-color: var(--cep-line-fuerte) transparent;
+  }
+  .comparador__lateral::-webkit-scrollbar {
+    width: 6px;
+  }
+  .comparador__lateral::-webkit-scrollbar-thumb {
+    border-radius: var(--cep-r-pill);
+    background: transparent;
+  }
+  .comparador__lateral:hover::-webkit-scrollbar-thumb {
+    background: var(--cep-line-fuerte);
   }
   /* Aquí ya hay columna lateral: el botón sobra y el panel se enseña siempre,
      esté como esté el estado de plegado. El bloque va el último de todos para
@@ -339,6 +559,7 @@ watch(
 
 .grilla {
   display: grid;
+  align-items: start;
   grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
@@ -350,6 +571,22 @@ watch(
 @media (min-width: 1180px) {
   .grilla {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* Densa: dos por fila desde el teléfono, tres con la barra lateral y cuatro
+   en pantalla ancha. */
+.grilla--densa {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 900px) {
+  .grilla--densa {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1180px) {
+  .grilla--densa {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

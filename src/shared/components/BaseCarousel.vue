@@ -18,6 +18,13 @@ import {
 // falta porque el catálogo llega de forma asíncrona: los elementos aparecen
 // después del montaje.
 
+const props = defineProps({
+  // Desvanecer los bordes mientras haya más tarjetas hacia ese lado. Va bien
+  // con tarjetas claras sobre el fondo; con tarjetas de color sólido (las de
+  // "Lo más reciente") el degradado parece una mancha y se apaga.
+  desvanecer: { type: Boolean, default: true },
+})
+
 const carril = useTemplateRef('carril')
 const activo = ref(0)
 const total = ref(0)
@@ -240,7 +247,9 @@ onBeforeUnmount(() => {
       ref="carril"
       class="carrusel__carril"
       :class="{ 'carrusel__carril--arrastrable': hayDesbordamiento,
-                'carrusel__carril--arrastrando': arrastrando }"
+                'carrusel__carril--arrastrando': arrastrando,
+                'carrusel__carril--sigue-izq': props.desvanecer && puedeIzquierda,
+                'carrusel__carril--sigue-der': props.desvanecer && puedeDerecha }"
       @scroll="alDesplazar"
       @pointerdown="alPulsar"
       @pointermove="alArrastrar"
@@ -299,6 +308,22 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
+<style>
+/* Registradas para que el desvanecido entre y salga con transición: una
+   variable sin registrar cambia de golpe. Van fuera del bloque scoped porque
+   @property es global de todas formas. */
+@property --carrusel-fade-izq {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --carrusel-fade-der {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+</style>
+
 <style scoped>
 .carrusel {
   position: relative;
@@ -310,6 +335,24 @@ onBeforeUnmount(() => {
   scroll-snap-type: x mandatory;
   padding: 2px 2px var(--cep-sp-15);
   scrollbar-width: none;
+}
+.carrusel__carril {
+  /* Los bordes se desvanecen mientras haya más tarjetas hacia ese lado. Antes
+     la última visible quedaba cortada en seco y parecía un error de diseño;
+     el desvanecido dice "hay más" sin tapar nada. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--carrusel-fade-izq),
+    #000 calc(100% - var(--carrusel-fade-der)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--carrusel-fade-izq),
+    #000 calc(100% - var(--carrusel-fade-der)), transparent);
+  transition:
+    --carrusel-fade-izq var(--cep-dur-2) var(--cep-ease),
+    --carrusel-fade-der var(--cep-dur-2) var(--cep-ease);
+}
+.carrusel__carril--sigue-izq {
+  --carrusel-fade-izq: 40px;
+}
+.carrusel__carril--sigue-der {
+  --carrusel-fade-der: 72px;
 }
 .carrusel__carril::-webkit-scrollbar {
   display: none;
