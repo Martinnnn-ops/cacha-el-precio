@@ -485,6 +485,7 @@ fi
 RUTAS_SPA=(
   comparador comparar login entrar registro auth/google
   terminos privacidad preguntas outfits armar mi-armario
+  admin/mensajeria
 )
 for RUTA in "${RUTAS_SPA[@]}"; do
   if ! aws --region "$INFRA_REGION" s3 cp dist/index.html \
