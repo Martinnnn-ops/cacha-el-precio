@@ -6,6 +6,7 @@ import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import RanuraParte from '@/modules/outfits/components/RanuraParte.vue'
 import ResumenOutfit from '@/modules/outfits/components/ResumenOutfit.vue'
 import SelectorPrenda from '@/modules/outfits/components/SelectorPrenda.vue'
+import VistaPreviaOutfit from '@/modules/outfits/components/VistaPreviaOutfit.vue'
 import { PARTES } from '@/modules/outfits/data/partes'
 import { useOutfitStore } from '@/modules/outfits/store/outfit.store'
 import AdSlot from '@/shared/components/AdSlot.vue'
@@ -139,6 +140,8 @@ onMounted(() => catalogo.cargarProductos())
 
     <div class="armar__cuerpo">
       <div class="armar__panel">
+        <VistaPreviaOutfit />
+
         <!-- Elegir prenda sustituye a las ranuras en vez de abrirse encima:
              en móvil un panel flotante con una lista larga se maneja peor. -->
         <SelectorPrenda
