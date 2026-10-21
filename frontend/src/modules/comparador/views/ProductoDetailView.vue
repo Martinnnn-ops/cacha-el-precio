@@ -202,7 +202,7 @@ const subtitulo = computed(() =>
 
 <template>
   <section class="detalle">
-    <BaseButton variante="texto" to="/">← Volver al comparador</BaseButton>
+    <BaseButton variante="texto" to="/">← Volver al catálogo</BaseButton>
 
     <DetalleSkeleton v-if="cargando" />
 
@@ -240,7 +240,9 @@ const subtitulo = computed(() =>
           </p>
 
           <h1 class="display cabecera__titulo">{{ producto.nombre }}</h1>
-          <BotonDeseado :producto-id="producto.id" />
+          <div class="cabecera__acciones">
+            <BotonDeseado :producto-id="producto.id" />
+          </div>
 
           <div v-if="masBarato" class="cabecera__resumen">
             <div>
@@ -352,8 +354,17 @@ const subtitulo = computed(() =>
   }
 }
 .cabecera__titulo {
-  margin: 0 0 var(--cep-sp-4);
+  margin: 0 0 var(--cep-sp-3);
   font-size: var(--cep-fs-2xl);
+}
+/* El botón quedaba pegado al "Desde" del precio. Se separa aquí y no en
+   BotonDeseado, que también va dentro de las tarjetas. */
+.cabecera__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cep-sp-2);
+  margin-bottom: var(--cep-sp-6);
 }
 .cabecera__resumen {
   display: flex;

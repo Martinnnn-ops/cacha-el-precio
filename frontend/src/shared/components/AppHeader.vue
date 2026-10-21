@@ -110,8 +110,10 @@ const iniciales = computed(() => {
       </div>
 
       <nav class="barra__acciones" aria-label="Principal">
+        <!-- "Catálogo" y no "Comparador": al lado de "Comparar" eran dos
+             botones que se leían igual y llevaban a lugares distintos. -->
         <RouterLink class="barra__enlace" :to="{ name: 'comparador' }">
-          Comparador
+          Catálogo
         </RouterLink>
 
         <RouterLink class="barra__enlace" :to="{ name: 'armar' }">

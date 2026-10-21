@@ -18,6 +18,9 @@ const props = defineProps({
   insignia: { type: String, default: '' },
   // En el carrusel la tarjeta va estrecha y sin el desglose completo.
   compacta: { type: Boolean, default: false },
+  // En la vista densa del catálogo: cuatro por fila (dos en el teléfono), con
+  // la foto y los márgenes más chicos para que quepan más prendas a la vista.
+  densa: { type: Boolean, default: false },
 })
 
 const { nombreTienda, colorTienda } = useTiendas()
@@ -56,7 +59,7 @@ const subtitulo = computed(() =>
 <template>
   <BaseTicket
     class="tarjeta"
-    :class="{ 'tarjeta--compacta': compacta }"
+    :class="{ 'tarjeta--compacta': compacta, 'tarjeta--densa': densa }"
     :relleno="false"
     columna
   >
@@ -299,5 +302,19 @@ const subtitulo = computed(() =>
   margin: 0;
   font-size: var(--cep-fs-xs);
   color: var(--cep-exito);
+}
+
+.tarjeta--densa .tarjeta__cabecera {
+  padding: var(--cep-sp-3) var(--cep-sp-3) 0;
+}
+.tarjeta--densa .tarjeta__arte img {
+  height: 150px;
+}
+.tarjeta--densa .tarjeta__nombre {
+  font-size: var(--cep-fs-md);
+}
+.tarjeta--densa .tarjeta__pie {
+  gap: var(--cep-sp-15);
+  padding: var(--cep-sp-2) var(--cep-sp-3) var(--cep-sp-3);
 }
 </style>
