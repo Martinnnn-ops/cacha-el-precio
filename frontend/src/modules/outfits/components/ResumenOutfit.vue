@@ -8,6 +8,7 @@ import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import { nombreParte } from '@/modules/outfits/data/partes'
 import { useOutfitStore } from '@/modules/outfits/store/outfit.store'
+import BotonGoogle from '@/modules/cuenta/components/BotonGoogle.vue'
 import BaseButton from '@/shared/components/BaseButton.vue'
 import BaseTicket from '@/shared/components/BaseTicket.vue'
 import EnlaceTienda from '@/shared/components/EnlaceTienda.vue'
@@ -156,13 +157,20 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
         <p v-if="guardado" role="status">Guardado en <RouterLink :to="{ name: 'mi-armario' }">Mi armario</RouterLink>.</p>
         <p v-if="coleccion.error" role="alert">{{ coleccion.error }}</p>
       </form>
-      <RouterLink v-else :to="{ name: 'login', query: { volver: '/armar' } }">Entra con Google para guardar tu outfit</RouterLink>
+      <BotonGoogle
+        v-else
+        class="resumen__google"
+        texto="Entra con Google para guardar tu outfit"
+        :cargando="cuenta.entrando"
+        @click="cuenta.entrarConGoogle('/armar')"
+      />
     </template>
   </BaseTicket>
 </template>
 
 <style scoped>
 .guardar { display: grid; gap: .75rem; margin-top: 1rem; }
+.resumen__google { margin-top: var(--cep-sp-4); }
 .guardar input { width: 100%; padding: .75rem; background: var(--cep-bg); color: var(--cep-ink);
   border: 1px solid var(--cep-line-media); border-radius: var(--cep-r-sm); }
 .resumen {
