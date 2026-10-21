@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { routes } from '@/core/router/routes'
+import { hayRetornoPendiente } from '@/modules/cuenta/services/google.oauth'
 import { useCuentaStore } from '@/modules/cuenta/store/cuenta.store'
 import { rutaInternaSegura } from '@/shared/utils/rutas'
 
@@ -22,6 +23,32 @@ const router = createRouter({
 // que hacer el backend en cada petición, sin excepción.
 router.beforeEach((to) => {
   const cuenta = useCuentaStore()
+
+  // Respaldo del retorno de Google. Cognito devuelve a la persona a
+  // /auth/google?code=…&state=…, pero si algo delante de la aplicación
+  // (una regla de redirección del CDN, por ejemplo) manda esa ruta a `/`
+  // conservando sólo la query, la vista de retorno no llegaba a ejecutarse y
+  // el inicio de sesión, que había salido bien, se perdía sin avisar.
+  //
+  // Se reconoce por dos cosas a la vez: que la portada traiga code (o error) y
+  // state, y que ESTA pestaña tenga un inicio de sesión a medias. Con la
+  // segunda, un enlace cualquiera con `?code=` no secuestra la navegación.
+  if (
+    to.path === '/' &&
+    typeof to.query.state === 'string' &&
+    (typeof to.query.code === 'string' || typeof to.query.error === 'string') &&
+    hayRetornoPendiente()
+  ) {
+    return {
+      name: 'retorno-google',
+      query: {
+        code: to.query.code,
+        error: to.query.error,
+        state: to.query.state,
+      },
+      replace: true,
+    }
+  }
 
   // Rutas sólo para invitados: quien ya tiene sesión no pinta en /login.
   if (to.meta.soloInvitados && cuenta.autenticado) {
