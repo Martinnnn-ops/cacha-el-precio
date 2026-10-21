@@ -138,6 +138,10 @@ watch(
           @reintentar="store.cargarProductos({ forzar: true })"
         />
 
+        <!-- Sin este nivel el título de cada tarjeta (h3) saltaba directo desde
+             el h1 y quien navega con lector de pantalla por encabezados se
+             perdía el nivel intermedio. -->
+        <h2 class="sr-only">Resultados</h2>
 
         <!-- carga -->
         <!-- Esqueleto con la forma de las tarjetas: cuando llegan los datos

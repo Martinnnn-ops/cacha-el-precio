@@ -4,21 +4,23 @@ import { defineStore } from 'pinia'
 // Preferencias de interfaz. No pertenecen a ningún módulo de negocio, así que
 // viven en shared/.
 //
-// Tres valores posibles y no dos: "sistema" es el que respeta la configuración
-// del sistema operativo, y es el que debe venir por defecto. Un usuario que
-// tiene el móvil en oscuro no espera que una web le salga en blanco.
+// Tres valores posibles y no dos: "claro" es el que viene por defecto, tenga el
+// sistema operativo el modo que tenga; el oscuro es opcional y sólo se activa
+// si la persona lo elige. "sistema" sigue disponible para quien quiera que la
+// web siga la configuración de su dispositivo, pero hay que escogerlo.
 
 const CLAVE = 'cep:tema'
 const TEMAS = ['sistema', 'claro', 'oscuro']
+const POR_DEFECTO = 'claro'
 
 function leerGuardado() {
   try {
     const valor = localStorage.getItem(CLAVE)
 
-    return TEMAS.includes(valor) ? valor : 'sistema'
+    return TEMAS.includes(valor) ? valor : POR_DEFECTO
   } catch {
     // Modo privado o cookies bloqueadas: no es motivo para romper la app.
-    return 'sistema'
+    return POR_DEFECTO
   }
 }
 
@@ -50,6 +52,23 @@ export const useUiStore = defineStore('ui', () => {
     if (typeof document === 'undefined') return
 
     document.documentElement.dataset.tema = oscuro ? 'oscuro' : 'claro'
+
+    // La barra del navegador en móvil sigue al tema que se ve, no al del
+    // sistema. El color se lee del propio token, así no se duplica aquí. Sin
+    // un navegador de verdad (render en servidor, pruebas) no hay nada que leer.
+    if (
+      typeof document.querySelector !== 'function' ||
+      typeof getComputedStyle !== 'function'
+    ) {
+      return
+    }
+
+    const barra = document.querySelector('meta[name="theme-color"]')
+    const fondo = getComputedStyle(document.documentElement)
+      .getPropertyValue('--cep-bg')
+      .trim()
+
+    if (barra && fondo) barra.setAttribute('content', fondo)
   }
 
   function elegirTema(valor) {

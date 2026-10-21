@@ -850,7 +850,7 @@ try {
     const { useUiStore } = await load('/src/shared/stores/ui.store.js')
     const ui = useUiStore()
 
-    check('arranca siguiendo al sistema', ui.tema === 'sistema')
+    check('arranca en claro, sin seguir al sistema', ui.tema === 'claro' && ui.esOscuro === false)
     ui.elegirTema('oscuro')
     check('se puede forzar oscuro', ui.tema === 'oscuro' && ui.esOscuro === true)
     ui.elegirTema('claro')
@@ -897,8 +897,12 @@ try {
       claveStore,
     )
     check(
-      '  y respeta la preferencia del sistema, no asume claro',
-      guion.includes('prefers-color-scheme: dark'),
+      '  sin preferencia guardada arranca en claro',
+      /else if \(t !== 'claro' && t !== 'oscuro'\) \{\s*t = 'claro'/.test(guion),
+    )
+    check(
+      '  y sólo sigue al sistema si se eligió «sistema» a propósito',
+      /t === 'sistema'[\s\S]*prefers-color-scheme: dark/.test(guion),
     )
     check(
       '  con el localStorage capado sigue funcionando',
@@ -907,17 +911,32 @@ try {
 
     // La barra del navegador en móvil se pinta con este meta. Si se queda con
     // el color viejo, el móvil enmarca la página en un tono que ya no existe.
-    const metaOscuro =
-      /theme-color" content="(#[0-9a-f]{6})" media="\(prefers-color-scheme: dark\)/.exec(
-        indice,
-      )?.[1]
+    //
+    // Es UN solo meta, sin `media`, que el guion de la cabeza y el store
+    // actualizan: la barra sigue al tema que se ve y no al del sistema.
+    const cssBase = readFileSync('src/assets/base.css', 'utf8')
+    const metaClaro = /<meta name="theme-color" content="(#[0-9a-f]{6})" \/>/.exec(
+      indice,
+    )?.[1]
+    const bgClaro = /:root \{[\s\S]*?--cep-bg: *(#[0-9a-f]{6})/.exec(cssBase)?.[1]
+    check(
+      '  el theme-color inicial es el fondo claro de verdad',
+      metaClaro !== undefined && metaClaro === bgClaro,
+      `meta ${metaClaro} vs token ${bgClaro}`,
+    )
+
+    const barraOscura = /'oscuro' \? '(#[0-9a-f]{6})'/.exec(guion)?.[1]
     const bgOscuro = /\[data-tema='oscuro'\][\s\S]*?--cep-bg: *(#[0-9a-f]{6})/.exec(
-      readFileSync('src/assets/base.css', 'utf8'),
+      cssBase,
     )?.[1]
     check(
-      '  el theme-color oscuro es el fondo oscuro de verdad',
-      metaOscuro !== undefined && metaOscuro === bgOscuro,
-      `meta ${metaOscuro} vs token ${bgOscuro}`,
+      '  el theme-color oscuro del guion es el fondo oscuro de verdad',
+      barraOscura !== undefined && barraOscura === bgOscuro,
+      `guion ${barraOscura} vs token ${bgOscuro}`,
+    )
+    check(
+      '  y no queda un theme-color atado a la preferencia del sistema',
+      !/theme-color"[^>]*prefers-color-scheme/.test(indice),
     )
   }
 
@@ -3390,7 +3409,10 @@ console.log('\n=== móvil: dedos y no punteros ===')
   // No se impone un único sistema —un componente puede cambiar cuando SU
   // contenido lo pide—, pero sí se congela la lista: si aparece uno nuevo hay
   // que añadirlo aquí a conciencia, y así no se van acumulando por descuido.
-  const CONOCIDOS = new Set([479, 560, 620, 719, 720, 899, 900, 1024, 1099, 1180])
+  // 559 es el lado móvil del 560 (donde la cabecera de la ficha pasa a dos
+  // columnas): la foto baja a 200px y las migas caben en una línea para que el
+  // precio entre en la primera pantalla.
+  const CONOCIDOS = new Set([479, 559, 560, 620, 719, 720, 899, 900, 1024, 1099, 1180])
   const usados = new Set()
 
   for (const f of readdirSync('src', { recursive: true })) {

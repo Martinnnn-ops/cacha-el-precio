@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+/* Las fuentes (Space Grotesk, IBM Plex Sans e IBM Plex Mono) se cargan desde un
+   <link> en index.html, no con un @import aquí: un @import dentro del CSS no
+   empieza a descargarse hasta que el navegador termina de bajar y leer este
+   archivo, y eso retrasa el primer texto con la tipografía correcta. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SISTEMA DE DISEÑO
