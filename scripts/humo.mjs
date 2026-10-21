@@ -1241,6 +1241,16 @@ try {
       conEntrar.length === 0,
       conEntrar.join(' '),
     )
+
+    // Si una regla delante de la app manda /auth/google a `/?code=…`, el login
+    // que ya salió bien se perdía en silencio. El router lo recoge, pero sólo
+    // si hay un inicio de sesión a medias en la pestaña.
+    const fuenteRouter = readFileSync('src/core/router/index.js', 'utf8')
+    check(
+      '  la vuelta de Google se recoge aunque llegue a la portada con ?code=',
+      fuenteRouter.includes("name: 'retorno-google'") &&
+        fuenteRouter.includes('hayRetornoPendiente()'),
+    )
   }
 
   // La URL vieja estuvo publicada: si deja de redirigir, se pierden los
