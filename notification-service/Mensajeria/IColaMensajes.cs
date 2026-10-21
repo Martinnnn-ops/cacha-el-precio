@@ -25,4 +25,10 @@ public interface IColaMensajes
     // lo borra de la cola original, sin gastar los 5 reintentos.
     Task EnviarADlqAsync(MensajeCola mensaje, IReadOnlyDictionary<string, string> diagnostico,
         CancellationToken ct);
+
+    // Cuantas veces entrega SQS un mensaje antes de apartarlo solo en la DLQ (el
+    // maxReceiveCount de la RedrivePolicy de la cola). null si la cola no tiene
+    // DLQ o no se pudo leer. Sirve para que el ULTIMO intento lo aparte el
+    // consumidor, con diagnostico, en vez de que SQS lo mueva sin explicar por que.
+    Task<int?> MaxIntentosAsync(CancellationToken ct);
 }

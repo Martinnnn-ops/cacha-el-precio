@@ -1,6 +1,13 @@
 # Bitácora del proyecto
 
-Última actualización: 18-10-2026.
+Última actualización: 20-10-2026.
+
+## 20-10 · Deuda técnica del EP3 antes de montar en la cuenta del dominio — Martín
+
+- **notification-service explica sus fallos.** Lo mismo que product-service del 18-10: en el último
+  intento recuperable el consumidor aparta el mensaje en la DLQ con `recuperable-agotado` y la causa
+  de fondo, en vez de que SQS lo mueva sin atributos. Además, apagar el servicio ya no cuenta como
+  intento agotado. Primer proyecto de pruebas del servicio, `notification-service.Tests` (8 pruebas).
 
 ## 18-10 (tarde) · EP3: pruebas de punta a punta en la EC2 (T13), DLQ con diagnóstico y vista del panel (T12) — Martín
 

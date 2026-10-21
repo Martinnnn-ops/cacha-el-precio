@@ -177,7 +177,7 @@ trabajo**. Nunca antes.
 | Situación | Tipo | Qué hace el consumidor | Qué pasa con el mensaje |
 |---|---|---|---|
 | Se procesó bien | éxito | `DeleteMessage` | sale de la cola |
-| Base de datos caída, timeout, Gmail no responde | **recuperable** | no lo borra, registra el error | reaparece a los 60 s; en el último intento lo aparta el consumidor con diagnóstico (en product-service; en notification-service lo mueve SQS, sin atributos) |
+| Base de datos caída, timeout, Gmail no responde | **recuperable** | no lo borra, registra el error | reaparece a los 60 s; en el último intento lo aparta el consumidor con diagnóstico `recuperable-agotado` (product-service y notification-service) |
 | JSON roto, `type`/`version` desconocido, falla de validación, correo de destino inválido | **definitivo** | lo envía a la DLQ **con atributos de diagnóstico** y lo borra de la cola original | queda en la DLQ sin gastar 5 reintentos |
 
 Atributos de diagnóstico que se agregan al mandar a la DLQ (además del cuerpo original intacto):

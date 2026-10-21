@@ -7,7 +7,9 @@ namespace Notification_Service.Consumidor;
 // Lee cep-notificaciones en un bucle de long polling. Por cada mensaje:
 //   exito         -> se borra de la cola (el ACK);
 //   definitivo    -> va a la DLQ con atributos de diagnostico y se borra;
-//   recuperable   -> no se borra, reaparece a los 60 s y SQS reintenta.
+//   recuperable   -> no se borra, reaparece a los 60 s y SQS reintenta; en el
+//                    ultimo intento (maxReceiveCount de la cola) va a la DLQ con
+//                    diagnostico "recuperable-agotado".
 // Si la cola no esta configurada (URL vacia), no arranca y el servicio sigue
 // sirviendo /health, para poder programar en local sin AWS.
 public sealed class ConsumidorNotificaciones(
@@ -45,7 +47,7 @@ public sealed class ConsumidorNotificaciones(
         }
     }
 
-    private async Task ManejarAsync(MensajeCola mensaje, CancellationToken ct)
+    public async Task ManejarAsync(MensajeCola mensaje, CancellationToken ct)
     {
         using var _ = log.BeginScope("MessageId={MessageId} recibidos={Recibidos}",
             mensaje.MessageId, mensaje.ApproximateReceiveCount);
@@ -59,23 +61,44 @@ public sealed class ConsumidorNotificaciones(
         catch (ErrorDefinitivoException e)
         {
             log.LogWarning(e, "Error definitivo: {Razon}. A la DLQ", e.Razon);
-            await cola.EnviarADlqAsync(mensaje, Diagnostico(mensaje, e), ct);
+            await cola.EnviarADlqAsync(mensaje,
+                Diagnostico(mensaje, "definitivo", e.Razon, e.InnerException ?? e), ct);
         }
-        catch (Exception e)
+        // Si el servicio se esta apagando, la cancelacion no es un fallo del
+        // mensaje: se deja pasar para que no cuente como intento agotado.
+        catch (Exception e) when (!ct.IsCancellationRequested)
         {
-            // Recuperable: no se borra. Reaparece y, al 5.o intento, SQS lo mueve
-            // a la DLQ por si solo (maxReceiveCount en topologia.json).
+            // Recuperable (product-service caido, Cognito o Gmail sin responder,
+            // base caida): no se borra y reaparece tras la visibilidad (60 s).
+            //
+            // En el ULTIMO intento lo aparta el consumidor y no SQS: si lo moviera
+            // SQS, llegaria a la DLQ sin ningun atributo y desde el panel no se
+            // sabria por que fallo. Asi queda con la razon del ultimo error.
+            int? max = await cola.MaxIntentosAsync(ct);
+            if (max is int m && mensaje.ApproximateReceiveCount >= m)
+            {
+                log.LogWarning(e, "Resultado=dlq-agotado intento {Intento} de {Max}: {Mensaje}",
+                    mensaje.ApproximateReceiveCount, m, e.Message);
+                // La causa util suele venir ADENTRO (HttpClient envuelve el
+                // SocketException, EF envuelve el de Npgsql).
+                var causa = e.GetBaseException();
+                await cola.EnviarADlqAsync(mensaje, Diagnostico(mensaje, "recuperable-agotado",
+                    $"{m} intentos sin exito; el ultimo: {causa.Message}", causa), ct);
+                return;
+            }
+
             log.LogError(e, "Error recuperable; el mensaje no se borra y se reintenta");
         }
     }
 
-    private static Dictionary<string, string> Diagnostico(MensajeCola mensaje, ErrorDefinitivoException e) => new()
-    {
-        ["error-type"] = "definitivo",
-        ["error-reason"] = e.Razon,
-        ["error-exception"] = (e.InnerException ?? e).GetType().Name,
-        ["failed-by"] = "notification-service",
-        ["failed-at"] = DateTimeOffset.UtcNow.ToString("O"),
-        ["original-message-id"] = mensaje.MessageId
-    };
+    private static Dictionary<string, string> Diagnostico(
+        MensajeCola mensaje, string tipo, string razon, Exception causa) => new()
+        {
+            ["error-type"] = tipo,
+            ["error-reason"] = razon,
+            ["error-exception"] = causa.GetType().Name,
+            ["failed-by"] = "notification-service",
+            ["failed-at"] = DateTimeOffset.UtcNow.ToString("O"),
+            ["original-message-id"] = mensaje.MessageId
+        };
 }

@@ -64,6 +64,38 @@ public sealed class ColaMensajesSqs : IColaMensajes
         await BorrarAsync(mensaje, ct);
     }
 
+    // Se lee una sola vez de la cola en AWS (no de una variable aparte), asi no
+    // puede quedar desalineado con topologia.json.
+    private int? maxIntentos;
+
+    public async Task<int?> MaxIntentosAsync(CancellationToken ct)
+    {
+        if (maxIntentos is not null) return maxIntentos;
+        try
+        {
+            var r = await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+            {
+                QueueUrl = colaUrl,
+                AttributeNames = ["RedrivePolicy"]
+            }, ct);
+            if (r.Attributes is not null && r.Attributes.TryGetValue("RedrivePolicy", out var politica)
+                && !string.IsNullOrWhiteSpace(politica))
+            {
+                var valor = System.Text.Json.Nodes.JsonNode.Parse(politica)?["maxReceiveCount"];
+                if (int.TryParse(valor?.ToString(), out int n))
+                    maxIntentos = n;
+            }
+        }
+        // AmazonClientException cubre tambien la falta de credenciales, no solo los errores de SQS.
+        catch (Amazon.Runtime.AmazonClientException e)
+        {
+            // Sin el dato el consumidor sigue funcionando: SQS aparta igual el
+            // mensaje, solo que sin diagnostico. Se vuelve a intentar la proxima vez.
+            log.LogWarning(e, "No se pudo leer la RedrivePolicy de la cola de notificaciones");
+        }
+        return maxIntentos;
+    }
+
     private static string? Atributo(Message m, string nombre) =>
         m.Attributes is not null && m.Attributes.TryGetValue(nombre, out var v) ? v : null;
 }
