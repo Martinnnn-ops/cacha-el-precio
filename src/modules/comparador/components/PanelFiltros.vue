@@ -31,7 +31,6 @@ const abiertos = reactive({
   marca: true,
   talla: store.talla !== '',
   presupuesto: true,
-  ...Object.fromEntries(Object.keys(store.atributos).map((clave) => [clave, true])),
 })
 
 const {
@@ -42,6 +41,7 @@ const {
   marcasDisponibles,
   tallasDisponibles,
   atributosDisponibles,
+  precioMinimo,
   precioMaximo,
   tiendas,
   tiendasActivas,
@@ -50,15 +50,83 @@ const {
   hayFiltros,
 } = storeToRefs(store)
 
-// El tope arranca en el precio más alto del catálogo: mover la barra siempre
-// acota, nunca amplía, que es como se espera que funcione un presupuesto.
+// El piso y el techo arrancan en los extremos del catálogo: mover una barra
+// siempre acota, nunca amplía. Si el piso pasa el techo, el último que se movió
+// manda y empuja al otro, en vez de dejar un rango imposible.
+const piso = computed({
+  get: () => precioMinimo.value ?? rangoPrecios.value?.min ?? 0,
+  set: (valor) => {
+    const min = rangoPrecios.value?.min ?? 0
+    const max = rangoPrecios.value?.max ?? 0
+    const v = Number(valor)
+
+    precioMinimo.value = v <= min ? null : v
+
+    if (precioMaximo.value !== null && v > precioMaximo.value) {
+      precioMaximo.value = v >= max ? null : v
+    }
+  },
+})
+
 const tope = computed({
   get: () => precioMaximo.value ?? rangoPrecios.value?.max ?? 0,
   set: (valor) => {
+    const min = rangoPrecios.value?.min ?? 0
     const max = rangoPrecios.value?.max ?? 0
+    const v = Number(valor)
 
-    precioMaximo.value = Number(valor) >= max ? null : Number(valor)
+    precioMaximo.value = v >= max ? null : v
+
+    if (precioMinimo.value !== null && v < precioMinimo.value) {
+      precioMinimo.value = v <= min ? null : v
+    }
   },
+})
+
+// Atajos con cifras redondas. Se ocultan si caen fuera del catálogo o si
+// cruzarían el otro extremo: un atajo que deja la lista vacía no es un atajo.
+const atajosPrecio = computed(() => {
+  const rango = rangoPrecios.value
+
+  if (!rango) return []
+
+  const desde = [10000, 20000]
+    .filter((v) => v > rango.min && v < rango.max)
+    .filter((v) => precioMaximo.value === null || v < precioMaximo.value)
+    .map((v) => ({
+      tipo: 'desde',
+      valor: v,
+      etiqueta: `Desde ${formatearPrecio(v)}`,
+      activo: precioMinimo.value === v,
+    }))
+
+  const hasta = [20000, 30000]
+    .filter((v) => v > rango.min && v < rango.max)
+    .filter((v) => precioMinimo.value === null || v > precioMinimo.value)
+    .map((v) => ({
+      tipo: 'hasta',
+      valor: v,
+      etiqueta: `Hasta ${formatearPrecio(v)}`,
+      activo: precioMaximo.value === v,
+    }))
+
+  return [...desde, ...hasta]
+})
+
+function usarAtajo(atajo) {
+  if (atajo.tipo === 'desde') {
+    precioMinimo.value = precioMinimo.value === atajo.valor ? null : atajo.valor
+  } else {
+    precioMaximo.value = precioMaximo.value === atajo.valor ? null : atajo.valor
+  }
+}
+
+// Lo que se lee en la cabecera de la sección cuando está plegada.
+const presupuestoElegido = computed(() => {
+  const desde = precioMinimo.value !== null ? `desde ${formatearPrecio(precioMinimo.value)}` : ''
+  const hasta = precioMaximo.value !== null ? `hasta ${formatearPrecio(precioMaximo.value)}` : ''
+
+  return [desde, hasta].filter(Boolean).join(' · ')
 })
 
 const marcaElegida = computed(() => {
@@ -203,7 +271,7 @@ const paso = computed(() => {
     <SeccionFiltro
       v-for="atributo in atributosDisponibles"
       :key="atributo.clave"
-      :abierta="abiertos[atributo.clave] ?? false"
+      :abierta="abiertos[atributo.clave] ?? atributos[atributo.clave] !== undefined"
       @update:abierta="abiertos[atributo.clave] = $event"
       :titulo="atributo.clave"
       :elegido="atributos[atributo.clave] ?? ''"
@@ -230,19 +298,32 @@ const paso = computed(() => {
       v-if="rangoPrecios"
       v-model:abierta="abiertos.presupuesto"
       titulo="Presupuesto"
-      :elegido="precioMaximo !== null ? formatearPrecio(precioMaximo) : ''"
+      :elegido="presupuestoElegido"
     >
 
-      <label class="rango">
-        <span class="rango__valor mono">
-          <template v-if="precioMaximo === null">
-            Sin tope · hasta {{ formatearPrecio(rangoPrecios.max) }}
-          </template>
-          <template v-else>
-            Hasta {{ formatearPrecio(precioMaximo) }}
-          </template>
-        </span>
+      <p class="rango__valor mono">
+        <span>{{ precioMinimo !== null ? formatearPrecio(precioMinimo) : 'Sin mínimo' }}</span>
+        <span class="rango__guion" aria-hidden="true">–</span>
+        <span>{{ precioMaximo !== null ? formatearPrecio(precioMaximo) : 'Sin tope' }}</span>
+      </p>
 
+      <!-- Dos barras, no una: con un solo control "hasta" no había forma de
+           pedir "prendas de más de $10.000" sin dejar el techo a mano. -->
+      <label class="rango__campo">
+        <span class="mono rango__etiqueta">Desde</span>
+        <input
+          v-model="piso"
+          type="range"
+          class="rango__control"
+          :min="rangoPrecios.min"
+          :max="rangoPrecios.max"
+          :step="paso"
+          aria-label="Precio mínimo"
+        />
+      </label>
+
+      <label class="rango__campo">
+        <span class="mono rango__etiqueta">Hasta</span>
         <input
           v-model="tope"
           type="range"
@@ -253,6 +334,20 @@ const paso = computed(() => {
           aria-label="Precio máximo"
         />
       </label>
+
+      <div v-if="atajosPrecio.length > 0" class="atajos">
+        <button
+          v-for="atajo in atajosPrecio"
+          :key="`${atajo.tipo}-${atajo.valor}`"
+          type="button"
+          class="pildora pildora--atajo"
+          :class="{ 'pildora--activa': atajo.activo }"
+          :aria-pressed="atajo.activo"
+          @click="usarAtajo(atajo)"
+        >
+          {{ atajo.etiqueta }}
+        </button>
+      </div>
     </SeccionFiltro>
 
     <!-- ——— tiendas: sólo si hay más de una que comparar ——— -->
@@ -283,6 +378,9 @@ const paso = computed(() => {
 .panel {
   display: flex;
   flex-direction: column;
+}
+.panel__limpiar {
+  margin-top: var(--cep-sp-4);
 }
 
 .subgrupo + .subgrupo {
@@ -354,20 +452,83 @@ const paso = computed(() => {
   color: var(--cep-muted);
 }
 
-.rango {
-  display: block;
-}
-.panel__limpiar {
-  margin-top: var(--cep-sp-4);
-}
 .rango__valor {
-  display: block;
-  margin-bottom: var(--cep-sp-2);
+  display: flex;
+  align-items: baseline;
+  gap: var(--cep-sp-2);
+  margin: 0 0 var(--cep-sp-2);
   font-size: var(--cep-fs-sm);
 }
+.rango__guion {
+  color: var(--cep-muted);
+}
+.rango__campo {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--cep-sp-2);
+  margin-top: var(--cep-sp-1);
+}
+.rango__etiqueta {
+  font-size: var(--cep-fs-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cep-muted);
+}
+/* Las dos barras usan el mismo lenguaje que las pastillas: pista fina y pulgar
+   redondo de tinta, en vez del control azul del sistema operativo. */
 .rango__control {
   width: 100%;
-  accent-color: var(--cep-accent);
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
   cursor: pointer;
+  accent-color: var(--cep-accent);
+}
+.rango__control::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--cep-r-pill);
+  background: var(--cep-line-media);
+}
+.rango__control::-moz-range-track {
+  height: 4px;
+  border-radius: var(--cep-r-pill);
+  background: var(--cep-line-media);
+}
+.rango__control::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 3px solid var(--cep-surface);
+  border-radius: 50%;
+  background: var(--cep-ink);
+  box-shadow: 0 0 0 1px var(--cep-line-fuerte);
+}
+.rango__control::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--cep-surface);
+  border-radius: 50%;
+  background: var(--cep-ink);
+  box-shadow: 0 0 0 1px var(--cep-line-fuerte);
+}
+.rango__control:focus-visible {
+  outline: 2px solid var(--cep-accent);
+  outline-offset: 4px;
+  border-radius: var(--cep-r-pill);
+}
+.atajos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cep-sp-15);
+  margin-top: var(--cep-sp-3);
+}
+.pildora--atajo {
+  min-height: 30px;
+  padding: 0 var(--cep-sp-2);
+  font-family: var(--cep-font-mono);
+  font-size: var(--cep-fs-2xs);
 }
 </style>

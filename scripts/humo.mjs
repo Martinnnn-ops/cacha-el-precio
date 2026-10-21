@@ -2335,6 +2335,33 @@ try {
       `${st.productosFiltrados.length} prendas`,
     )
 
+    st.precioMaximo = null
+    st.precioMinimo = rango.max
+    check(
+      'el piso de presupuesto también acota, y hacia arriba',
+      st.productosFiltrados.length < st.productos.length &&
+        st.productosFiltrados.every((p) => precioMasBajo(p).precio >= rango.max),
+      `${st.productosFiltrados.length} prendas`,
+    )
+    check(
+      '  y se anuncia con el precio formateado, no el número crudo',
+      st.filtrosActivos.find((f) => f.tipo === 'precio')?.etiqueta.includes('$') === true,
+      st.filtrosActivos.find((f) => f.tipo === 'precio')?.etiqueta,
+    )
+
+    st.precioMinimo = 10000
+    st.precioMaximo = 30000
+    check(
+      '  con piso y techo el rango se respeta por los dos lados',
+      st.productosFiltrados.every((p) => {
+        const precio = precioMasBajo(p).precio
+
+        return precio >= 10000 && precio <= 30000
+      }),
+    )
+    st.precioMinimo = null
+    st.precioMaximo = rango.min
+
     // ——— quitar filtros de uno en uno ———
     st.categoria = st.conteoPorCategoria[0].nombre
     check(
@@ -3342,6 +3369,20 @@ console.log('\n=== móvil: dedos y no punteros ===')
     '  la regla de plegado va después de la base, o no gana',
     iBase !== -1 && iPlegado > iBase,
     `base ${iBase} / plegado ${iPlegado}`,
+  )
+
+  check(
+    'el panel desplegado se desplaza por dentro, no arrastra la página',
+    /@media \(max-width: 899px\)[\s\S]*?max-height: calc\(100dvh - 140px\)[\s\S]*?overflow-y: auto/.test(
+      comp,
+    ),
+  )
+
+  // Dos rejillas separadas por el anuncio reiniciaban las filas: en vista
+  // densa la última fila quedaba con dos tarjetas y dos huecos.
+  check(
+    'los resultados usan una sola rejilla, con el anuncio como ítem',
+    !/grilla--continuacion/.test(comp) && /class="grilla__anuncio"/.test(comp),
   )
 
   // ——— los puntos de corte ———
