@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
@@ -12,7 +12,9 @@ import BaseTicket from '@/shared/components/BaseTicket.vue'
 import EnlaceTienda from '@/shared/components/EnlaceTienda.vue'
 import PrendaArt from '@/shared/components/PrendaArt.vue'
 import { formatearPrecio } from '@/shared/utils/formato'
+import { detallesDeNombre } from '@/shared/utils/detalles'
 import { ahorroMaximo, minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
+import { clasificarTalla } from '@/shared/utils/tallas'
 import { slugProducto } from '@/shared/utils/slug'
 
 const catalogo = useComparadorStore()
@@ -27,10 +29,17 @@ const columnas = computed(() =>
     const hoy = precioMasBajo(producto)
     const minimo = minimoHistorico(producto)
 
+    const tallas = [...new Set(producto.precios.filter((o) => o.stock).flatMap((o) => o.tallas ?? []))]
+      .map((nombre) => ({ nombre, ...clasificarTalla(nombre) }))
+      .sort((a, b) => a.grupo - b.grupo || a.orden - b.orden)
+      .map((t) => t.nombre)
+
     return {
       producto,
       hoy,
       minimo,
+      tallas,
+      detalles: Object.fromEntries(detallesDeNombre(producto.nombre).map((d) => [d.clave, d.valor])),
       ahorro: ahorroMaximo(producto),
       // Cuánto se aparta el precio de hoy del mínimo registrado.
       sobreMinimo:
@@ -54,6 +63,30 @@ const idMasBarato = computed(() => {
     c.hoy.precio < mejor.hoy.precio ? c : mejor,
   ).producto.id
 })
+
+// Cuánto más cuesta cada una que la más barata de las comparadas: es la
+// diferencia que de verdad decide, y antes había que restarla de cabeza.
+const precioMasBajoComparado = computed(() => {
+  const precios = columnas.value.filter((c) => c.hoy).map((c) => c.hoy.precio)
+  return precios.length > 1 ? Math.min(...precios) : null
+})
+
+// Las tallas que tienen todas: si buscas la tuya, ahí está la respuesta.
+const tallasEnComun = computed(() => {
+  if (columnas.value.length < 2) return new Set()
+  const [primera, ...resto] = columnas.value.map((c) => new Set(c.tallas))
+  return new Set([...primera].filter((t) => resto.every((r) => r.has(t))))
+})
+
+// Una fila por cada detalle que aparezca en al menos una de las prendas, en el
+// mismo orden para todas: si una no lo dice, su celda queda en "—".
+const clavesDetalle = computed(() => {
+  const orden = ['Manga', 'Material', 'Cuello', 'Calce']
+  const presentes = new Set(columnas.value.flatMap((c) => Object.keys(c.detalles)))
+  return orden.filter((clave) => presentes.has(clave))
+})
+
+const imagenFallida = reactive({})
 
 onMounted(() => catalogo.cargarProductos())
 </script>
@@ -89,9 +122,22 @@ onMounted(() => catalogo.cargarProductos())
         class="columna"
         :class="{ 'columna--mejor': col.producto.id === idMasBarato }"
       >
-        <div class="columna__arte">
-          <PrendaArt :alto="110" />
-        </div>
+        <!-- La foto es lo que distingue una polera blanca de otra polera
+             blanca. Antes la columna dibujaba siempre la silueta genérica. -->
+        <RouterLink
+          class="columna__arte"
+          :to="{ name: 'producto-detalle', params: { slug: slugProducto(col.producto) } }"
+        >
+          <img
+            v-if="col.producto.imagen && !imagenFallida[col.producto.id]"
+            :src="col.producto.imagen"
+            :alt="col.producto.nombre"
+            loading="lazy"
+            decoding="async"
+            @error="imagenFallida[col.producto.id] = true"
+          />
+          <PrendaArt v-else :alto="160" />
+        </RouterLink>
 
         <p v-if="col.producto.marca || col.producto.categoria" class="eyebrow">
           {{ [col.producto.marca, col.producto.categoria].filter(Boolean).join(' · ') }}
@@ -109,11 +155,49 @@ onMounted(() => catalogo.cargarProductos())
             <dd class="fila__valor">
               <template v-if="col.hoy">
                 {{ formatearPrecio(col.hoy.precio) }}
+                <span
+                  v-if="precioMasBajoComparado !== null && col.hoy.precio === precioMasBajoComparado"
+                  class="mono chip chip--mejor"
+                >la más barata</span>
+                <span v-else-if="precioMasBajoComparado !== null" class="mono chip">
+                  +{{ formatearPrecio(col.hoy.precio - precioMasBajoComparado) }}
+                </span>
                 <span class="mono fila__donde">
                   en {{ nombreTienda(col.hoy.tienda) }}
                 </span>
               </template>
               <span v-else class="muted">sin stock</span>
+            </dd>
+          </div>
+
+          <div v-if="columnas.some((c) => c.producto.genero)" class="fila">
+            <dt class="mono fila__clave">Para</dt>
+            <dd class="fila__valor">{{ col.producto.genero || '—' }}</dd>
+          </div>
+
+          <div class="fila">
+            <dt class="mono fila__clave">
+              Tallas con stock
+              <span v-if="tallasEnComun.size" class="fila__nota">· en negrita, las que tienen todas</span>
+            </dt>
+            <dd class="fila__valor fila__tallas">
+              <template v-if="col.tallas.length">
+                <span
+                  v-for="t in col.tallas"
+                  :key="t"
+                  class="mono talla"
+                  :class="{ 'talla--comun': tallasEnComun.has(t) }"
+                >{{ t }}</span>
+              </template>
+              <span v-else class="muted">—</span>
+            </dd>
+          </div>
+
+          <div v-for="clave in clavesDetalle" :key="clave" class="fila">
+            <dt class="mono fila__clave">{{ clave }} <span class="fila__nota">· según el nombre</span></dt>
+            <dd class="fila__valor">
+              <span v-if="col.detalles[clave]">{{ col.detalles[clave] }}</span>
+              <span v-else class="muted">—</span>
             </dd>
           </div>
 
@@ -189,17 +273,31 @@ onMounted(() => catalogo.cargarProductos())
   color: var(--cep-muted);
 }
 
-/* Una columna por prenda. En móvil van apiladas: tres columnas de 100px no se
-   comparan, se adivinan. */
+/* Una columna por prenda. En el teléfono no se apilan (una debajo de la otra
+   no se compara: hay que acordarse de la de arriba) ni se aprietan a 100 px:
+   van lado a lado y se deslizan, con la siguiente asomándose. */
 .columnas {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--cep-sp-4);
-  align-items: start;
+  grid-auto-flow: column;
+  grid-auto-columns: min(82%, 300px);
+  gap: var(--cep-sp-3);
+  align-items: stretch;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: var(--cep-sp-2);
+  scrollbar-width: none;
+}
+.columnas::-webkit-scrollbar {
+  display: none;
+}
+.columnas > * {
+  scroll-snap-align: start;
 }
 @media (min-width: 720px) {
   .columnas {
+    grid-auto-flow: row;
     grid-template-columns: repeat(var(--cuantas), minmax(0, 1fr));
+    overflow: visible;
   }
 }
 
@@ -211,7 +309,17 @@ onMounted(() => catalogo.cargarProductos())
   border-left: 3px solid var(--cep-exito);
 }
 .columna__arte {
+  display: block;
   margin-bottom: var(--cep-sp-3);
+  overflow: hidden;
+  border-radius: var(--cep-r-sm);
+}
+.columna__arte img {
+  display: block;
+  width: 100%;
+  height: 200px;
+  object-fit: contain;
+  background: #fff;
 }
 .columna__nombre {
   margin: 0;
@@ -244,6 +352,42 @@ onMounted(() => catalogo.cargarProductos())
   font-size: var(--cep-fs-xs);
   font-weight: 400;
   color: var(--cep-muted);
+}
+.fila__nota {
+  color: var(--cep-muted);
+  opacity: 0.75;
+}
+.chip {
+  display: inline-block;
+  margin-left: var(--cep-sp-15);
+  padding: 1px var(--cep-sp-2);
+  border: 1px solid var(--cep-line-fuerte);
+  border-radius: var(--cep-r-pill);
+  font-size: var(--cep-fs-2xs);
+  font-weight: 400;
+  color: var(--cep-muted);
+  vertical-align: middle;
+}
+.chip--mejor {
+  border-color: var(--cep-exito);
+  color: var(--cep-exito);
+}
+.fila__tallas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.talla {
+  padding: 1px 6px;
+  border: 1px solid var(--cep-line-media);
+  border-radius: var(--cep-r-xs);
+  font-size: var(--cep-fs-2xs);
+  font-weight: 400;
+}
+.talla--comun {
+  border-color: var(--cep-ink);
+  font-weight: 700;
 }
 .verde {
   color: var(--cep-exito);

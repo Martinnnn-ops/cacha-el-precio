@@ -89,6 +89,8 @@
   --cep-on-accent: #ffffff;
   --cep-accent: #1e4a85;
   --cep-exito: #2f6b4f;
+  /* El corazón de "Guardar": 5.3:1 sobre la tarjeta blanca (y 5.2:1 el de noche). */
+  --cep-deseado: #c2306f;
   --cep-alerta: #b23a2b;
   --cep-rate: #b8863c;
 
@@ -144,6 +146,7 @@
   --cep-on-accent: #10161d;
   --cep-accent: #6fa8dc;
   --cep-exito: #5fbb8d;
+  --cep-deseado: #f27aa9;
   /* Estos dos se aclaran un punto respecto de antes. Al subir la tarjeta a
      #322e28 el fondo bajo el texto es más claro, y con los valores viejos
      (#9c9686 y #e2775f) el contraste caía a 4.57 y 4.52: aprobado raspado y

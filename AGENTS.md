@@ -40,7 +40,7 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
 | **Mensajería del EP3: colas, tópicos, contratos, errores, administración** | `docs/MENSAJERIA.md` | 309 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 1157 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 1211 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
 | Presentar el proyecto a alguien de afuera | `README.md` | 218 líneas |
 
@@ -132,12 +132,11 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
 - Los documentos de `docs/` **no se duplican entre sí**. Cada tema vive en un solo lugar:
   el *qué* en `PLAN.md`, el *por qué* en `ARQUITECTURA.md`, el *quién y cuándo* en `TAREAS.md`,
   el *qué se evalúa* en `EVALUACIONES.md`. Si algo calza en dos, va en uno y el otro lo enlaza.
-- **Una decisión técnica nueva es un ADR**, no un párrafo suelto. Formato en
-  `docs/ARQUITECTURA.md` §13: contexto → alternativas → decisión → **consecuencias, incluidas las malas**.
+- **Una decisión técnica nueva es un ADR**, no un párrafo suelto. Formato en el registro de
+  decisiones de `docs/ARQUITECTURA.md`: contexto → alternativas → decisión → **consecuencias,
+  incluidas las malas**.
 - Al modificar un documento, **actualiza su índice** y la fecha de "última revisión" del encabezado.
 - Si un documento pasa de ~600 líneas, pártelo y actualiza la tabla de arriba.
-  ⚠️ **`docs/ARQUITECTURA.md` ya va en 677** y toca partirlo: las secciones 1 a 10 son el
-  porqué del diseño y la 11 a 13 son la nube y los ADR. Pendiente, no urgente.
 - **Los conteos de la tabla se sacan del archivo, no de memoria.** Estaban todos desfasados
   hasta el 07-09 y faltaba `docs/REQUISITOS.md` entero. Un índice que miente hace perder más
   tiempo que no tener índice.

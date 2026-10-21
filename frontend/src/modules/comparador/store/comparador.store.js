@@ -8,7 +8,9 @@ import {
 } from '@/modules/comparador/services/comparador.service'
 import { TIENDAS_MOCK } from '@/modules/comparador/data/tiendas'
 import { USAR_MOCK } from '@/core/api/http'
+import { formatearPrecio } from '@/shared/utils/formato'
 import { ahorroMaximo, precioMasBajo } from '@/shared/utils/precios'
+import { clasificarTalla } from '@/shared/utils/tallas'
 
 // Estado del módulo comparador. El store orquesta y guarda; no sabe de HTTP ni
 // de URLs — para eso llama al servicio.
@@ -65,7 +67,10 @@ export const useComparadorStore = defineStore('comparador', () => {
   // filtrado en pedazos — no hay una página que pedirle al backend.
   const paginaActual = ref(1)
   const itemsPorPagina = ref(20)
-  // Tope de precio. null = sin tope.
+  // Presupuesto: piso y techo. null = sin límite en ese extremo. Se guardan por
+  // separado porque "desde $10.000" y "hasta $10.000" son búsquedas distintas,
+  // y con un solo control la única forma de pedir la primera era adivinarla.
+  const precioMinimo = ref(null)
   const precioMaximo = ref(null)
   // Marcas elegidas. Vacío = todas.
   const marcas = ref([])
@@ -93,6 +98,7 @@ export const useComparadorStore = defineStore('comparador', () => {
       marcas.value.length > 0 ||
       talla.value !== '' ||
       Object.keys(atributos.value).length > 0 ||
+      precioMinimo.value !== null ||
       precioMaximo.value !== null ||
       tiendasActivas.value.length !== tiendas.value.length,
   )
@@ -122,8 +128,11 @@ export const useComparadorStore = defineStore('comparador', () => {
       puestos.push({ tipo: `atributo:${clave}`, etiqueta: `${clave}: ${valor}` }),
     )
 
-    if (precioMaximo.value !== null) {
-      puestos.push({ tipo: 'precio', etiqueta: `hasta ${precioMaximo.value}` })
+    if (precioMinimo.value !== null || precioMaximo.value !== null) {
+      const desde = precioMinimo.value !== null ? `desde ${formatearPrecio(precioMinimo.value)}` : ''
+      const hasta = precioMaximo.value !== null ? `hasta ${formatearPrecio(precioMaximo.value)}` : ''
+
+      puestos.push({ tipo: 'precio', etiqueta: [desde, hasta].filter(Boolean).join(' · ') })
     }
 
     if (tiendasActivas.value.length !== tiendas.value.length) {
@@ -176,6 +185,21 @@ export const useComparadorStore = defineStore('comparador', () => {
 
   // ——— facetas: qué se puede filtrar, según lo que hay ———
   //
+  // ¿El precio más bajo del producto cae dentro del presupuesto? Un producto
+  // sin ninguna oferta con stock no puede cumplir un rango de precio.
+  function dentroDelPresupuesto(p) {
+    const masBajo = precioMasBajo(p)
+
+    if (masBajo === null) {
+      return precioMinimo.value === null && precioMaximo.value === null
+    }
+
+    return (
+      (precioMinimo.value === null || masBajo.precio >= precioMinimo.value) &&
+      (precioMaximo.value === null || masBajo.precio <= precioMaximo.value)
+    )
+  }
+
   // Se calculan sobre los productos que pasan TODOS los demás filtros menos el
   // propio. Así los conteos son los de verdad y no se ofrece una opción que
   // dejaría la pantalla vacía.
@@ -183,6 +207,8 @@ export const useComparadorStore = defineStore('comparador', () => {
     const texto = busqueda.value.trim().toLowerCase()
 
     return productos.value.filter((p) => {
+      if (!dentroDelPresupuesto(p)) return false
+
       if (
         texto !== '' &&
         !`${p.marca} ${p.nombre} ${p.categoria}`.toLowerCase().includes(texto)
@@ -237,19 +263,12 @@ export const useComparadorStore = defineStore('comparador', () => {
       suyas.forEach((t) => cuenta.set(t, (cuenta.get(t) ?? 0) + 1))
     })
 
-    // Numéricas por número, de letra por el orden de siempre.
-    const ORDEN = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-
+    // Cada talla con su sistema, y ordenadas dentro de él. Antes el orden solo
+    // conocía XS…XXL: con "38 CL", "8.5 US" o "3XL" la comparación devolvía
+    // -1 y la lista salía revuelta, con 60 pastillas sin orden en la barra.
     return [...cuenta.entries()]
-      .map(([nombre, total]) => ({ nombre, total }))
-      .sort((a, b) => {
-        const na = Number(a.nombre)
-        const nb = Number(b.nombre)
-
-        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
-
-        return ORDEN.indexOf(a.nombre) - ORDEN.indexOf(b.nombre)
-      })
+      .map(([nombre, total]) => ({ nombre, total, ...clasificarTalla(nombre) }))
+      .sort((a, b) => a.grupo - b.grupo || a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es'))
   })
 
   // Atributos que de verdad sirven para filtrar: los que aparecen en más de un
@@ -303,7 +322,10 @@ export const useComparadorStore = defineStore('comparador', () => {
     if (tipo === 'busqueda') busqueda.value = ''
     if (tipo === 'categoria') categoria.value = ''
     if (tipo === 'talla') talla.value = ''
-    if (tipo === 'precio') precioMaximo.value = null
+    if (tipo === 'precio') {
+      precioMinimo.value = null
+      precioMaximo.value = null
+    }
     if (tipo === 'tiendas') marcarTodasLasTiendas()
     if (tipo.startsWith('marca:')) alternarMarca(tipo.slice(6))
 
@@ -355,12 +377,9 @@ export const useComparadorStore = defineStore('comparador', () => {
           ([clave, valor]) => valorDeSpec(p, clave) === valor,
         )
 
-        // El tope se mide contra el precio más bajo del producto: si en alguna
-        // tienda cabe en el presupuesto, el producto entra.
-        const masBajo = precioMasBajo(p)
-        const coincidePrecio =
-          precioMaximo.value === null ||
-          (masBajo !== null && masBajo.precio <= precioMaximo.value)
+        // El rango se mide contra el precio más bajo del producto: si en alguna
+        // tienda cae dentro, el producto entra.
+        const coincidePrecio = dentroDelPresupuesto(p)
 
         // Un producto entra si alguna de las tiendas marcadas lo vende.
         const coincideTienda = p.precios.some((oferta) =>
@@ -635,6 +654,7 @@ export const useComparadorStore = defineStore('comparador', () => {
     marcas.value = []
     talla.value = ''
     atributos.value = {}
+    precioMinimo.value = null
     precioMaximo.value = null
     marcarTodasLasTiendas()
   }
@@ -661,6 +681,7 @@ export const useComparadorStore = defineStore('comparador', () => {
     orden,
     paginaActual,
     itemsPorPagina,
+    precioMinimo,
     precioMaximo,
     marcas,
     talla,

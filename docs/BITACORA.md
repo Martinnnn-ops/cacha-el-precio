@@ -2,6 +2,60 @@
 
 Última actualización: 21-10-2026.
 
+## 21-10 · Catálogo: filtros plegables, presupuesto con piso y techo, y armador con vista previa — Martín
+
+**La rama `fix/frontend-filtros-y-ficha` junta dos tandas.** La primera estaba en el árbol sin
+commitear; la segunda salió de la revisión de las capturas del 20-10.
+
+**Filtros.** El panel medía cerca de 2.000 px porque las ~60 tallas iban en una sola lista y el
+orden solo conocía `XS…XXL`: `3XL`, `38 CL` y `8.5 US` caían al final o revueltas. Ahora cada
+talla se clasifica en su sistema (ropa, calzado, CL, US), se ordena dentro de él y se agrupa en
+secciones plegables con tope de diez y «+N». Los atributos parten cerrados salvo que traigan un
+valor puesto. Lo elegido se lee en la cabecera de la sección aunque esté plegada.
+
+**Presupuesto.** Había un solo control «hasta», así que pedir «prendas de más de $10.000» no era
+posible. Se agregó `precioMinimo` al store, dos barras que se empujan entre sí si se cruzan,
+atajos con cifras redondas y un chip de filtro formateado. El rango también acota las facetas, no
+solo la lista.
+
+**Catálogo.** Vista cómoda o densa (dos tarjetas en el teléfono, cuatro en pantalla ancha), orden y
+vista recordados en el navegador, controles con la forma de las pastillas y una sola barra de
+desplazamiento en el panel lateral. En móvil el panel se desplaza por dentro: antes estiraba la
+página entera.
+
+**Un bug de la vista densa.** Los resultados eran dos rejillas separadas por el anuncio; la segunda
+reiniciaba las filas y la última quedaba con dos tarjetas y dos huecos. Ahora hay una sola rejilla y
+el anuncio es un ítem que ocupa todas las columnas.
+
+**Comparación.** Dejó de dibujar la silueta genérica: muestra la foto real, las tallas con stock (en
+negrita las que tienen todas), los detalles que el nombre declara (manga, material, cuello, calce) y
+cuánto más cuesta cada prenda respecto de la más barata. En el teléfono las columnas se deslizan.
+
+**Armador.** Nueva tira «Así va quedando» con las capas elegidas en orden del cuerpo y huecos
+discontinuos para lo que falta. El enlace plano de «Entra con Google» pasó a ser el botón oficial,
+con el mismo flujo PKCE.
+
+**Renombres y detalles.** «Comparador» pasa a «Catálogo» en el menú y los enlaces de vuelta, porque
+al lado de «Comparar» se leían como el mismo botón. El corazón de deseados tiene color propio
+(contraste 5,3:1 en claro y 5,2:1 en oscuro) y late solo al guardar. El carrusel desvanece sus
+bordes, salvo en «Lo más reciente». Se corrigió una colisión de nombres: el aviso de datos usaba
+`.aviso`, igual que el bloque vacío de las vistas, y heredaba su relleno de 64 px.
+
+Verificación:
+
+```bash
+cd frontend
+npm run humo
+```
+
+Build de producción correcto y **0 comprobaciones fallidas**. Se agregaron comprobaciones para el
+piso de presupuesto, el chip formateado, el rango por ambos lados, la rejilla única y el scroll
+interno del panel. Queda pendiente mirarlo en un teléfono real: acá solo se pudo comprobar con el
+build y las pruebas.
+
+Commits `d31141d` (primera tanda) y los de esta sesión. PR a `development` abierto, sin mergear. No
+se desplegó: `--solo-front` queda para cuando se pida.
+
 ## 20-10 · Deuda técnica del EP3 antes de montar en la cuenta del dominio — Martín
 
 - **notification-service explica sus fallos.** Lo mismo que product-service del 18-10: en el último

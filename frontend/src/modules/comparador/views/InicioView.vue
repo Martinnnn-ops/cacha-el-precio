@@ -109,7 +109,7 @@ onMounted(() => store.cargarProductos())
         </template>
 
         <div class="hero__acciones">
-          <BaseButton to="/comparador">Ver el comparador</BaseButton>
+          <BaseButton to="/comparador">Ver el catálogo</BaseButton>
 
           <span class="mono muted hero__nota">
             {{ productos.length }} prendas seguidas hoy
@@ -165,7 +165,7 @@ onMounted(() => store.cargarProductos())
         <p class="mono muted seccion__nota">Las últimas prendas que subimos</p>
       </header>
 
-      <BaseCarousel v-if="masRecientes.length > 0">
+      <BaseCarousel v-if="masRecientes.length > 0" :desvanecer="false">
         <RecienteBanner
           v-for="(p, i) in masRecientes"
           :key="p.id"
