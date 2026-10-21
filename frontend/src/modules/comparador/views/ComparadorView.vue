@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
@@ -59,19 +59,11 @@ const {
   hayFiltros,
 } = storeToRefs(store)
 
-// Dos filas completas en escritorio (tres tarjetas por fila) antes del
-// anuncio, DENTRO de la página actual. Con paginación real ya no hace falta
-// pintar de a tandas para no colgar la pestaña — cada página trae como mucho
-// `itemsPorPagina` productos — así que esto sólo decide dónde entra el
-// anuncio, no cuánto se monta.
+// El anuncio entra después de dos filas completas en escritorio (tres
+// tarjetas por fila), DENTRO de la página actual. Va como un ítem más de la
+// misma rejilla: antes había dos <div class="grilla"> y la segunda reiniciaba
+// las filas, así que en vista densa la última fila quedaba con huecos.
 const CORTE_ANUNCIO = 6
-
-const primerosResultados = computed(() =>
-  productosPagina.value.slice(0, CORTE_ANUNCIO),
-)
-const siguientesResultados = computed(() =>
-  productosPagina.value.slice(CORTE_ANUNCIO),
-)
 
 onMounted(() => store.cargarProductos())
 
@@ -232,30 +224,27 @@ watch(
 
 
           <div class="grilla" :class="{ 'grilla--densa': vista === 'densa' }">
-            <ProductoCard
-              v-for="producto in primerosResultados"
-              :key="producto.id"
-              :producto="producto"
-              :densa="vista === 'densa'"
-            />
-          </div>
+            <template v-for="(producto, i) in productosPagina" :key="producto.id">
+              <AdSlot
+                v-if="i === CORTE_ANUNCIO"
+                :bloque="BLOQUE_LISTADO"
+                :alto="110"
+                class="grilla__anuncio"
+              />
 
-          <AdSlot
-            :bloque="BLOQUE_LISTADO"
-            :alto="110"
-            class="resultados__anuncio"
-          />
+              <ProductoCard
+                :producto="producto"
+                :densa="vista === 'densa'"
+              />
+            </template>
 
-          <div
-            v-if="siguientesResultados.length"
-            class="grilla grilla--continuacion"
-            :class="{ 'grilla--densa': vista === 'densa' }"
-          >
-            <ProductoCard
-              v-for="producto in siguientesResultados"
-              :key="producto.id"
-              :producto="producto"
-              :densa="vista === 'densa'"
+            <!-- Si la página no llega a siete prendas, el anuncio va al final
+                 en vez de desaparecer: sigue viéndose una sola vez por bloque. -->
+            <AdSlot
+              v-if="productosPagina.length <= CORTE_ANUNCIO"
+              :bloque="BLOQUE_LISTADO"
+              :alto="110"
+              class="grilla__anuncio"
             />
           </div>
 
@@ -274,11 +263,8 @@ watch(
 </template>
 
 <style scoped>
-.resultados__anuncio {
-  margin-top: var(--cep-sp-6);
-}
-.grilla--continuacion {
-  margin-top: var(--cep-sp-6);
+.grilla__anuncio {
+  grid-column: 1 / -1;
 }
 
 .resultados__paginacion {
@@ -508,6 +494,14 @@ watch(
 @media (max-width: 899px) {
   .comparador__lateral:not(.comparador__lateral--plegado) {
     animation: desplegar-filtros var(--cep-dur-3) var(--cep-ease);
+    /* El panel desplegado hacía crecer la página entera: para llegar a la
+       última sección había que bajar por todo el catálogo. Ahora se desplaza
+       por dentro y el scroll de la página queda quieto. */
+    max-height: calc(100dvh - 140px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: var(--cep-sp-2);
   }
 }
 @keyframes desplegar-filtros {
