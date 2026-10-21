@@ -255,11 +255,11 @@ durante el render, el usuario ve una pantalla con salida en vez de un blanco.
 | Ruta | Vista | Qué hace |
 |---|---|---|
 | `/` | `InicioView` | Portada: destacado, Lo más reciente, Lo más visto, Categorías populares, Ofertas del día y dos huecos de anuncio. |
-| `/comparador` | `ComparadorView` | Búsqueda, filtro por tienda y rejilla de resultados. Acepta `?categoria=Poleras`. |
+| `/comparador` | `ComparadorView` | Búsqueda y filtros de categoría, marca, talla, atributos y presupuesto (piso y techo), con vista cómoda o densa. Acepta `?categoria=Poleras`. |
 | `/producto/:slug` | `ProductoDetailView` | Consulta directa por slug V2, muestra ofertas y tallas por tienda y redirige enlaces antiguos `nombre-id`. |
-| `/comparar` | `CompararView` | Compara hasta tres productos en columnas equivalentes. |
+| `/comparar` | `CompararView` | Compara hasta tres productos en columnas equivalentes, con foto, tallas con stock y los detalles que declara el nombre. |
 | `/outfits` | `OutfitsView` | Outfits automáticos y selecciones preparadas. |
-| `/armar` | `ArmarView` | Armador por partes con talla separada de ropa/calzado, stock real, autocompletado más barato y comparación entre comprar separado o en una tienda. |
+| `/armar` | `ArmarView` | Armador por partes con talla separada de ropa/calzado, stock real, vista previa de las capas elegidas, autocompletado más barato y comparación entre comprar separado o en una tienda. |
 | `/login`, `/registro` | módulo `cuenta` | Sesión con cabecera y pie, sin anuncios. `/entrar` redirige a `/login`. |
 | `/terminos`, `/privacidad`, `/preguntas` | módulo `legal` | Páginas de texto. |
 
