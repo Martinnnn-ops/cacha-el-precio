@@ -13,6 +13,8 @@
   ese número. Probado con una SQS falsa que reproduce el caso (falla con el código anterior) y contra
   AWS real. De paso, la prueba real del ping-pong esperaba solo 2 s a que el listado mostrara la cola
   nueva y fallaba siempre; ahora espera como la del ciclo completo.
+- **`dotnet format` en cero.** Los 18 avisos de espacios de `PersonalController.cs` y
+  `ProductService.cs`, solo forma, sin cambiar lógica.
 
 ## 18-10 (tarde) · EP3: pruebas de punta a punta en la EC2 (T13), DLQ con diagnóstico y vista del panel (T12) — Martín
 

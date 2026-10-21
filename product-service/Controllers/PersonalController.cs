@@ -20,11 +20,15 @@ public sealed class PersonalController(ProductDbContext db) : ControllerBase
     {
         var items = await db.PersonalItems.AsNoTracking().Where(p => p.Owner == owner)
             .OrderByDescending(p => p.UpdatedAt).ToListAsync(ct);
-        return Ok(new {
+        return Ok(new
+        {
             productos = items.Where(p => p.Kind == "deseado").Select(p => int.Parse(p.Key)),
             total = items.Count(p => p.Kind == "deseado"),
-            outfits = items.Where(p => p.Kind == "outfit").Select(p => new {
-                id = p.Key, datos = JsonSerializer.Deserialize<OutfitInput>(p.Payload), p.UpdatedAt
+            outfits = items.Where(p => p.Kind == "outfit").Select(p => new
+            {
+                id = p.Key,
+                datos = JsonSerializer.Deserialize<OutfitInput>(p.Payload),
+                p.UpdatedAt
             })
         });
     }
@@ -87,8 +91,14 @@ public sealed class PersonalController(ProductDbContext db) : ControllerBase
         {
             if (await db.PersonalItems.CountAsync(p => p.Owner == owner && p.Kind == kind, ct) >= limit)
                 return Conflict(new { mensaje = $"Puedes guardar hasta {limit} elementos." });
-            db.PersonalItems.Add(new() { Owner = owner, Kind = kind, Key = key,
-                Payload = payload, UpdatedAt = DateTimeOffset.UtcNow });
+            db.PersonalItems.Add(new()
+            {
+                Owner = owner,
+                Kind = kind,
+                Key = key,
+                Payload = payload,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
         }
         else { existing.Payload = payload; existing.UpdatedAt = DateTimeOffset.UtcNow; }
         await db.SaveChangesAsync(ct);
