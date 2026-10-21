@@ -9,6 +9,7 @@ import {
 import { TIENDAS_MOCK } from '@/modules/comparador/data/tiendas'
 import { USAR_MOCK } from '@/core/api/http'
 import { ahorroMaximo, precioMasBajo } from '@/shared/utils/precios'
+import { clasificarTalla } from '@/shared/utils/tallas'
 
 // Estado del módulo comparador. El store orquesta y guarda; no sabe de HTTP ni
 // de URLs — para eso llama al servicio.
@@ -237,19 +238,12 @@ export const useComparadorStore = defineStore('comparador', () => {
       suyas.forEach((t) => cuenta.set(t, (cuenta.get(t) ?? 0) + 1))
     })
 
-    // Numéricas por número, de letra por el orden de siempre.
-    const ORDEN = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-
+    // Cada talla con su sistema, y ordenadas dentro de él. Antes el orden solo
+    // conocía XS…XXL: con "38 CL", "8.5 US" o "3XL" la comparación devolvía
+    // -1 y la lista salía revuelta, con 60 pastillas sin orden en la barra.
     return [...cuenta.entries()]
-      .map(([nombre, total]) => ({ nombre, total }))
-      .sort((a, b) => {
-        const na = Number(a.nombre)
-        const nb = Number(b.nombre)
-
-        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
-
-        return ORDEN.indexOf(a.nombre) - ORDEN.indexOf(b.nombre)
-      })
+      .map(([nombre, total]) => ({ nombre, total, ...clasificarTalla(nombre) }))
+      .sort((a, b) => a.grupo - b.grupo || a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es'))
   })
 
   // Atributos que de verdad sirven para filtrar: los que aparecen en más de un

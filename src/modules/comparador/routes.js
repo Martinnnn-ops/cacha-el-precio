@@ -68,7 +68,7 @@ export default [
     path: '/comparador',
     name: 'comparador',
     component: () => import('@/modules/comparador/views/ComparadorView.vue'),
-    meta: { titulo: 'Comparador' },
+    meta: { titulo: 'Catálogo' },
   },
   {
     // La URL del detalle es el slug: /producto/poleron-ck-institutional-blanco.

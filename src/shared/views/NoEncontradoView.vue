@@ -7,7 +7,7 @@ import BaseButton from '@/shared/components/BaseButton.vue'
     <h1>404</h1>
     <p>Esta página no existe.</p>
 
-    <BaseButton to="/">Volver al comparador</BaseButton>
+    <BaseButton to="/">Volver al catálogo</BaseButton>
   </section>
 </template>
 

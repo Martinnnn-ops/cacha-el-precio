@@ -1,11 +1,13 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import FiltroTiendas from '@/modules/comparador/components/FiltroTiendas.vue'
+import SeccionFiltro from '@/modules/comparador/components/SeccionFiltro.vue'
 import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import BaseButton from '@/shared/components/BaseButton.vue'
 import { formatearPrecio } from '@/shared/utils/formato'
+import { GRUPOS_TALLA } from '@/shared/utils/tallas'
 
 // Panel lateral de filtros.
 //
@@ -15,10 +17,22 @@ import { formatearPrecio } from '@/shared/utils/formato'
 // hacerlo por categoría.
 const store = useComparadorStore()
 const buscarMarca = ref('')
-const limiteMarcas = ref(16)
-watch(buscarMarca, () => { limiteMarcas.value = 16 })
+const limiteMarcas = ref(10)
+watch(buscarMarca, () => { limiteMarcas.value = 10 })
 const marcasVisibles = computed(() => store.marcasDisponibles.filter(m =>
   m.nombre.toLocaleLowerCase('es').includes(buscarMarca.value.trim().toLocaleLowerCase('es'))))
+
+// Cada sección se pliega. Antes el panel medía cerca de 2.000 px por las ~60
+// tallas, y para llegar al presupuesto había que pasar por todas. Talla y los
+// atributos parten plegados, salvo que ya traigan algo elegido (un enlace con
+// filtros); el resto, abierto.
+const abiertos = reactive({
+  categoria: true,
+  marca: true,
+  talla: store.talla !== '',
+  presupuesto: true,
+  ...Object.fromEntries(Object.keys(store.atributos).map((clave) => [clave, true])),
+})
 
 const {
   categoria,
@@ -47,6 +61,28 @@ const tope = computed({
   },
 })
 
+const marcaElegida = computed(() => {
+  if (marcas.value.length === 0) return ''
+  return marcas.value.length === 1 ? marcas.value[0] : `${marcas.value.length} elegidas`
+})
+
+// Las tallas por sistema (ropa, calzado, CL, US), cada grupo con un tope que
+// se abre con "+N". Mezcladas eran una sola pared de pastillas.
+const TOPE_TALLAS = 10
+const gruposAbiertos = reactive({})
+const gruposTalla = computed(() => GRUPOS_TALLA
+  .map((g) => {
+    const todas = tallasDisponibles.value.filter((t) => t.grupo === g.id)
+    const abierto = gruposAbiertos[g.id] || todas.length <= TOPE_TALLAS + 2
+    // La talla elegida se ve aunque el grupo esté recortado.
+    const visibles = abierto
+      ? todas
+      : todas.filter((t, i) => i < TOPE_TALLAS || t.nombre === talla.value)
+
+    return { ...g, visibles, ocultas: todas.length - visibles.length }
+  })
+  .filter((g) => g.visibles.length > 0))
+
 // Paso redondo para que el presupuesto caiga en cifras que alguien diría en
 // voz alta, no en 27.431.
 const paso = computed(() => {
@@ -59,8 +95,12 @@ const paso = computed(() => {
 <template>
   <div class="panel">
     <!-- ——— categoría ——— -->
-    <fieldset v-if="conteoPorCategoria.length > 1" class="grupo">
-      <legend class="grupo__titulo">Categoría</legend>
+    <SeccionFiltro
+      v-if="conteoPorCategoria.length > 1"
+      v-model:abierta="abiertos.categoria"
+      titulo="Categoría"
+      :elegido="categoria"
+    >
 
       <div class="grupo__opciones">
         <button
@@ -86,14 +126,18 @@ const paso = computed(() => {
           <span class="pildora__cuenta">{{ c.total }}</span>
         </button>
       </div>
-    </fieldset>
+    </SeccionFiltro>
 
     <!-- ——— marca ——— -->
-    <fieldset v-if="marcasDisponibles.length > 1" class="grupo">
-      <legend class="grupo__titulo">Marca</legend>
+    <SeccionFiltro
+      v-if="marcasDisponibles.length > 1"
+      v-model:abierta="abiertos.marca"
+      titulo="Marca"
+      :elegido="marcaElegida"
+    >
       <input v-model="buscarMarca" type="search" class="buscar-marca" aria-label="Buscar marca" placeholder="Buscar marca…" />
 
-      <div class="grupo__opciones grupo__opciones--marcas" tabindex="0" aria-label="Marcas disponibles">
+      <div class="grupo__opciones" aria-label="Marcas disponibles">
         <button
           v-for="m in marcasVisibles.slice(0, limiteMarcas)"
           :key="m.nombre"
@@ -107,43 +151,63 @@ const paso = computed(() => {
           <span class="pildora__cuenta">{{ m.total }}</span>
         </button>
       </div>
-      <BaseButton v-if="marcasVisibles.length > limiteMarcas" variante="texto" tamano="chico" @click="limiteMarcas += 16">Ver más marcas</BaseButton>
-    </fieldset>
+      <BaseButton v-if="marcasVisibles.length > limiteMarcas" variante="texto" tamano="chico" @click="limiteMarcas += 20">Ver más marcas</BaseButton>
+    </SeccionFiltro>
 
     <!-- ——— talla ——— -->
-    <fieldset v-if="tallasDisponibles.length > 1" class="grupo">
-      <legend class="grupo__titulo">Talla</legend>
+    <SeccionFiltro
+      v-if="tallasDisponibles.length > 1"
+      v-model:abierta="abiertos.talla"
+      titulo="Talla"
+      :elegido="talla"
+    >
 
-      <div class="grupo__opciones">
-        <button
-          v-for="t in tallasDisponibles"
-          :key="t.nombre"
-          type="button"
-          class="pildora pildora--talla"
-          :class="{ 'pildora--activa': talla === t.nombre }"
-          :aria-pressed="talla === t.nombre"
-          @click="talla = talla === t.nombre ? '' : t.nombre"
-        >
-          <span class="truncar">{{ t.nombre }}</span>
-          <span class="pildora__cuenta">{{ t.total }}</span>
-        </button>
+      <div v-for="g in gruposTalla" :key="g.id" class="subgrupo">
+        <p v-if="gruposTalla.length > 1" class="subgrupo__titulo">{{ g.nombre }}</p>
+
+        <div class="grupo__opciones">
+          <button
+            v-for="t in g.visibles"
+            :key="t.nombre"
+            type="button"
+            class="pildora pildora--talla"
+            :class="{ 'pildora--activa': talla === t.nombre }"
+            :aria-pressed="talla === t.nombre"
+            @click="talla = talla === t.nombre ? '' : t.nombre"
+          >
+            <span class="truncar">{{ t.nombre }}</span>
+            <span class="pildora__cuenta">{{ t.total }}</span>
+          </button>
+
+          <button
+            v-if="g.ocultas > 0"
+            type="button"
+            class="pildora pildora--mas"
+            :aria-label="`Ver ${g.ocultas} tallas más de ${g.nombre}`"
+            @click="gruposAbiertos[g.id] = true"
+          >
+            +{{ g.ocultas }}
+          </button>
+        </div>
       </div>
 
       <p class="grupo__nota mono">
         Cuenta las tiendas con stock: una talla puede estar en una y no en otra.
       </p>
-    </fieldset>
+    </SeccionFiltro>
 
     <!-- ——— atributos ———
          Cuáles salen depende de lo que se esté mirando: al filtrar zapatillas
          aparecen Suela y Terreno; con ropa, Corte y Cuello. Se derivan del
          catálogo, no de una lista escrita a mano por tipo de prenda. -->
-    <fieldset
+    <SeccionFiltro
       v-for="atributo in atributosDisponibles"
       :key="atributo.clave"
-      class="grupo"
+      :abierta="abiertos[atributo.clave] ?? false"
+      @update:abierta="abiertos[atributo.clave] = $event"
+      :titulo="atributo.clave"
+      :elegido="atributos[atributo.clave] ?? ''"
     >
-      <legend class="grupo__titulo">{{ atributo.clave }}</legend>
 
       <div class="grupo__opciones">
         <button
@@ -159,11 +223,15 @@ const paso = computed(() => {
           <span class="pildora__cuenta">{{ v.total }}</span>
         </button>
       </div>
-    </fieldset>
+    </SeccionFiltro>
 
     <!-- ——— presupuesto ——— -->
-    <fieldset v-if="rangoPrecios" class="grupo">
-      <legend class="grupo__titulo">Presupuesto</legend>
+    <SeccionFiltro
+      v-if="rangoPrecios"
+      v-model:abierta="abiertos.presupuesto"
+      titulo="Presupuesto"
+      :elegido="precioMaximo !== null ? formatearPrecio(precioMaximo) : ''"
+    >
 
       <label class="rango">
         <span class="rango__valor mono">
@@ -185,7 +253,7 @@ const paso = computed(() => {
           aria-label="Precio máximo"
         />
       </label>
-    </fieldset>
+    </SeccionFiltro>
 
     <!-- ——— tiendas: sólo si hay más de una que comparar ——— -->
     <FiltroTiendas
@@ -196,6 +264,7 @@ const paso = computed(() => {
 
     <BaseButton
       v-if="hayFiltros"
+      class="panel__limpiar"
       variante="secundario"
       tamano="chico"
       bloque
@@ -207,29 +276,21 @@ const paso = computed(() => {
 </template>
 
 <style scoped>
-.buscar-marca { width: 100%; min-height: 40px; margin-bottom: .75rem; padding: .5rem .75rem;
+.buscar-marca { width: 100%; min-height: 36px; margin-bottom: .75rem; padding: .4rem .75rem;
   border: 1px solid var(--cep-line-media); border-radius: var(--cep-r-sm);
+  border-radius: var(--cep-r-pill);
   background: var(--cep-surface); color: var(--cep-ink); }
-.grupo__opciones--marcas { max-height: 240px; overflow-y: auto; padding: 2px; scrollbar-width: thin; }
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--cep-sp-5);
 }
 
-.grupo {
-  margin: 0;
-  padding: 0;
-  border: none;
+.subgrupo + .subgrupo {
+  margin-top: var(--cep-sp-3);
 }
-.grupo__titulo {
-  padding: 0;
-  margin-bottom: var(--cep-sp-2);
-  font-family: var(--cep-font-mono);
-  font-size: var(--cep-fs-2xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.subgrupo__titulo {
+  margin: 0 0 var(--cep-sp-15);
+  font-size: var(--cep-fs-xs);
   color: var(--cep-muted);
 }
 .grupo__opciones {
@@ -279,6 +340,13 @@ const paso = computed(() => {
   justify-content: center;
   font-family: var(--cep-font-mono);
 }
+.pildora--mas {
+  justify-content: center;
+  min-width: 44px;
+  border-style: dashed;
+  color: var(--cep-muted);
+  font-family: var(--cep-font-mono);
+}
 .grupo__nota {
   margin: var(--cep-sp-2) 0 0;
   font-size: var(--cep-fs-xs);
@@ -288,6 +356,9 @@ const paso = computed(() => {
 
 .rango {
   display: block;
+}
+.panel__limpiar {
+  margin-top: var(--cep-sp-4);
 }
 .rango__valor {
   display: block;
