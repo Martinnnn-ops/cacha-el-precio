@@ -8,6 +8,11 @@
   intento recuperable el consumidor aparta el mensaje en la DLQ con `recuperable-agotado` y la causa
   de fondo, en vez de que SQS lo mueva sin atributos. Además, apagar el servicio ya no cuenta como
   intento agotado. Primer proyecto de pruebas del servicio, `notification-service.Tests` (8 pruebas).
+- **El redrive ya no dice «0 movidos» si sí los movió.** El contador de la tarea nativa de SQS es
+  aproximado. Ahora se cuenta la DLQ antes de mover y, si al final no queda ninguno de esos, se informa
+  ese número. Probado con una SQS falsa que reproduce el caso (falla con el código anterior) y contra
+  AWS real. De paso, la prueba real del ping-pong esperaba solo 2 s a que el listado mostrara la cola
+  nueva y fallaba siempre; ahora espera como la del ciclo completo.
 
 ## 18-10 (tarde) · EP3: pruebas de punta a punta en la EC2 (T13), DLQ con diagnóstico y vista del panel (T12) — Martín
 

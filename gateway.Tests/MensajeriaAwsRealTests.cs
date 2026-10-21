@@ -106,6 +106,7 @@ public class MensajeriaAwsRealTests
                 $"{t.Status} movidos={t.ApproximateNumberOfMessagesMoved}/{t.ApproximateNumberOfMessagesToMove} {t.FailureReason}"));
             Assert.True(devueltos.Count == 1, $"metodo={redrive.Metodo} tarea={redrive.TareaId} estado: {estadoTarea}");
             Assert.Contains("d1", devueltos[0].Body);
+            Assert.True(redrive.MensajesMovidos == 1, $"el panel diria {redrive.MensajesMovidos?.ToString() ?? "null"} movidos (metodo={redrive.Metodo}; {estadoTarea})");
 
             // 6. Las reglas de estado contra AWS real.
             await Assert.ThrowsAsync<ConflictoException>(() => servicio.EliminarColaAsync(dlq, true, Ct));      // DLQ en uso
@@ -141,6 +142,9 @@ public class MensajeriaAwsRealTests
         {
             await servicio.CrearColaAsync(new CrearColaSolicitud(dlq, null, 1209600, 0, null, null), Ct);
             await servicio.CrearColaAsync(new CrearColaSolicitud(cola, 30, null, 1, dlq, 3), Ct);
+            // El redrive busca la cola de origen en el listado, que tarda en mostrar
+            // la cola nueva. Sin esperar, falla con "no es la DLQ de ninguna cola".
+            await Reintentar(() => servicio.ObtenerColaAsync(dlq, Ct), c => c.EsDlqDe.Count == 1, veces: 40);
             string urlDlq = await Url(dlq), urlCola = await Url(cola);
             for (int i = 0; i < 3; i++)
                 await sqs.SendMessageAsync(urlDlq, $$"""{"eventId":"pp{{i}}","type":"oferta.capturada"}""", Ct);

@@ -335,6 +335,12 @@ public sealed class AdministradorMensajeriaAws(
         // movimientos y 50 s, que el API Gateway corta a los 30 s con un 503).
         long inicio = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
+        // Cuantos habia ANTES de mover. El contador de la tarea nativa es
+        // aproximado y puede terminar diciendo 0 aunque los haya movido todos; si
+        // al final de la DLQ ya no queda ninguno de los que habia, se movieron
+        // estos. Con eso el panel no dice "0 movidos" cuando si volvieron.
+        int antes = await VisiblesEnAsync(urlDlq, ct);
+
         // 1. Lo nativo: StartMessageMoveTask (el "redrive" de la consola). El
         //    LabRole lo permite (comprobado el 18-10). Mueve lo que habia al
         //    empezar y termina solo, asi que no tiene ping-pong.
@@ -374,6 +380,9 @@ public sealed class AdministradorMensajeriaAws(
         //    de la DLQ despues de que el reenvio salio bien (mismo criterio de ACK).
         //    Con tope de tiempo, para responder siempre antes de los 30 s del borde.
         int movidos = 0;
+        // true cuando el bucle termina porque ya no quedan mensajes de antes del
+        // redrive (y no por el tope de tiempo).
+        bool sinPendientes = false;
         var limite = DateTime.UtcNow.AddSeconds(15);
         while (DateTime.UtcNow < limite)
         {
@@ -387,7 +396,7 @@ public sealed class AdministradorMensajeriaAws(
                 MessageSystemAttributeNames = ["SentTimestamp"]
             }, ct));
             var mensajes = lote.Messages ?? [];
-            if (mensajes.Count == 0) break;
+            if (mensajes.Count == 0) { sinPendientes = true; break; }
 
             bool soloNuevos = true;
             foreach (var m in mensajes)
@@ -412,10 +421,36 @@ public sealed class AdministradorMensajeriaAws(
                 await Aws($"borrar de {dlq}", () => sqs.DeleteMessageAsync(urlDlq, m.ReceiptHandle, ct));
                 movidos++;
             }
-            if (soloNuevos) break;
+            if (soloNuevos) { sinPendientes = true; break; }
         }
-        log.LogInformation("Reproceso manual {Dlq} -> {Destino}: {Movidos} mensajes", dlq, destino, movidos);
-        return new ResultadoReproceso(dlq, destino, tarea is null ? "manual" : "redrive+manual", movidos, tarea);
+
+        // Si la tarea nativa corrio y ya no queda ninguno de los que habia, se
+        // movieron todos: la parte que no conto la tarea la movio ella igual.
+        // Si se corto por tiempo, solo se informa lo que se conto de verdad.
+        int total = tarea is not null && sinPendientes ? Math.Max(movidos, antes) : movidos;
+        log.LogInformation("Reproceso {Dlq} -> {Destino}: {Total} mensajes ({Manual} a mano, {Antes} habia antes)",
+            dlq, destino, total, movidos, antes);
+        return new ResultadoReproceso(dlq, destino, tarea is null ? "manual" : "redrive+manual", total, tarea);
+    }
+
+    // Mensajes visibles en una cola (ApproximateNumberOfMessages). 0 si no se puede
+    // leer: es solo para informar, no decide nada que se mueva.
+    private async Task<int> VisiblesEnAsync(string url, CancellationToken ct)
+    {
+        try
+        {
+            var r = await sqs.GetQueueAttributesAsync(new Sqs.GetQueueAttributesRequest
+            {
+                QueueUrl = url,
+                AttributeNames = ["ApproximateNumberOfMessages"]
+            }, ct);
+            return Entero(r.Attributes ?? [], "ApproximateNumberOfMessages");
+        }
+        catch (AmazonServiceException e)
+        {
+            log.LogWarning(e, "No se pudo contar los mensajes de {Cola}", NombreDeUrl(url));
+            return 0;
+        }
     }
 
     // Espera (hasta ~8 s) a que la tarea de movimiento mas reciente de la DLQ
