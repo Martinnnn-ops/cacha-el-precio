@@ -65,4 +65,21 @@ defineProps({
   white-space: nowrap;
   max-width: 46ch;
 }
+/* En móvil el nombre del producto bajaba a una línea propia y repetía, justo
+   encima, el título de la página. Se queda en una sola línea y el nombre se
+   acorta con puntos suspensivos en vez de empujar el contenido hacia abajo. */
+@media (max-width: 559px) {
+  .migas__lista {
+    flex-wrap: nowrap;
+  }
+  .migas__item {
+    flex: none;
+  }
+  .migas__item:last-child {
+    flex: 1 1 0;
+  }
+  .migas__item:last-child span[aria-current] {
+    max-width: 100%;
+  }
+}
 </style>
