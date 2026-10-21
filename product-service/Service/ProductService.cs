@@ -112,14 +112,14 @@ public sealed class ProductService(IProductRepository repository, IPublicadorEve
     /// </summary>
     private static DatosCambioOferta DatosComunes(
         ProductEntity product, ProductOfferEntity offer, ValidatedProduct input) => new()
-    {
-        ProductId = product.ProductId,
-        Slug = product.Slug,
-        Name = product.ProductName,
-        Image = input.Image ?? product.ProductImage ?? offer.ProductImage,
-        Store = offer.Store,
-        Url = input.Url
-    };
+        {
+            ProductId = product.ProductId,
+            Slug = product.Slug,
+            Name = product.ProductName,
+            Image = input.Image ?? product.ProductImage ?? offer.ProductImage,
+            Store = offer.Store,
+            Url = input.Url
+        };
 
     public async Task<bool> UpdateProductAsync(int id, ProductRequest request)
     {

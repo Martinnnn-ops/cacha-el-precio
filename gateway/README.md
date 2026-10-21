@@ -83,6 +83,11 @@ Panel para consultar y gestionar colas SQS, tópicos SNS, reglas de distribució
 [ADR-032](../docs/adr/032-administracion-de-mensajeria.md); la demo con casos válidos e inválidos,
 en [`Mensajeria.http`](Mensajeria.http). La imagen lleva `infra/mensajeria/topologia.json`.
 
+El conteo del reprocesamiento (`mensajesMovidos`) se prueba sin AWS en
+`gateway.Tests/ReprocesoContadorTests.cs`, con una SQS falsa que reproduce el caso en que la
+tarea nativa mueve todo pero informa 0. El ciclo contra AWS real está en
+`MensajeriaAwsRealTests.cs` y solo corre con `CEP_AWS_REAL=1` y credenciales del Learner Lab.
+
 ### URLs canónicas de Product Service V2
 
 El gateway mantiene V1 como valor predeterminado para no romper a los clientes existentes. Cuando

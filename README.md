@@ -175,6 +175,8 @@ instancia**. Tres capas lo cubren:
 ```bash
 dotnet format CachaElPrecio.slnx --verify-no-changes --no-restore
 dotnet build CachaElPrecio.slnx --no-restore
+# Las pruebas contra AWS real se omiten; se activan con CEP_AWS_REAL=1 y credenciales del lab.
+dotnet test CachaElPrecio.slnx --no-build
 
 cd scraper-service
 uv run pytest -m "not red"
@@ -207,6 +209,7 @@ BACKEND_URL=http://127.0.0.1:8080 npm run humo
 | [ADR-026](docs/adr/026-encabezado-secreto-del-borde.md) | por qué el borde se identifica con un encabezado |
 | [Product Service](product-service/README.md) | API, modelo y migraciones |
 | [Gateway](gateway/README.md) | rutas, seguridad y configuración |
+| [Notification Service](notification-service/README.md) | avisos por correo, errores y pruebas |
 | [Scraper](scraper-service/README.md) | tiendas, persistencia y ejecución |
 
 ## Flujo Git

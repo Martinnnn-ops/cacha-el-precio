@@ -177,7 +177,7 @@ trabajo**. Nunca antes.
 | Situación | Tipo | Qué hace el consumidor | Qué pasa con el mensaje |
 |---|---|---|---|
 | Se procesó bien | éxito | `DeleteMessage` | sale de la cola |
-| Base de datos caída, timeout, Gmail no responde | **recuperable** | no lo borra, registra el error | reaparece a los 60 s; en el último intento lo aparta el consumidor con diagnóstico (en product-service; en notification-service lo mueve SQS, sin atributos) |
+| Base de datos caída, timeout, Gmail no responde | **recuperable** | no lo borra, registra el error | reaparece a los 60 s; en el último intento lo aparta el consumidor con diagnóstico `recuperable-agotado` (product-service y notification-service) |
 | JSON roto, `type`/`version` desconocido, falla de validación, correo de destino inválido | **definitivo** | lo envía a la DLQ **con atributos de diagnóstico** y lo borra de la cola original | queda en la DLQ sin gastar 5 reintentos |
 
 Atributos de diagnóstico que se agregan al mandar a la DLQ (además del cuerpo original intacto):
@@ -253,7 +253,7 @@ demo con casos válidos e inválidos en [`gateway/Mensajeria.http`](../gateway/M
 | `GET /colas` · `GET /colas/{nombre}` | Mensajes visibles, en proceso y demorados, DLQ y `maxIntentos`, de qué colas es DLQ |
 | `POST /colas` · `DELETE /colas/{nombre}` | Crear (con DLQ opcional) y borrar |
 | `GET /colas/{nombre}/mensajes` | Lo que hay en una DLQ (con su diagnóstico) o en `cep-auditoria-precios`, **sin borrarlo**. Solo colas sin DLQ propia: para SQS mirar es una recepción y suma intentos (409) |
-| `POST /colas/{dlq}/redrive` | Devolver los mensajes de la DLQ a su cola (`?destino=` si la usan varias) |
+| `POST /colas/{dlq}/redrive` | Devolver los mensajes de la DLQ a su cola (`?destino=` si la usan varias). `mensajesMovidos` no confía solo en el contador aproximado de SQS: si al terminar no queda ninguno de los que había, informa cuántos había antes |
 | `GET /topicos` · `POST` · `DELETE /topicos/{nombre}` | Tópicos con sus suscripciones y filtros |
 | `GET /suscripciones` · `POST` · `PUT` · `DELETE /suscripciones/{topico}/{cola}` | Reglas de distribución; al suscribir se ajusta la política de la cola |
 | `GET /topologia` | `topologia.json` contra lo que existe (falta, distinta, extra) |

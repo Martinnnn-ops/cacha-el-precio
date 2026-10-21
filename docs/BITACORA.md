@@ -1,6 +1,25 @@
 # Bitácora del proyecto
 
-Última actualización: 18-10-2026.
+Última actualización: 21-10-2026.
+
+## 20-10 · Deuda técnica del EP3 antes de montar en la cuenta del dominio — Martín
+
+- **notification-service explica sus fallos.** Lo mismo que product-service del 18-10: en el último
+  intento recuperable el consumidor aparta el mensaje en la DLQ con `recuperable-agotado` y la causa
+  de fondo, en vez de que SQS lo mueva sin atributos. Además, apagar el servicio ya no cuenta como
+  intento agotado. Primer proyecto de pruebas del servicio, `notification-service.Tests` (8 pruebas).
+- **El redrive ya no dice «0 movidos» si sí los movió.** El contador de la tarea nativa de SQS es
+  aproximado. Ahora se cuenta la DLQ antes de mover y, si al final no queda ninguno de esos, se informa
+  ese número. Probado con una SQS falsa que reproduce el caso (falla con el código anterior) y contra
+  AWS real. De paso, la prueba real del ping-pong esperaba solo 2 s a que el listado mostrara la cola
+  nueva y fallaba siempre; ahora espera como la del ciclo completo.
+- **`dotnet format` en cero.** Los 18 avisos de espacios de `PersonalController.cs` y
+  `ProductService.cs`, solo forma, sin cambiar lógica.
+- **Documentos al día.** El índice de `AGENTS.md` tenía conteos viejos (`TAREAS.md` decía 401 líneas y
+  tiene 291) y no listaba `MONTAR-EN-TU-CUENTA.md` ni el README de notification-service; las
+  comprobaciones del `README.md` suman `dotnet test`.
+- **Pendiente:** avisar a Orion, porque se tocó notification-service y `PersonalController.cs`, que son
+  de su carril. El outbox de SNS y el consumidor de auditoría siguen como deuda del informe.
 
 ## 18-10 (tarde) · EP3: pruebas de punta a punta en la EC2 (T13), DLQ con diagnóstico y vista del panel (T12) — Martín
 

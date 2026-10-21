@@ -33,11 +33,24 @@ saltados.
 ## Errores (resumen; el detalle está en MENSAJERIA.md)
 
 - **Recuperable** (BD/Cognito/product-service caídos, Gmail no responde, timeout): no se borra el
-  mensaje; reaparece a los 60 s y, al 5.º intento, SQS lo manda solo a la DLQ.
+  mensaje; reaparece a los 60 s. En el **último** intento (el `maxReceiveCount` de la cola, leído de
+  su `RedrivePolicy`) el consumidor lo aparta en la DLQ con `error-type=recuperable-agotado` y la
+  causa de fondo, para que desde el panel se sepa por qué falló. Si no puede leer el máximo, lo deja
+  como antes: SQS lo mueve solo, sin atributos.
 - **Definitivo** (JSON roto, `type`/`version` desconocido, `productId` ausente): va a la DLQ con
   atributos de diagnóstico y se borra, sin gastar reintentos.
 - Una **dirección inválida** (SMTP 550/553) se registra y se salta a esa persona; no manda todo el
   evento a la DLQ.
+
+## Pruebas
+
+```bash
+dotnet test notification-service.Tests
+```
+
+Prueban el consumidor con el `ServicioNotificaciones` real y todo lo demás falso (cola, seguidores,
+directorio, repositorio y un enviador de correo en memoria): éxito, definitivo, reintento, último
+intento con `recuperable-agotado`, causa de fondo y apagado. No necesitan AWS, Gmail ni base.
 
 ## Configuración
 

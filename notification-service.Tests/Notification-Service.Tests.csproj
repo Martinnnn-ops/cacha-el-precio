@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Notification_Service.Tests</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Mismas versiones que product-service.Tests: no son dependencias nuevas. -->
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\notification-service\Notification-Service.csproj" />
+  </ItemGroup>
+
+  <!--
+    Unifica Entity Framework a 10.0.11, igual que product-service.Tests:
+    notification-service trae en runtime EF 10.0.0 (via Npgsql) y, build-only,
+    EF Core Design 10.0.11. Al referenciarlo, las dos versiones chocan (MSB3277).
+    Estos tests no instancian EF (usan un repositorio en memoria), asi que fijar
+    la mayor solo silencia el aviso sin efecto en runtime.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
+  </ItemGroup>
+
+</Project>
