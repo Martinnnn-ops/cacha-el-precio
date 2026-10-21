@@ -29,28 +29,30 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 |---|---|---|
 | **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 484 líneas |
 | Política de marcas/edad, armario personal, limpieza respaldada y pruebas | `docs/CATALOGO-PERSONAL.md` | 87 líneas |
-| **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 918 líneas |
+| **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 939 líneas |
 | La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 408 líneas |
 | Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
 | Límites de servicios, BFF, persistencia, escalado y ADR | `docs/ARQUITECTURA.md` y `docs/adr/020-*.md` | — |
-| Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 401 líneas |
-| **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 241 líneas |
+| Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 291 líneas |
+| **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 361 líneas |
+| **Montar el sistema en tu cuenta paso a paso** (recetas, panel de mensajería, lista del dueño del dominio) | `docs/MONTAR-EN-TU-CUENTA.md` | 557 líneas |
 | En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 212 líneas |
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
-| **Mensajería del EP3: colas, tópicos, contratos, errores, administración** | `docs/MENSAJERIA.md` | 302 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 1138 líneas |
+| **Mensajería del EP3: colas, tópicos, contratos, errores, administración** | `docs/MENSAJERIA.md` | 309 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 1157 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
-| Presentar el proyecto a alguien de afuera | `README.md` | 215 líneas |
+| Presentar el proyecto a alguien de afuera | `README.md` | 218 líneas |
 
 Y el README de cada módulo, que es el más corto y el que más rinde cuando la tarea es sobre ese
 módulo en concreto:
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| Qué valida el BFF en el código, cómo se prueba, y la administración de mensajería | `gateway/README.md` | 107 líneas |
-| **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 543 líneas |
+| Qué valida el BFF en el código, cómo se prueba, y la administración de mensajería | `gateway/README.md` | 112 líneas |
+| **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 561 líneas |
 | Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 154 líneas |
+| El consumidor de avisos: errores, diagnóstico en la DLQ y sus pruebas | `notification-service/README.md` | 83 líneas |
 | El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 199 líneas |
 | El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 119 líneas |
 | El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |
