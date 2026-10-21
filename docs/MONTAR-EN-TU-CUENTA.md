@@ -9,20 +9,23 @@
 > el dominio y montarlo en cualquier otra, y los scripts la detectan solos. Está explicada en el
 > [paso 0](#0-lo-primero-el-dominio) y marcada 🅐 / 🅑 en cada paso donde importa.
 >
-> Última revisión: **14-10-2026**, probado de punta a punta en la cuenta `731705830984` (antes, el
-> 10-09 en `116813910999`). Desde el EP3, `crear-api-gateway.sh` también deja lista la mensajería.
+> Última revisión: **20-10-2026**. Probado de punta a punta el 14-10 en la cuenta `731705830984`
+> (antes, el 10-09 en `116813910999`). Desde el EP3, `crear-api-gateway.sh` también deja lista la
+> mensajería, y `hacer-admin.sh` da acceso al panel de mensajería a las cuentas de Google.
 
 ---
 
 ## Índice
 
 - [**Las dos recetas, para copiar y pegar**](#las-dos-recetas-para-copiar-y-pegar)
+- [**Lista de verificación del dueño del dominio**](#lista-de-verificación-del-dueño-del-dominio)
 - [0. Lo primero: el dominio](#0-lo-primero-el-dominio)
 - [1. Antes de empezar](#1-antes-de-empezar)
 - [2. Los cuatro comandos](#2-los-cuatro-comandos)
 - [3. Qué hace cada script](#3-qué-hace-cada-script)
 - [4. Comprobar que quedó bien](#4-comprobar-que-quedó-bien)
 - [5. Ver el sitio](#5-ver-el-sitio)
+- [5.5 Entrar al panel de mensajería](#55-entrar-al-panel-de-mensajería)
 - [6. Apagar sin perder datos](#6-apagar-sin-perder-datos)
 - [7. Si algo falla](#7-si-algo-falla)
 - [Apéndice: qué se deriva solo](#apéndice-qué-se-deriva-solo-y-qué-no)
@@ -58,7 +61,14 @@ aws sts get-caller-identity       # tiene que responder con TU número de cuenta
 
 # 5 · la aplicación y el sitio
 LLAVE=~/labsuser.pem ./tools/desplegar.sh
+
+# 6 · el panel de mensajería: entra UNA vez con Google en www.cacha-el-precio.com y luego
+./tools/hacer-admin.sh tu@gmail.com
+#    cierra sesión en el sitio y vuelve a entrar: el menú ya muestra «Mensajería»
 ```
+
+> Si `google.env` trae la línea `ADMINS=...` ([1.3](#13-googleenv--🅐🅑--una-vez-y-es-compartido)),
+> el paso 6 lo hace solo `crear-cognito.sh` para quienes ya hayan entrado alguna vez.
 
 **Si corres el paso 4 antes de tocar el DNS**, el borde apuntará a tu IP por el puerto 8080.
 Funciona igual, pero pierdes el salto cifrado — se arregla volviendo a correrlo después.
@@ -190,8 +200,13 @@ descarga desde la consola. No es del proyecto, es de tu sesión.
 cat > google.env <<'EOF'
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
+# opcional: las cuentas de Google que verán el panel de mensajería
+ADMINS="uno@gmail.com,otro@gmail.com"
 EOF
 ```
+
+**Por qué `ADMINS` va aquí y no en el repositorio:** son correos personales y el repositorio es
+público. Ver [5.5](#55-entrar-al-panel-de-mensajería).
 
 **Por qué a mano:** hay **una sola aplicación registrada en Google**, con un secreto que no se
 puede derivar ni regenerar por script. Los tres usan el mismo archivo; hay que pasarlo por un
@@ -275,7 +290,8 @@ El que aprieta es compilar las imágenes de .NET. Son 0,0104 USD/hora más.
 
 Un user pool, el Hosted UI, el resource server con el scope `ingesta`, **tres** app clients
 (frontend, scraper, pruebas), los grupos `admin` y `usuario`, dos usuarios de prueba y —si hay
-`google.env`— el proveedor de Google.
+`google.env`— el proveedor de Google. Al final, si `google.env` trae `ADMINS`, llama a
+`hacer-admin.sh` con esos correos.
 
 El dominio del Hosted UI **se deriva del número de cuenta**, así que en otra cuenta sale otro
 nombre solo. No hay nada que editar.
@@ -373,6 +389,56 @@ no funciona**.
 > Lo que sí va cifrado en los dos casos son **los datos**: el API Gateway es `https://`. Lo que
 > viaja sin cifrar es el HTML y el JavaScript, que son públicos de todos modos.
 
+### 5.5 Entrar al panel de mensajería
+
+El panel (`/admin/mensajeria`) solo aparece si el token trae el grupo `admin`. Los usuarios de
+prueba de `crear-cognito.sh` ya están en ese grupo, pero **en el sitio solo se entra con Google**,
+así que por ahí no sirven. Hay que meter al grupo la cuenta de Google de quien va a usar el panel:
+
+```bash
+# 1 · entrar UNA vez con Google en el sitio (ahí Cognito crea el usuario)
+# 2 · desde el repositorio:
+./tools/hacer-admin.sh tu@gmail.com
+# 3 · cerrar sesión en el sitio y volver a entrar
+```
+
+**Por qué no se puede hacer antes.** Un usuario de Google no existe en el pool hasta su primer
+login, y Cognito no lo nombra por su correo sino como `Google_<número>`, que nadie puede adivinar.
+`hacer-admin.sh` lo busca por el correo, que sí se conoce.
+
+**Por qué hay que volver a entrar.** El grupo viaja **dentro** del token. El token que ya tienes
+se emitió antes del cambio y no lo trae; uno nuevo sí.
+
+Otros usos:
+
+```bash
+./tools/hacer-admin.sh --listar                     # quién es admin hoy
+./tools/hacer-admin.sh --quitar alguien@gmail.com   # deshacer
+```
+
+En 🅑 (sin dominio) funciona igual en `localhost:5173`, siempre que su `google.env` tenga Google
+configurado. Sin Google no hay cómo entrar al sitio, y la mensajería se prueba con los usuarios de
+prueba y `tools/probar-mensajeria.py`.
+
+---
+
+## Lista de verificación del dueño del dominio
+
+Para 🅐, antes de la demo. Cada línea es algo que ya falló alguna vez o que los scripts no pueden
+comprobar por ti.
+
+| | Qué revisar | Cómo |
+|---|---|---|
+| ☐ | Tu clon está al día en `development` | `git switch development && git pull`. La EC2 clona de GitHub, no de tu disco |
+| ☐ | **`www` apunta al bucket de ESTA cuenta** | En Cloudflare, `www` → `cacha-el-precio-web-<TU-CUENTA>`. Si apunta al bucket de otro repositorio o de otra cuenta, el sitio no trae el panel ni habla con tu Cognito |
+| ☐ | `api` apunta a tu IP | `getent hosts api.cacha-el-precio.com` responde la IP de `infra.env` |
+| ☐ | Google conoce tu dirección de retorno | En Google Cloud Console está la que imprime `crear-cognito.sh` (`…-<TU-CUENTA>.auth…/oauth2/idpresponse`) |
+| ☐ | Hay un solo pool `cacha-el-precio` | `aws cognito-idp list-user-pools --max-results 20`. Uno hecho a mano tiene otro dominio y rompe el login |
+| ☐ | El catálogo no está vacío | `curl $API_GATEWAY_URL_PROD/productos`. Si sale `[]`, restaura un respaldo o corre el scraper ([4](#el-catálogo-parte-vacío)) |
+| ☐ | Entras con Google en `www` | Y quedas con sesión, sin volver a la pantalla de login |
+| ☐ | Eres admin | `./tools/hacer-admin.sh tu@gmail.com`, sales y vuelves a entrar ([5.5](#55-entrar-al-panel-de-mensajería)) |
+| ☐ | El panel carga | Menú → «Mensajería», y también recargando directo `www.cacha-el-precio.com/admin/mensajeria` |
+
 ---
 
 ## 6. Apagar sin perder datos
@@ -433,6 +499,9 @@ Pide escribir `RESTAURAR` antes de sobrescribir nada.
 | Un contenedor muere al compilar | Sin memoria. Comprueba el swap: `swapon --show` |
 | `POST /ingesta` da **400** y el mensaje no llega | La integración tiene la URL antigua de la cola (`queue.amazonaws.com`). Vuelve a correr `crear-api-gateway.sh`, que la pasa al formato `sqs.<region>.amazonaws.com` |
 | El `Caddyfile` no hace efecto | La máquina clona de GitHub: tiene que estar en `development` |
+| No aparece «Mensajería» en el menú, o `/admin/mensajeria` te manda al inicio | Tu cuenta de Google no está en `admin`, o sí está pero tu token es de antes. Corre `hacer-admin.sh` y **vuelve a entrar** ([5.5](#55-entrar-al-panel-de-mensajería)) |
+| `hacer-admin.sh` dice que el correo «todavía no existe» | Esa cuenta nunca entró con Google en **este** pool. Que entre una vez y se vuelve a correr |
+| El panel da **403** con sesión de admin | El token es anterior al cambio de grupo: cerrar sesión y volver a entrar |
 
 ---
 

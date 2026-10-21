@@ -18,6 +18,8 @@
 # Variables opcionales:
 #   REGION        (por defecto us-east-1, que es la que permite el Learner Lab)
 #   CLAVE_PRUEBA  clave de los usuarios de prueba; si no se pasa, se genera una
+#   ADMINS        correos de Google que van al grupo admin, separados por coma.
+#                 Se lee de google.env (asi no quedan en el repo). Ver paso 11.
 # ---------------------------------------------------------------------------
 set -uo pipefail
 
@@ -446,6 +448,23 @@ COGNITO_CLAVE_PRUEBA=$CLAVE_PRUEBA
 JSON
 chmod 600 "$SALIDA"
 verde "  escrito: $SALIDA"
+
+# --------------------------------------------------------------------------
+# 11. Admins de Google
+#    Un usuario de Google recien existe en el pool despues de su primer login,
+#    asi que en una cuenta nueva esto no encuentra a nadie y solo avisa. Al
+#    volver a correr el script (o al remontar con el pool ya usado) los agrega
+#    solo. Va despues de escribir cognito.env porque hacer-admin.sh lo lee.
+# --------------------------------------------------------------------------
+titulo "11. Admins de Google"
+if [[ -n "${ADMINS:-}" ]]; then
+  IFS=',' read -r -a LISTA_ADMINS <<< "${ADMINS// /}"
+  "$RAIZ/tools/hacer-admin.sh" "${LISTA_ADMINS[@]}"
+  [[ $? -eq 2 ]] && gris "  los que faltan: que entren con Google y corran ./tools/hacer-admin.sh <correo>"
+else
+  gris "  sin ADMINS en google.env: nadie de Google es admin todavia"
+  gris "  despues del primer login: ./tools/hacer-admin.sh tu@gmail.com"
+fi
 
 titulo "Listo"
 cat <<RESUMEN
