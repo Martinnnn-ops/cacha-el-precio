@@ -43,3 +43,10 @@ export function leerError(e) {
   }
   return { mensaje: datos.mensaje ?? e?.message ?? 'Algo no salió bien.', campos }
 }
+
+// Bandeja de correos generados por notification-service (ver
+// notification-service/Correo/EndpointsBandeja.cs). El destinatario llega
+// enmascarado; el HTML es el mismo que recibe quien sigue la prenda.
+export const listarCorreos = (limite = 20) => http.get(`${BASE}/correos`, { params: { limite } })
+export const verCorreo = (id) => http.get(`${BASE}/correos/${id}`)
+export const verEjemplo = (tipo) => http.get(`${BASE}/correos/ejemplo/${nombre(tipo)}`)
