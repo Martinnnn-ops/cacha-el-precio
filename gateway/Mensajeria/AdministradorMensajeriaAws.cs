@@ -542,6 +542,21 @@ public sealed class AdministradorMensajeriaAws(
 
     // Toda llamada a AWS pasa por aca: los errores salen traducidos a algo que
     // una persona entiende, y el permiso denegado se distingue del resto.
+    public async Task<string> PublicarAsync(string topico, string mensaje, IReadOnlyList<AtributoMensaje> atributos, CancellationToken ct)
+    {
+        var arn = await ArnDeTopicoAsync(topico, ct) ?? throw new RecursoNoEncontradoException("el topico", topico);
+        var r = await Aws($"publicar en el topico {topico}", () => sns.PublishAsync(new Sns.PublishRequest
+        {
+            TopicArn = arn,
+            Message = mensaje,
+            MessageAttributes = atributos.ToDictionary(
+                a => a.Nombre,
+                a => new Sns.MessageAttributeValue { DataType = a.Tipo, StringValue = a.Valor })
+        }, ct));
+        log.LogInformation("Publicado en {Topico} desde el panel: {MessageId}", topico, r.MessageId);
+        return r.MessageId;
+    }
+
     private static async Task<T> Aws<T>(string operacion, Func<Task<T>> llamada)
     {
         try
