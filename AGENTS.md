@@ -39,8 +39,8 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 | En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 212 líneas |
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
-| **Mensajería del EP3: colas, tópicos, contratos, errores, administración** | `docs/MENSAJERIA.md` | 309 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 1211 líneas |
+| **Mensajería del EP3: colas, tópicos, contratos, errores, administración, bandeja y simulador** | `docs/MENSAJERIA.md` | 342 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 1255 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
 | Presentar el proyecto a alguien de afuera | `README.md` | 218 líneas |
 
@@ -49,10 +49,10 @@ módulo en concreto:
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| Qué valida el BFF en el código, cómo se prueba, y la administración de mensajería | `gateway/README.md` | 112 líneas |
+| Qué valida el BFF en el código, cómo se prueba, y la administración de mensajería | `gateway/README.md` | 124 líneas |
 | **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 561 líneas |
 | Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 154 líneas |
-| El consumidor de avisos: errores, diagnóstico en la DLQ y sus pruebas | `notification-service/README.md` | 83 líneas |
+| El consumidor de avisos: errores, diagnóstico en la DLQ, la bandeja de correos y sus pruebas | `notification-service/README.md` | 96 líneas |
 | El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 199 líneas |
 | El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 119 líneas |
 | El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |

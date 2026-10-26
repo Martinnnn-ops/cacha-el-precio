@@ -1,6 +1,50 @@
 # Bitácora del proyecto
 
-Última actualización: 21-10-2026.
+Última actualización: 26-10-2026.
+
+## 26-10 · Panel de mensajería para la demo: bandeja de correos, simular aviso y orden por flujo — Martín
+
+Rama `feature/bandeja-correos`, desde `development`.
+
+**Frontend de Panditax al día.** El `main` de su repo tenía cinco commits del 21-10 que no estaban
+en el monorepo: tema claro por defecto, ficha en móvil, retorno de Google y `wrangler.jsonc`. Se
+trajeron con `git subtree pull`. Hubo dos conflictos (`humo.mjs` y `ProductoDetailView.vue`) y en
+los dos se quedó su versión, que era la más nueva. `frontend/` quedó idéntico a su `main`.
+
+**El correo solo se veía en los logs.** En la EC2 notification-service corre con
+`CORREO_MODO=log`, así que el correo se armaba completo pero solo aparecía en
+`docker compose logs`. Ahora cada correo se copia en `notification.correos_generados` (los últimos
+50) y el panel lo muestra tal como llega, a través de `/api/admin/mensajeria/correos`. La migración
+se escribió a mano, porque `dotnet-ef` no está instalado. Para cuidar eso hay una prueba que compara
+el snapshot con el modelo, y se comprobó que falla si se cambia un largo de columna. De paso, el
+correo se rediseñó con tablas y estilos en línea, con los colores de la marca.
+
+**Simular un aviso.** `POST /api/admin/mensajeria/simular-aviso` publica en `cep-cambios-oferta`
+un cambio inventado con los datos reales de un producto. Usa el mismo sobre que product-service,
+con `source = "panel-admin"`, y no toca precios. En el panel son tres botones fijos y una barra de
+cuatro pasos que avanza sola. Probado en la EC2: una baja de 30% y un agotado generan correo, y una
+baja de 5% la filtra la regla (pide 10% o más).
+
+**El panel, una sola página por flujo.** Tiene un índice que dice para qué sirve cada sección,
+tablas de colas y reglas encerradas en su caja (cada DLQ bajo su cola), el plano de los dos flujos
+y, al final, administrar. Se probó con pestañas y con cajas sueltas, pero leía mejor como tablas
+ordenadas.
+
+**Lo que costó.** El disco de la EC2 (8 GB) estaba al 96% y el build de notification-service falló
+con `No space left on device`. Se liberaron ~1,5 GB de caché de builds e imágenes sin usar, sin
+tocar volúmenes, y quedó al 80%. Otro tropiezo: `docker compose up --build gateway` intenta
+reconstruir product-service, porque es dependencia; para reconstruir uno solo hay que usar
+`build <servicio>` + `up -d --no-deps`.
+
+**Pendiente.**
+- ⚠️ La EC2 corre esta rama copiada a mano, no `development`. Un `desplegar.sh` la pisa hasta que
+  se mergee el PR.
+- Las DLQ tienen 5 mensajes de las pruebas del 21-10 (precio −1 y JSON roto). Se dejan a propósito
+  para la demo del indicador de errores.
+- El admin de prueba sigue el producto 1. El simulador lo hace seguir solo, porque sin seguidores
+  no hay a quién avisar.
+- En el Learner Lab no hay IdP de Google (`google.env` vacío), así que el panel se probó en
+  `localhost:5173` con el token del admin de prueba guardado a mano en `sessionStorage`.
 
 ## 21-10 · Catálogo: filtros plegables, presupuesto con piso y techo, y armador con vista previa — Martín
 
