@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Notification_Service.Consumidor;
 using Notification_Service.Correo;
 using Notification_Service.Mensajeria;
+using Notification_Service.Models.Entities;
 using Notification_Service.Repository;
 using Notification_Service.Seguidores;
 using Notification_Service.Service;
@@ -51,6 +52,46 @@ public class ConsumidorNotificacionesTests
         Assert.Equal("ana@correo.cl", correo.Para);
         Assert.Equal(["m-1"], p.Cola.Borrados);
         Assert.Empty(p.Cola.EnDlq);
+    }
+
+    // ── Bandeja del panel ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task El_correo_enviado_queda_en_la_bandeja_con_su_modo()
+    {
+        var p = Armar();
+
+        await p.Consumidor.ManejarAsync(Mensaje(PrecioBajo), CancellationToken.None);
+
+        var copia = Assert.Single(p.Bandeja.Guardados);
+        Assert.Equal("precio.bajo", copia.Tipo);
+        Assert.Equal("memoria", copia.Modo);
+        Assert.Equal("ana@correo.cl", copia.Correo.Para);
+        Assert.Equal("Bajó 25% · Polera basica negra", copia.Correo.Asunto);
+    }
+
+    [Fact]
+    public async Task Si_la_bandeja_falla_el_aviso_igual_se_da_por_enviado()
+    {
+        var p = Armar();
+        p.Bandeja.Falla = new InvalidOperationException("tabla bloqueada");
+
+        await p.Consumidor.ManejarAsync(Mensaje(PrecioBajo), CancellationToken.None);
+
+        Assert.Single(p.Enviador.Enviados);
+        Assert.Equal(["m-1"], p.Cola.Borrados);
+        Assert.Empty(p.Cola.EnDlq);
+    }
+
+    [Fact]
+    public async Task Un_aviso_repetido_no_duplica_la_copia()
+    {
+        var p = Armar();
+
+        await p.Consumidor.ManejarAsync(Mensaje(PrecioBajo), CancellationToken.None);
+        await p.Consumidor.ManejarAsync(Mensaje(PrecioBajo, id: "m-2"), CancellationToken.None);
+
+        Assert.Single(p.Bandeja.Guardados);
     }
 
     // ── Error definitivo: a la DLQ con diagnostico, sin reintentos ──────
@@ -154,26 +195,29 @@ public class ConsumidorNotificacionesTests
         new(id, cuerpo, "recibo-" + id, intento);
 
     private sealed record Piezas(
-        ConsumidorNotificaciones Consumidor, ColaFalsa Cola, SeguidoresFalsos Seguidores, EnviadorMemoria Enviador);
+        ConsumidorNotificaciones Consumidor, ColaFalsa Cola, SeguidoresFalsos Seguidores, EnviadorMemoria Enviador,
+        BandejaMemoria Bandeja);
 
     private static Piezas Armar()
     {
         var cola = new ColaFalsa();
         var seguidores = new SeguidoresFalsos();
         var enviador = new EnviadorMemoria();
+        var bandeja = new BandejaMemoria();
         var servicios = new ServiceCollection()
             .AddLogging()
             .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
             .AddSingleton<ISeguidoresClient>(seguidores)
             .AddSingleton<IDirectorioCorreos, DirectorioFalso>()
             .AddSingleton<INotificacionesRepository, RepositorioMemoria>()
+            .AddSingleton<IBandejaCorreos>(bandeja)
             .AddSingleton<IEnviadorCorreo>(enviador)
             .AddScoped<ServicioNotificaciones>()
             .BuildServiceProvider();
 
         var consumidor = new ConsumidorNotificaciones(cola, servicios.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<ConsumidorNotificaciones>.Instance);
-        return new Piezas(consumidor, cola, seguidores, enviador);
+        return new Piezas(consumidor, cola, seguidores, enviador, bandeja);
     }
 
     private sealed class ColaFalsa : IColaMensajes
@@ -238,6 +282,7 @@ public class ConsumidorNotificacionesTests
     {
         public List<CorreoSalida> Enviados { get; } = [];
         public Exception? Falla { get; set; }
+        public string Modo => "memoria";
 
         public Task EnviarAsync(CorreoSalida correo, CancellationToken ct)
         {
@@ -245,5 +290,25 @@ public class ConsumidorNotificacionesTests
             Enviados.Add(correo);
             return Task.CompletedTask;
         }
+    }
+
+    /// <summary>La bandeja del panel en memoria, con la opcion de fallar.</summary>
+    private sealed class BandejaMemoria : IBandejaCorreos
+    {
+        public List<(string Tipo, string Modo, CorreoSalida Correo)> Guardados { get; } = [];
+        public Exception? Falla { get; set; }
+
+        public Task GuardarAsync(Guid eventId, string tipo, string modo, CorreoSalida correo, CancellationToken ct)
+        {
+            if (Falla is not null) return Task.FromException(Falla);
+            Guardados.Add((tipo, modo, correo));
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<CorreoGenerado>> ListarAsync(int limite, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<CorreoGenerado>>([]);
+
+        public Task<CorreoGenerado?> ObtenerAsync(long id, CancellationToken ct) =>
+            Task.FromResult<CorreoGenerado?>(null);
     }
 }

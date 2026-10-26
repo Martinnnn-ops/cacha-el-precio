@@ -15,6 +15,7 @@ public sealed class ServicioNotificaciones(
     ISeguidoresClient seguidores,
     IDirectorioCorreos directorio,
     INotificacionesRepository repositorio,
+    IBandejaCorreos bandeja,
     IEnviadorCorreo enviador,
     IConfiguration config,
     ILogger<ServicioNotificaciones> log)
@@ -64,6 +65,21 @@ public sealed class ServicioNotificaciones(
 
             await repositorio.MarcarEnviadoAsync(sobre.EventId, sub, sobre.Type, ct);
             log.LogInformation("Aviso enviado a {Sub}", sub);
+            await GuardarEnBandejaAsync(sobre, plantilla with { Para = correo }, ct);
+        }
+    }
+
+    // La copia para el panel es un extra: si falla, el aviso ya salio y quedo
+    // marcado, asi que no se reintenta el mensaje por esto.
+    private async Task GuardarEnBandejaAsync(SobreEvento sobre, CorreoSalida correo, CancellationToken ct)
+    {
+        try
+        {
+            await bandeja.GuardarAsync(sobre.EventId, sobre.Type, enviador.Modo, correo, ct);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log.LogWarning(e, "No se pudo guardar la copia del correo en la bandeja");
         }
     }
 

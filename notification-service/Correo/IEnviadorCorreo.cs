@@ -5,6 +5,9 @@ public sealed record CorreoSalida(string Para, string Asunto, string Html, strin
 
 public interface IEnviadorCorreo
 {
+    // "log" o "smtp": queda anotado en la bandeja junto a cada correo.
+    string Modo { get; }
+
     // Envia el correo. Una direccion rechazada por el servidor (SMTP 550/553) es
     // un ErrorDefinitivoException; un fallo de conexion o timeout se propaga tal
     // cual (recuperable).

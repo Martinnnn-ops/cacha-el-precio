@@ -15,6 +15,8 @@ public sealed class EnviadorCorreoSmtp(IConfiguration config, ILogger<EnviadorCo
     private const int Puerto = 587;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
+    public string Modo => "smtp";
+
     private readonly string usuario = config["SMTP_USUARIO"] ?? "";
     private readonly string clave = config["SMTP_CLAVE"] ?? "";
 
