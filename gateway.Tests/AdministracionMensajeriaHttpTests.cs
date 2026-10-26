@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using CachaElPrecio.Gateway.Mensajeria;
 
 namespace CachaElPrecio.Gateway.Tests;
 
@@ -46,6 +47,7 @@ public class AdministracionMensajeriaHttpTests : IDisposable
             web.UseSetting("MENSAJERIA_MODO", "memoria");
             web.UseSetting("TOPOLOGIA_RUTA", RutaTopologia());
             web.ConfigureTestServices(services =>
+            {
                 services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
                 {
                     // Las claves de firma salen de acá y no del JWKS de Cognito.
@@ -53,7 +55,11 @@ public class AdministracionMensajeriaHttpTests : IDisposable
                     configuracion.SigningKeys.Add(Clave);
                     o.Configuration = configuracion;
                     o.TokenValidationParameters.IssuerSigningKey = Clave;
-                }));
+                });
+                // notification-service no corre en los tests: responde uno falso.
+                services.AddHttpClient<BandejaCorreosProxy>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new NotificacionesFalso());
+            });
         });
         admin = Cliente(Token(grupos: ["admin"]));
     }
@@ -215,6 +221,52 @@ public class AdministracionMensajeriaHttpTests : IDisposable
     [Fact]
     public async Task Una_cola_que_no_existe_responde_404() =>
         await Esperar(admin.GetAsync("/api/admin/mensajeria/colas/cep-fantasma"), HttpStatusCode.NotFound);
+
+    // ── Bandeja de correos (proxy a notification-service) ────────────────
+
+    [Fact]
+    public async Task La_bandeja_tambien_exige_el_grupo_admin()
+    {
+        using var usuario = Cliente(Token(grupos: ["usuario"]));
+        Assert.Equal(HttpStatusCode.Forbidden, (await usuario.GetAsync("/api/admin/mensajeria/correos")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await usuario.GetAsync("/api/admin/mensajeria/correos/7")).StatusCode);
+    }
+
+    [Fact]
+    public async Task La_bandeja_pasa_lo_que_responde_notification_service()
+    {
+        var lista = await Json(await admin.GetAsync("/api/admin/mensajeria/correos?limite=5"), HttpStatusCode.OK);
+        Assert.Equal("internal/correos?limite=5", lista[0].GetProperty("pedido").GetString());
+
+        var ejemplo = await Json(await admin.GetAsync("/api/admin/mensajeria/correos/ejemplo/precio.bajo"), HttpStatusCode.OK);
+        Assert.Equal("internal/correos/ejemplo/precio.bajo", ejemplo.GetProperty("pedido").GetString());
+
+        await Esperar(admin.GetAsync("/api/admin/mensajeria/correos/404"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Si_notification_service_no_responde_la_bandeja_da_502() =>
+        await Esperar(admin.GetAsync("/api/admin/mensajeria/correos/999"), HttpStatusCode.BadGateway);
+
+    // Responde lo que se le pidió, para comprobar la ruta; /404 da 404 y /999
+    // hace como si el servicio estuviera apagado.
+    private sealed class NotificacionesFalso : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            string pedido = request.RequestUri!.PathAndQuery.TrimStart('/');
+            if (pedido.EndsWith("/999")) throw new HttpRequestException("Connection refused");
+
+            var codigo = pedido.EndsWith("/404") ? HttpStatusCode.NotFound : HttpStatusCode.OK;
+            string json = pedido.StartsWith("internal/correos?")
+                ? JsonSerializer.Serialize(new[] { new { pedido } })
+                : JsonSerializer.Serialize(new { pedido });
+            return Task.FromResult(new HttpResponseMessage(codigo)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
+        }
+    }
 
     // =====================================================================
 

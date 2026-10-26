@@ -50,6 +50,7 @@ public static class EndpointsMensajeria
         }
 
         services.AddScoped<ServicioAdministracion>();
+        BandejaCorreosProxy.Registrar(services, config);
         return modo;
     }
 
@@ -75,7 +76,7 @@ public static class EndpointsMensajeria
         {
             modo = s.Modo,
             prefijo = s.Prefijo,
-            recursos = new[] { "colas", "topicos", "suscripciones", "topologia" }
+            recursos = new[] { "colas", "topicos", "suscripciones", "topologia", "correos" }
         }));
 
         // ── Colas ──────────────────────────────────────────────────────────
@@ -147,6 +148,9 @@ public static class EndpointsMensajeria
 
         admin.MapPost("/topologia/aplicar", async (ServicioAdministracion s, CancellationToken ct) =>
             Results.Ok(new { acciones = await s.AplicarTopologiaAsync(ct), estado = await s.CompararTopologiaAsync(ct) }));
+
+        // ── Correos generados por notification-service (la bandeja) ────────
+        BandejaCorreosProxy.Mapear(admin);
     }
 
     // Traduce las excepciones del negocio a respuestas con la misma forma que
