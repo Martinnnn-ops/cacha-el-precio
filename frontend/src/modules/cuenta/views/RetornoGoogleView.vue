@@ -23,20 +23,27 @@ onMounted(async () => {
     error: typeof route.query.error === 'string' ? route.query.error : null,
   })
 
-  procesando.value = false
-
   if (cuenta.autenticado) {
     // `replace` y no `push`: el código de autorización queda en la URL y no
     // debe poder recuperarse con el botón atrás. Ya está consumido y volver
     // aquí sólo daría un error confuso.
-    router.replace(destino ?? { name: 'inicio' })
+    //
+    // `procesando` NO se apaga en este camino: navegar es asíncrono (descarga
+    // el código de la página de destino) y, si se apagara antes, la pantalla
+    // mostraría «No pudimos entrar» durante esos segundos aunque el inicio de
+    // sesión haya salido bien. La vista desaparece sola al cambiar de ruta.
+    await router.replace(destino ?? { name: 'inicio' })
+
+    return
   }
+
+  procesando.value = false
 })
 </script>
 
 <template>
   <BaseTicket class="retorno">
-    <template v-if="procesando">
+    <template v-if="procesando || cuenta.autenticado">
       <p class="retorno__punto" aria-hidden="true" />
       <p class="retorno__texto" role="status">Entrando…</p>
     </template>

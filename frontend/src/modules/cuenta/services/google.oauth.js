@@ -139,6 +139,20 @@ export function destinoGuardado() {
   return consumir(CLAVE_VOLVER)
 }
 
+/**
+ * ¿Hay un inicio de sesión a medias en esta pestaña? Lo hay si `irAGoogle`
+ * dejó guardado el `state` y todavía nadie lo ha consumido. No lo consume: sólo
+ * mira. Sirve para no tomar por una vuelta de Google cualquier enlace que
+ * traiga `?code=` por su cuenta.
+ */
+export function hayRetornoPendiente() {
+  try {
+    return sessionStorage.getItem(CLAVE_ESTADO) !== null
+  } catch {
+    return false
+  }
+}
+
 /** Canjea el código de autorización por el token de acceso, con Cognito. */
 export async function canjearCodigo(codigo, verificador) {
   const respuesta = await fetch(TOKEN, {
