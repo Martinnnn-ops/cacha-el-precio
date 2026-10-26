@@ -40,7 +40,7 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
 | **Mensajería del EP3: colas, tópicos, contratos, errores, administración, bandeja y simulador** | `docs/MENSAJERIA.md` | 342 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 1255 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 1280 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
 | Presentar el proyecto a alguien de afuera | `README.md` | 218 líneas |
 

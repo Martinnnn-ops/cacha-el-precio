@@ -1842,20 +1842,16 @@ try {
     const armar = await render('/armar', (st) => st.cargarProductos())
 
     check(
-      '/armar renderiza las capas combinables',
-      [
-        'Cabeza',
-        'Torso · capa base',
-        'Torso · abrigo',
-        'Ropa interior',
-        'Piernas',
-        'Calcetines',
-        'Calzado',
-      ].every((p) => armar.includes(p)),
+      '/armar es un armario: perchero a un lado y el outfit del cuerpo al otro',
+      armar.includes('Perchero') &&
+        armar.includes('Tu outfit') &&
+        // El tablero va de la cabeza a los pies; lo obligatorio se ve aunque esté vacío.
+        ['Torso', 'Piernas', 'Pies'].every((zona) => armar.includes(zona)) &&
+        armar.includes('Elegir piernas'),
     )
     check(
       '  permite separar talla de ropa y calzado',
-      armar.includes('Talla de ropa') && armar.includes('Talla de calzado'),
+      armar.includes('>Talla<') && armar.includes('>Calzado<'),
     )
     check(
       '  ofrece completar el outfit automáticamente',
@@ -1870,12 +1866,12 @@ try {
       st.error = 'Sin conexión.'
     })
     check(
-      'sin datos las ranuras siguen en pie',
-      vacia.includes('Cabeza') && vacia.includes('Torso'),
+      'sin datos el tablero sigue en pie',
+      vacia.includes('Torso') && vacia.includes('Piernas') && vacia.includes('Pies'),
     )
     check(
-      '  y cada una dice que no hay prendas',
-      vacia.includes('Todavía no tenemos prendas para esta parte'),
+      '  y lo obligatorio dice que no hay prendas',
+      vacia.includes('todavía no hay prendas'),
     )
 
     const galeria = await render('/outfits', (st) => st.cargarProductos())

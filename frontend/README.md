@@ -259,7 +259,7 @@ durante el render, el usuario ve una pantalla con salida en vez de un blanco.
 | `/producto/:slug` | `ProductoDetailView` | Consulta directa por slug V2, muestra ofertas y tallas por tienda y redirige enlaces antiguos `nombre-id`. |
 | `/comparar` | `CompararView` | Compara hasta tres productos en columnas equivalentes, con foto, tallas con stock y los detalles que declara el nombre. |
 | `/outfits` | `OutfitsView` | Outfits automáticos y selecciones preparadas. |
-| `/armar` | `ArmarView` | Armador por partes con talla separada de ropa/calzado, stock real, vista previa de las capas elegidas, autocompletado más barato y comparación entre comprar separado o en una tienda. |
+| `/armar` | `ArmarView` | Armador como armario digital: el **perchero** (`PercheroPrendas`, rejilla de prendas con pastillas por parte del cuerpo, búsqueda, género y talla separada de ropa/calzado) y **tu outfit** (`TableroOutfit`, de la cabeza a los pies con las capas del torso apiladas; lo opcional como «+ gorro»). Debajo, el total (`ResumenOutfit sin-lista`), autocompletado más barato y comparación entre comprar separado o en una tienda. En el teléfono, una barra fija con el total. |
 | `/login`, `/registro` | módulo `cuenta` | Sesión con cabecera y pie, sin anuncios. `/entrar` redirige a `/login`. |
 | `/terminos`, `/privacidad`, `/preguntas` | módulo `legal` | Páginas de texto. |
 

@@ -16,6 +16,10 @@ import { formatearPrecio } from '@/shared/utils/formato'
 
 // Desglose y totales del outfit. Es la pantalla que responde a la pregunta que
 // trae a alguien aquí: dónde compro cada cosa y cuánto me sale.
+// Con `sinLista` solo muestra los totales: en el armador las piezas ya se ven
+// en el tablero, y repetirlas aquí alargaba la columna sin decir nada nuevo.
+const props = defineProps({ sinLista: { type: Boolean, default: false } })
+
 const outfit = useOutfitStore()
 const cuenta = useCuentaStore()
 const coleccion = useColeccionStore()
@@ -49,7 +53,7 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
     <div class="resumen__cabecera">
       <div>
         <p class="eyebrow resumen__eyebrow">Resumen de compra</p>
-        <h2 class="display resumen__titulo">Tu outfit</h2>
+        <h2 class="display resumen__titulo">{{ props.sinLista ? 'Cuánto te sale' : 'Tu outfit' }}</h2>
       </div>
 
       <span v-if="tallaRopa || tallaCalzado" class="resumen__tallas">
@@ -63,7 +67,7 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
     </p>
 
     <template v-else>
-      <ul class="resumen__lista">
+      <ul v-if="!sinLista" class="resumen__lista">
         <li v-for="{ parte, producto, oferta } in desglose" :key="parte" class="fila">
           <span class="fila__parte mono">{{ nombreParte(parte) }}</span>
 
@@ -94,7 +98,7 @@ const cuantasTiendas = computed(() => tiendasImplicadas.value.size)
         </li>
       </ul>
 
-      <div class="divisor" />
+      <div v-if="!sinLista" class="divisor" />
 
       <!-- Las dos formas de comprarlo, con su letra pequeña. Un total de "lo
            más barato pieza por pieza" que no diga que son varias tiendas puede
