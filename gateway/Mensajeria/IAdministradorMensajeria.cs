@@ -40,6 +40,11 @@ public interface IAdministradorMensajeria
     Task SuscribirAsync(ConfiguracionSuscripcion suscripcion, CancellationToken ct);
     Task EliminarSuscripcionAsync(string topico, string cola, CancellationToken ct);
 
+    // Publica un mensaje en un topico con sus atributos (los que miran los
+    // filtros de las reglas). Devuelve el MessageId. Lo usa el simulador de
+    // avisos del panel; los servicios publican con su propio publicador.
+    Task<string> PublicarAsync(string topico, string mensaje, IReadOnlyList<AtributoMensaje> atributos, CancellationToken ct);
+
     // ── DLQ ────────────────────────────────────────────────────────────────
     // Lee hasta `maximo` mensajes sin borrarlos (vuelven a quedar visibles).
     Task<IReadOnlyList<MensajeDlq>> VerMensajesAsync(string cola, int maximo, CancellationToken ct);
@@ -47,3 +52,6 @@ public interface IAdministradorMensajeria
     // Devuelve los mensajes de la DLQ a `destino` (la cola que la usa como DLQ).
     Task<ResultadoReproceso> ReprocesarAsync(string dlq, string destino, CancellationToken ct);
 }
+
+// Un atributo de mensaje SNS: Tipo es "String" o "Number".
+public sealed record AtributoMensaje(string Nombre, string Tipo, string Valor);

@@ -50,6 +50,8 @@ public static class EndpointsMensajeria
         }
 
         services.AddScoped<ServicioAdministracion>();
+        BandejaCorreosProxy.Registrar(services, config);
+        SimuladorAvisos.Registrar(services, config);
         return modo;
     }
 
@@ -75,7 +77,7 @@ public static class EndpointsMensajeria
         {
             modo = s.Modo,
             prefijo = s.Prefijo,
-            recursos = new[] { "colas", "topicos", "suscripciones", "topologia" }
+            recursos = new[] { "colas", "topicos", "suscripciones", "topologia", "correos" }
         }));
 
         // ── Colas ──────────────────────────────────────────────────────────
@@ -147,6 +149,15 @@ public static class EndpointsMensajeria
 
         admin.MapPost("/topologia/aplicar", async (ServicioAdministracion s, CancellationToken ct) =>
             Results.Ok(new { acciones = await s.AplicarTopologiaAsync(ct), estado = await s.CompararTopologiaAsync(ct) }));
+
+        // ── Correos generados por notification-service (la bandeja) ────────
+        BandejaCorreosProxy.Mapear(admin);
+
+        // ── Simular un aviso: publica un cambio de oferta en el topico ─────
+        // 202: el mensaje quedo publicado; lo que pase despues (reglas, colas,
+        // correo) es asincrono y se ve en el panel.
+        admin.MapPost("/simular-aviso", async (SimularAvisoSolicitud solicitud, SimuladorAvisos s, CancellationToken ct) =>
+            Results.Accepted(value: await s.SimularAsync(solicitud, ct)));
     }
 
     // Traduce las excepciones del negocio a respuestas con la misma forma que

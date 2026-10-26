@@ -107,6 +107,8 @@ services:
       # Dentro del compose el host es el NOMBRE DEL SERVICIO. Cada contenedor
       # tiene su propio localhost, y ahí no hay nadie escuchando.
       PRODUCT_URL: http://product-service:8081
+      # La bandeja de correos del panel (/api/admin/mensajeria/correos).
+      NOTIFICATION_URL: http://notification-service:8082
       # Los valores de Cognito salen de cognito.env, que no se versiona.
       # Sin ellos el servicio arranca pero rechaza todos los tokens.
       # Van entre comillas: el mensaje de ${VAR:?...} lleva dos puntos y sin

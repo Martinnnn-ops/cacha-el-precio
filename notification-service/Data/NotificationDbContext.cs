@@ -10,6 +10,7 @@ public class NotificationDbContext : DbContext
     public NotificationDbContext(DbContextOptions<NotificationDbContext> options) : base(options) { }
 
     public DbSet<NotificacionEnviada> NotificacionesEnviadas { get; set; }
+    public DbSet<CorreoGenerado> CorreosGenerados { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,5 +25,18 @@ public class NotificationDbContext : DbContext
         enviada.Property(e => e.Owner).HasColumnName("owner").HasMaxLength(128);
         enviada.Property(e => e.Tipo).HasColumnName("tipo").HasMaxLength(40).IsRequired();
         enviada.Property(e => e.EnviadoEn).HasColumnName("enviado_en").IsRequired();
+
+        var correo = modelBuilder.Entity<CorreoGenerado>();
+        correo.ToTable("correos_generados");
+        correo.HasKey(c => c.Id);
+        correo.Property(c => c.Id).HasColumnName("id").UseIdentityByDefaultColumn();
+        correo.Property(c => c.EventId).HasColumnName("event_id");
+        correo.Property(c => c.Tipo).HasColumnName("tipo").HasMaxLength(40).IsRequired();
+        correo.Property(c => c.Para).HasColumnName("para").HasMaxLength(320).IsRequired();
+        correo.Property(c => c.Asunto).HasColumnName("asunto").HasMaxLength(300).IsRequired();
+        correo.Property(c => c.Html).HasColumnName("html").IsRequired();
+        correo.Property(c => c.Texto).HasColumnName("texto").IsRequired();
+        correo.Property(c => c.Modo).HasColumnName("modo").HasMaxLength(10).IsRequired();
+        correo.Property(c => c.GeneradoEn).HasColumnName("generado_en").IsRequired();
     }
 }

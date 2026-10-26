@@ -64,6 +64,7 @@ else
 }
 
 builder.Services.AddScoped<INotificacionesRepository, NotificacionesRepository>();
+builder.Services.AddScoped<IBandejaCorreos, BandejaCorreos>();
 builder.Services.AddScoped<ServicioNotificaciones>();
 builder.Services.AddHostedService<ConsumidorNotificaciones>();
 
@@ -97,6 +98,7 @@ if (app.Environment.IsDevelopment())
         });
 }
 
+app.MapBandejaCorreos();
 app.MapHealthChecks("/health");
 
 app.Run();

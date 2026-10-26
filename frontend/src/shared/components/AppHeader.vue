@@ -14,7 +14,7 @@ import { textoDeUrl } from '@/shared/utils/rutas'
 // comparador rompería la cabecera). Quien las conoce es App.vue.
 const props = defineProps({
   tiendas: { type: Array, default: () => [] },
-  tema: { type: String, default: 'sistema' },
+  tema: { type: String, default: 'claro' },
   temas: { type: Array, default: () => ['sistema', 'claro', 'oscuro'] },
   usuario: { type: Object, default: null },
   // Solo cambia que enlaces se muestran: el backend exige el grupo igual.

@@ -25,10 +25,19 @@ saltados.
 | `Consumidor/` | `ConsumidorNotificaciones`: el bucle de long polling y el ACK/DLQ |
 | `Service/` | `ServicioNotificaciones`: el trabajo de un mensaje (validar → seguidores → correos → enviar) |
 | `Mensajeria/` | `IColaMensajes` y su implementación SQS. El negocio no habla con el SDK |
-| `Correo/` | `IEnviadorCorreo` (`smtp` con MailKit / `log`) y las plantillas HTML/texto |
+| `Correo/` | `IEnviadorCorreo` (`smtp` con MailKit / `log`), las plantillas HTML/texto y las rutas de la bandeja (`EndpointsBandeja`) |
 | `Seguidores/` | cliente HTTP a product-service y `sub → email` por Cognito (o config en local) |
-| `Repository/` | la marca `(event_id, owner)` que evita reenviar |
+| `Repository/` | la marca `(event_id, owner)` que evita reenviar, y la bandeja de correos generados (`BandejaCorreos`) |
 | `Data/` + `Migrations/` | esquema propio `notification`, aplicado con `Migrate()` al arrancar |
+
+## Bandeja de correos
+
+Cada correo generado se copia en `notification.correos_generados` (se guardan los últimos 50), para
+verlo en el panel de mensajería aunque el servicio corra con `CORREO_MODO=log`. Se lee por
+`GET /internal/correos`, `/internal/correos/{id}` y `/internal/correos/ejemplo/{tipo}`, este último
+con una prenda inventada y sin enviar nada. El destinatario sale enmascarado. Si la copia falla, el
+aviso igual se da por enviado. Detalle en
+[`docs/MENSAJERIA.md`](../docs/MENSAJERIA.md#bandeja-de-correos).
 
 ## Errores (resumen; el detalle está en MENSAJERIA.md)
 
@@ -49,8 +58,12 @@ dotnet test notification-service.Tests
 ```
 
 Prueban el consumidor con el `ServicioNotificaciones` real y todo lo demás falso (cola, seguidores,
-directorio, repositorio y un enviador de correo en memoria): éxito, definitivo, reintento, último
-intento con `recuperable-agotado`, causa de fondo y apagado. No necesitan AWS, Gmail ni base.
+directorio, repositorio, bandeja y un enviador de correo en memoria): éxito, definitivo, reintento,
+último intento con `recuperable-agotado`, causa de fondo y apagado. También la bandeja: que guarde
+la copia con su modo, que su falla no reintente el mensaje y que no duplique la copia. En
+`BandejaCorreosTests`, el enmascarado, los ejemplos y que **el snapshot de migraciones calce con el
+modelo**: la migración de la bandeja se escribió a mano, sin `dotnet-ef`. No necesitan AWS, Gmail
+ni base.
 
 ## Configuración
 

@@ -194,6 +194,19 @@ const tieneJuicio = computed(
     (producto.value?.contras?.length ?? 0) > 0,
 )
 
+// «Volver al catálogo» llevaba a la portada (`/`), no al catálogo: el texto y el
+// destino no coincidían. Si se llegó desde otra pantalla de la app se vuelve de
+// verdad (`router.back()`), que conserva los filtros, la página y el punto
+// exacto del listado donde estaba la persona; si se entró directo por un
+// enlace, se va al catálogo.
+function volver() {
+  if (window.history.state?.back) {
+    router.back()
+  } else {
+    router.push({ name: 'comparador' })
+  }
+}
+
 const subtitulo = computed(() =>
   [producto.value?.marca, producto.value?.categoria].filter(Boolean).join(' · '),
 )
@@ -202,7 +215,7 @@ const subtitulo = computed(() =>
 
 <template>
   <section class="detalle">
-    <BaseButton variante="texto" to="/">← Volver al catálogo</BaseButton>
+    <BaseButton variante="texto" @click="volver">← Volver al catálogo</BaseButton>
 
     <DetalleSkeleton v-if="cargando" />
 
@@ -454,8 +467,21 @@ const subtitulo = computed(() =>
 .detalle__foto {
   width: 100%;
   height: 280px;
-  object-fit: cover;
+  /* `contain` y no `cover`: las fotos de ropa suelen ser verticales y con
+     `cover` un vestido o un pantalón salía sin los pies o sin el cuello. */
+  object-fit: contain;
   border-radius: var(--cep-r-xs);
+}
+/* En móvil lo que decide la visita es el precio, y con 280px de foto más la
+   cabecera quedaba justo por debajo del pliegue: había que bajar para saber
+   cuánto cuesta. Con la foto más baja el precio entra en la primera pantalla. */
+@media (max-width: 559px) {
+  .detalle__marco {
+    min-height: 200px;
+  }
+  .detalle__foto {
+    height: 200px;
+  }
 }
 .detalle__nota {
   margin: var(--cep-sp-2) 0 0;

@@ -258,6 +258,9 @@ demo con casos válidos e inválidos en [`gateway/Mensajeria.http`](../gateway/M
 | `GET /suscripciones` · `POST` · `PUT` · `DELETE /suscripciones/{topico}/{cola}` | Reglas de distribución; al suscribir se ajusta la política de la cola |
 | `GET /topologia` | `topologia.json` contra lo que existe (falta, distinta, extra) |
 | `POST /topologia/aplicar` | Crea lo que falta y corrige lo distinto. Idempotente; no borra lo extra |
+| `GET /correos` · `GET /correos/{id}` | La bandeja: los correos que generó notification-service, el destinatario enmascarado (`a•••@gmail.com`). Proxy de solo lectura a sus rutas internas; `502` si no responde. Ver [Bandeja de correos](#bandeja-de-correos) |
+| `GET /correos/ejemplo/{tipo}` | El correo de un tipo armado con una prenda inventada, sin enviarlo |
+| `POST /simular-aviso` | `{ productId, tipo, descuento? }` → `202`. Publica en `cep-cambios-oferta` un cambio inventado con los datos reales del producto, con el mismo sobre y atributos que product-service y `source = "panel-admin"`. Recorre el flujo 2 de verdad; **no cambia precios del catálogo**. `400` por campo, `404` si el producto no existe |
 
 Errores: `400 { estado, error, mensaje, errores: [{ campo, error }] }` cuando la forma está mal
 (nombre sin `cep-` o con mayúsculas, rangos de AWS, `maxIntentos` fuera de 1..10, filtro sobre un
@@ -268,10 +271,23 @@ choca con lo que hay (ya existe, es DLQ de otra, tiene suscripciones, está decl
 `MENSAJERIA_MODO=memoria` simula todo sin AWS (por defecto si no se configura); en la EC2 va `aws`.
 
 **Pantalla (T12):** `/admin/mensajeria` en el frontend (`frontend/src/modules/admin/`), enlazada en el menú
-de la cuenta solo para el grupo `admin`. Muestra las colas (se refrescan cada 10 s), los tópicos con sus
-filtros, los mensajes de una DLQ o de la auditoría con su diagnóstico y el botón de redrive; crea colas,
-tópicos y reglas mostrando junto a cada campo el `{ campo, error }` del servidor, y pide escribir el nombre
-para borrar. El grupo se lee del access token solo para decidir qué mostrar: el gateway responde 403 igual.
+de la cuenta solo para el grupo `admin`. Es **una sola página ordenada por flujo** (rediseñada el 26-10):
+
+1. **Qué hay en esta página:** una tarjeta por sección con para qué sirve y qué se puede hacer ahí.
+2. **Flujo 1 y Flujo 2:** cada uno con su explicación, un «paso a paso» plegable y una tabla de
+   colas encerrada en su caja. Cada DLQ va justo debajo de su cola (↳) con su rol (principal, DLQ,
+   registro); la DLQ con mensajes se marca en rojo. El flujo 2 suma la tabla de reglas del tópico,
+   con el filtro dicho en palabras y el JSON a un clic.
+3. **El plano completo:** los dos flujos dibujados con los contadores en vivo.
+4. **Correos:** «Probar el flujo 2» con tres botones fijos (bajó 30% → llega correo; bajó 5% → la
+   regla lo filtra; se agotó → llega correo) y una barra de cuatro pasos que avanza sola hasta que
+   el correo aparece en la bandeja.
+5. **Administrar:** crear colas, tópicos y reglas (filtros de ejemplo; JSON solo si se elige
+   «personalizado»), con el `{ campo, error }` del servidor junto a cada campo, y borrar escribiendo
+   el nombre.
+
+Las colas se refrescan cada 10 s. El grupo se lee del access token solo para decidir qué mostrar: el
+gateway responde 403 igual.
 
 ## Correo (notification-service)
 
@@ -281,6 +297,23 @@ Interfaz `IEnviadorCorreo` con dos implementaciones, elegidas por configuración
 |---|---|---|
 | `EnviadorCorreoSmtp` | servidor | Gmail por SMTP con MailKit: `smtp.gmail.com:587`, STARTTLS, contraseña de aplicación |
 | `EnviadorCorreoLog` | local y pruebas | escribe el correo en el log, no envía nada |
+
+### Bandeja de correos
+
+Cada correo que genera el servicio, en cualquiera de los dos modos, se guarda también en
+`notification.correos_generados` (migración `BandejaCorreos`): destinatario, asunto, HTML, texto,
+tipo, `event_id`, modo (`log`/`smtp`) y fecha. Se quedan **los últimos 50**. Sirve para mostrar en el
+panel el correo tal como le llega a la persona cuando el servicio corre en modo `log`, que es lo
+normal en el Learner Lab. Si guardar la copia falla, el aviso igual queda enviado y el mensaje se
+borra de la cola: la bandeja es un extra, no parte de la entrega.
+
+Rutas internas (puerto 8082, solo en la red del compose; desde afuera se llega por el gateway con el
+grupo `admin`): `GET /internal/correos?limite=`, `GET /internal/correos/{id}` y
+`GET /internal/correos/ejemplo/{tipo}`.
+
+El HTML del correo va con tablas y estilos en línea, porque Gmail y Outlook ignoran las hojas de estilo,
+y usa los colores de la marca: franja y etiqueta según el tipo, foto, precio anterior tachado y botón
+a la tienda.
 
 ⚠️ La contraseña de aplicación va **solo** en el `.env` del servidor. En el repo queda
 `.env.example` con el valor vacío.

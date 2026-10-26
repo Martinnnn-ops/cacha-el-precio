@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using CachaElPrecio.Gateway.Mensajeria;
 
 namespace CachaElPrecio.Gateway.Tests;
 
@@ -46,6 +47,7 @@ public class AdministracionMensajeriaHttpTests : IDisposable
             web.UseSetting("MENSAJERIA_MODO", "memoria");
             web.UseSetting("TOPOLOGIA_RUTA", RutaTopologia());
             web.ConfigureTestServices(services =>
+            {
                 services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
                 {
                     // Las claves de firma salen de acá y no del JWKS de Cognito.
@@ -53,7 +55,13 @@ public class AdministracionMensajeriaHttpTests : IDisposable
                     configuracion.SigningKeys.Add(Clave);
                     o.Configuration = configuracion;
                     o.TokenValidationParameters.IssuerSigningKey = Clave;
-                }));
+                });
+                // notification-service no corre en los tests: responde uno falso.
+                services.AddHttpClient<BandejaCorreosProxy>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new NotificacionesFalso());
+                services.AddHttpClient<SimuladorAvisos>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new ProductosFalso());
+            });
         });
         admin = Cliente(Token(grupos: ["admin"]));
     }
@@ -215,6 +223,137 @@ public class AdministracionMensajeriaHttpTests : IDisposable
     [Fact]
     public async Task Una_cola_que_no_existe_responde_404() =>
         await Esperar(admin.GetAsync("/api/admin/mensajeria/colas/cep-fantasma"), HttpStatusCode.NotFound);
+
+    // ── Bandeja de correos (proxy a notification-service) ────────────────
+
+    [Fact]
+    public async Task La_bandeja_tambien_exige_el_grupo_admin()
+    {
+        using var usuario = Cliente(Token(grupos: ["usuario"]));
+        Assert.Equal(HttpStatusCode.Forbidden, (await usuario.GetAsync("/api/admin/mensajeria/correos")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await usuario.GetAsync("/api/admin/mensajeria/correos/7")).StatusCode);
+    }
+
+    [Fact]
+    public async Task La_bandeja_pasa_lo_que_responde_notification_service()
+    {
+        var lista = await Json(await admin.GetAsync("/api/admin/mensajeria/correos?limite=5"), HttpStatusCode.OK);
+        Assert.Equal("internal/correos?limite=5", lista[0].GetProperty("pedido").GetString());
+
+        var ejemplo = await Json(await admin.GetAsync("/api/admin/mensajeria/correos/ejemplo/precio.bajo"), HttpStatusCode.OK);
+        Assert.Equal("internal/correos/ejemplo/precio.bajo", ejemplo.GetProperty("pedido").GetString());
+
+        await Esperar(admin.GetAsync("/api/admin/mensajeria/correos/404"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Si_notification_service_no_responde_la_bandeja_da_502() =>
+        await Esperar(admin.GetAsync("/api/admin/mensajeria/correos/999"), HttpStatusCode.BadGateway);
+
+    // ── Simular un aviso (publica en el tópico) ──────────────────────────
+
+    [Fact]
+    public async Task Simular_un_aviso_exige_el_grupo_admin()
+    {
+        using var usuario = Cliente(Token(grupos: ["usuario"]));
+        var r = await usuario.PostAsJsonAsync("/api/admin/mensajeria/simular-aviso",
+            new { productId = 1, tipo = "precio.bajo", descuento = 30 });
+        Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
+    }
+
+    [Fact]
+    public async Task Simular_una_baja_publica_el_sobre_y_los_atributos_del_filtro()
+    {
+        var r = await Json(await admin.PostAsJsonAsync("/api/admin/mensajeria/simular-aviso",
+            new { productId = 1, tipo = "precio.bajo", descuento = 30 }), HttpStatusCode.Accepted);
+
+        var memoria = fabrica.Services.GetRequiredService<AdministradorMensajeriaMemoria>();
+        var (topico, mensaje, atributos) = Assert.Single(memoria.Publicados);
+        Assert.Equal("cep-cambios-oferta", topico);
+        Assert.Contains(atributos, a => a is { Nombre: "type", Valor: "precio.bajo" });
+        Assert.Contains(atributos, a => a is { Nombre: "discountPct", Tipo: "Number", Valor: "30" });
+
+        var sobre = JsonDocument.Parse(mensaje).RootElement;
+        Assert.Equal(r.GetProperty("eventId").GetString(), sobre.GetProperty("eventId").GetString());
+        Assert.Equal("panel-admin", sobre.GetProperty("source").GetString());
+        var datos = sobre.GetProperty("data");
+        Assert.Equal(19990, datos.GetProperty("previousPrice").GetInt32());
+        Assert.Equal(13990, datos.GetProperty("newPrice").GetInt32());
+        Assert.Equal("falabella", datos.GetProperty("store").GetString());
+    }
+
+    [Fact]
+    public async Task Simular_un_agotado_no_manda_descuento()
+    {
+        await Esperar(admin.PostAsJsonAsync("/api/admin/mensajeria/simular-aviso",
+            new { productId = 1, tipo = "oferta.agotada" }), HttpStatusCode.Accepted);
+
+        var memoria = fabrica.Services.GetRequiredService<AdministradorMensajeriaMemoria>();
+        var (_, mensaje, atributos) = Assert.Single(memoria.Publicados);
+        Assert.DoesNotContain(atributos, a => a.Nombre == "discountPct");
+        Assert.Equal(19990, JsonDocument.Parse(mensaje).RootElement.GetProperty("data").GetProperty("lastPrice").GetInt32());
+    }
+
+    [Fact]
+    public async Task Simular_con_datos_invalidos_responde_400_por_campo()
+    {
+        var r = await Json(await admin.PostAsJsonAsync("/api/admin/mensajeria/simular-aviso",
+            new { productId = 0, tipo = "precio.bajo", descuento = 0 }), HttpStatusCode.BadRequest);
+        var campos = r.GetProperty("errores").EnumerateArray().Select(e => e.GetProperty("campo").GetString()).ToList();
+        Assert.Contains("productId", campos);
+        Assert.Contains("descuento", campos);
+
+        var tipo = await Json(await admin.PostAsJsonAsync("/api/admin/mensajeria/simular-aviso",
+            new { productId = 1, tipo = "oferta.capturada" }), HttpStatusCode.BadRequest);
+        Assert.Equal("tipo", tipo.GetProperty("errores")[0].GetProperty("campo").GetString());
+    }
+
+    [Fact]
+    public async Task Simular_con_un_producto_que_no_existe_responde_404() =>
+        await Esperar(admin.PostAsJsonAsync("/api/admin/mensajeria/simular-aviso",
+            new { productId = 999, tipo = "oferta.repuesta" }), HttpStatusCode.NotFound);
+
+    // product-service falso: el producto 1 con una oferta de Falabella a $19.990.
+    private sealed class ProductosFalso : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            if (!request.RequestUri!.AbsolutePath.EndsWith("/api/products/1"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            string json = JsonSerializer.Serialize(new
+            {
+                id = 1,
+                slug = "polera-basica",
+                name = "Polera básica",
+                image = "https://img.test/p.jpg",
+                offers = new[] { new { store = "falabella", price = 19990, url = "https://tienda.test/p", image = (string?)null, active = true } }
+            });
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    // Responde lo que se le pidió, para comprobar la ruta; /404 da 404 y /999
+    // hace como si el servicio estuviera apagado.
+    private sealed class NotificacionesFalso : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            string pedido = request.RequestUri!.PathAndQuery.TrimStart('/');
+            if (pedido.EndsWith("/999")) throw new HttpRequestException("Connection refused");
+
+            var codigo = pedido.EndsWith("/404") ? HttpStatusCode.NotFound : HttpStatusCode.OK;
+            string json = pedido.StartsWith("internal/correos?")
+                ? JsonSerializer.Serialize(new[] { new { pedido } })
+                : JsonSerializer.Serialize(new { pedido });
+            return Task.FromResult(new HttpResponseMessage(codigo)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
+        }
+    }
 
     // =====================================================================
 

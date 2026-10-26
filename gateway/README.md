@@ -22,6 +22,7 @@ COGNITO_CLIENT_IDS_VALIDOS=client_web,client_pruebas
 COGNITO_WRITE_SCOPE=https://api.cachaelprecio.cl/ingesta
 MENSAJERIA_MODO=memoria        # aws en la EC2 (LabRole); memoria = simulado, sin AWS
 TOPOLOGIA_RUTA=                # opcional; por defecto busca infra/mensajeria/topologia.json
+NOTIFICATION_URL=http://localhost:8082   # la bandeja de correos del panel (en el compose, notification-service:8082)
 ```
 
 El último valor debe coincidir con `COGNITO_SCRAPER_SCOPE`, generado por
@@ -57,7 +58,7 @@ interno viajaría hasta el navegador de cada usuario.
 | `GET /seguimiento` · `POST`/`DELETE /seguimiento/{id}` | autenticada | **401** |
 | `GET /api/yo` | autenticada | **401** |
 | `GET /api/admin/diagnostico` | grupo `admin` | **401** |
-| `/api/admin/mensajeria/...` (colas, tópicos, suscripciones, DLQ, topología) | grupo `admin` | **401** · 403 sin el grupo |
+| `/api/admin/mensajeria/...` (colas, tópicos, suscripciones, DLQ, topología, correos, simular aviso) | grupo `admin` | **401** · 403 sin el grupo |
 | `GET /health` | pública | 200 |
 
 Dos rutas piden explicación:
@@ -82,6 +83,17 @@ Panel para consultar y gestionar colas SQS, tópicos SNS, reglas de distribució
 [`docs/MENSAJERIA.md`](../docs/MENSAJERIA.md#administración-t11); la decisión de que viva aquí, en el
 [ADR-032](../docs/adr/032-administracion-de-mensajeria.md); la demo con casos válidos e inválidos,
 en [`Mensajeria.http`](Mensajeria.http). La imagen lleva `infra/mensajeria/topologia.json`.
+
+Dos piezas más para la demo del flujo 2, las dos en `gateway/Mensajeria/`:
+
+- **`BandejaCorreosProxy`**: `/correos` reenvía a las rutas internas de notification-service y no
+  interpreta nada. Si el servicio no responde, `502`.
+- **`SimuladorAvisos`**: `POST /simular-aviso` lee el producto en product-service y publica el cambio
+  con `IAdministradorMensajeria.PublicarAsync`. Así el simulador tampoco toca el SDK de SNS.
+
+Sus pruebas están en `AdministracionMensajeriaHttpTests.cs`, con notification-service y
+product-service falsos: piden el grupo `admin`, el sobre y los atributos que se publican, `400`
+por campo, `404` y `502`.
 
 El conteo del reprocesamiento (`mensajesMovidos`) se prueba sin AWS en
 `gateway.Tests/ReprocesoContadorTests.cs`, con una SQS falsa que reproduce el caso en que la

@@ -4,6 +4,8 @@ namespace Notification_Service.Correo;
 // pruebas, para ver el flujo completo sin una cuenta de Gmail (CORREO_MODO=log).
 public sealed class EnviadorCorreoLog(ILogger<EnviadorCorreoLog> log) : IEnviadorCorreo
 {
+    public string Modo => "log";
+
     public Task EnviarAsync(CorreoSalida correo, CancellationToken ct)
     {
         log.LogInformation("CORREO (log) -> {Para} | {Asunto}\n{Texto}",

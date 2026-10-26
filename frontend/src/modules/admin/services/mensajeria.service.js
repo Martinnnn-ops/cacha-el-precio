@@ -43,3 +43,17 @@ export function leerError(e) {
   }
   return { mensaje: datos.mensaje ?? e?.message ?? 'Algo no salió bien.', campos }
 }
+
+// Bandeja de correos generados por notification-service (ver
+// notification-service/Correo/EndpointsBandeja.cs). El destinatario llega
+// enmascarado; el HTML es el mismo que recibe quien sigue la prenda.
+export const listarCorreos = (limite = 20) => http.get(`${BASE}/correos`, { params: { limite } })
+export const verCorreo = (id) => http.get(`${BASE}/correos/${id}`)
+export const verEjemplo = (tipo) => http.get(`${BASE}/correos/ejemplo/${nombre(tipo)}`)
+
+// Simular un aviso: el gateway arma el cambio con los datos reales del producto
+// y lo publica en cep-cambios-oferta. No toca precios del catálogo.
+export const simularAviso = (datos) => http.post(`${BASE}/simular-aviso`, datos)
+export const verProducto = (id) => http.get(`/productos/${id}`)
+// Seguir la prenda con la cuenta del admin: sin seguidores no hay a quién avisar.
+export const seguirProducto = (id) => http.post(`/seguimiento/${id}`)

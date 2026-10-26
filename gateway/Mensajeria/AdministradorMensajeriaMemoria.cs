@@ -126,6 +126,16 @@ public sealed class AdministradorMensajeriaMemoria : IAdministradorMensajeria
 
     // Solo para la demo y los tests: deja un mensaje en una cola como si un
     // consumidor lo hubiera apartado con sus atributos de diagnostico.
+    // Lo publicado queda a la vista para los tests; no se reparte a las colas.
+    public ConcurrentQueue<(string Topico, string Mensaje, IReadOnlyList<AtributoMensaje> Atributos)> Publicados { get; } = new();
+
+    public Task<string> PublicarAsync(string topico, string mensaje, IReadOnlyList<AtributoMensaje> atributos, CancellationToken ct)
+    {
+        if (!topicos.ContainsKey(topico)) throw new RecursoNoEncontradoException("el topico", topico);
+        Publicados.Enqueue((topico, mensaje, atributos));
+        return Task.FromResult(Guid.NewGuid().ToString());
+    }
+
     public void Sembrar(string cola, string cuerpo, IReadOnlyDictionary<string, string> diagnostico)
     {
         if (!colas.TryGetValue(cola, out var c)) throw new RecursoNoEncontradoException("la cola", cola);
