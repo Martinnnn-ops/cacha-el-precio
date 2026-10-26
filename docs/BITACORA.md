@@ -2,6 +2,31 @@
 
 Última actualización: 26-10-2026.
 
+## 26-10 · El armador pasa a ser un armario digital — Martín
+
+Rama `feature/armario-outfit`. Solo frontend; la lógica del store (precios, tallas, cuerpo completo,
+lo más barato) no se tocó.
+
+**Por qué.** El armador eran 8 cajas iguales en una rejilla de dos columnas, la mitad diciendo
+«Todavía no tenemos prendas para esta parte», con el orden del cuerpo mezclado (ropa interior al
+lado del abrigo), lo opcional explicado en un párrafo y el total al fondo de la página en el
+teléfono. La referencia fueron apps de closet como Fits o Vloset, manteniendo la estética del sitio.
+
+**Cómo queda.** A la izquierda, el **perchero**: pastillas por parte del cuerpo (solo las que
+tienen prendas), búsqueda con orden, género y tallas en una línea, y una rejilla de fotos grandes
+sobre blanco. Un clic pone o saca la prenda en su lugar. A la derecha, **tu outfit**: de la cabeza
+a los pies con una línea que une las zonas, las tres capas del torso apiladas, lo obligatorio
+siempre visible y lo opcional como «+ gorro», que lleva al perchero filtrado. Debajo, «Cuánto te
+sale». En el teléfono, una barra fija con el total. Se llama «perchero» y no «armario» porque «Mi
+armario» ya es lo que la persona guardó.
+
+**Se fueron** `RanuraParte`, `VistaPreviaOutfit` y `SelectorPrenda`. Cuatro comprobaciones de
+`humo` describían el diseño viejo; ahora piden perchero y tablero con la misma intención.
+
+**Pendiente.** El catálogo de la cuenta del lab tiene 224 prendas de Falabella (zapatillas y
+poleras): sin pantalones, abrigos ni gorros, el tablero muestra «Piernas: todavía no hay prendas».
+Falta cargar más tiendas con el scraper.
+
 ## 26-10 · Panel de mensajería para la demo: bandeja de correos, simular aviso y orden por flujo — Martín
 
 Rama `feature/bandeja-correos`, desde `development`.
