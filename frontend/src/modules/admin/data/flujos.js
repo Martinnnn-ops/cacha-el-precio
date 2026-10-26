@@ -113,3 +113,26 @@ function describirCondicion(condicion) {
   }
   return [sujeto, ...extras].join(' ')
 }
+
+// ¿Este mensaje pasa el filtro de una regla? Mismo criterio que SNS para lo que
+// usa la topología: listas de valores exactos, condiciones numéricas y $or. Un
+// atributo que falta no cumple. Sirve para anticipar en el panel a qué colas
+// llegará un aviso simulado; quien decide de verdad es SNS.
+export function pasaFiltro(filtro, atributos) {
+  if (!filtro) return true
+  if (Array.isArray(filtro.$or)) return filtro.$or.some((f) => pasaFiltro(f, atributos))
+  return Object.entries(filtro).every(([campo, condiciones]) => {
+    const valor = atributos[campo]
+    if (valor === undefined) return false
+    return condiciones.some((c) => (c?.numeric ? cumpleNumerico(c.numeric, Number(valor)) : c === valor))
+  })
+}
+
+function cumpleNumerico(partes, valor) {
+  for (let i = 0; i < partes.length; i += 2) {
+    const [op, n] = [partes[i], partes[i + 1]]
+    const ok = { '>=': valor >= n, '>': valor > n, '<=': valor <= n, '<': valor < n, '=': valor === n }[op]
+    if (!ok) return false
+  }
+  return true
+}

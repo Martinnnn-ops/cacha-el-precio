@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import BaseButton from '@/shared/components/BaseButton.vue'
 import BandejaCorreos from '@/modules/admin/components/BandejaCorreos.vue'
 import DiagramaFlujos from '@/modules/admin/components/DiagramaFlujos.vue'
@@ -29,9 +29,13 @@ const SECCIONES = [
   },
   {
     id: 'correos',
-    titulo: 'Correos generados',
+    titulo: 'Simular y ver correos',
     para: 'Lo que recibe por correo quien sigue una prenda cuando cambia.',
-    acciones: ['Ver los avisos que salieron del flujo 2.', 'Ver el diseño de cada tipo de aviso.'],
+    acciones: [
+      'Simular un cambio y verlo recorrer el flujo 2.',
+      'Ver los avisos que salieron, tal como llegan.',
+      'Ver el diseño de cada tipo de aviso.',
+    ],
   },
   {
     id: 'administrar',
@@ -88,6 +92,19 @@ const colasSueltas = computed(() => colas.value.filter((c) => !esDeUnFlujo(c.nom
 const topicosSueltos = computed(() => topicos.value.filter((t) => !esDeUnFlujo(t.nombre)))
 const totalApartados = computed(() =>
   colas.value.filter((c) => c.esDlqDe.length).reduce((n, c) => n + c.mensajesVisibles, 0))
+
+// Lo que deja pasar una regla nueva: un filtro de la lista o uno escrito a mano.
+const PERSONALIZADO = '__personalizado__'
+const filtroElegido = ref('')
+watch(filtroElegido, (v) => { if (v !== PERSONALIZADO) formSub.filtro = v })
+
+// 345600 -> «4 días»: los segundos solos no se leen.
+function duracion(segundos) {
+  const s = Number(segundos) || 0
+  if (s >= 86400) return `${+(s / 86400).toFixed(1)} día(s)`
+  if (s >= 3600) return `${+(s / 3600).toFixed(1)} hora(s)`
+  return `${+(s / 60).toFixed(1)} minuto(s)`
+}
 
 // Filtros de ejemplo para no escribir el JSON de memoria.
 const FILTROS_EJEMPLO = [
@@ -263,8 +280,8 @@ async function borrar(forzar) {
     </section>
 
     <!-- ═════════ Cada flujo: que hace, sus reglas y sus colas ═════════ -->
-    <section v-for="f in FLUJOS" :id="f.id" :key="f.id" class="bloque">
-      <h2>{{ f.titulo }}</h2>
+    <section v-for="(f, n) in FLUJOS" :id="f.id" :key="f.id" class="bloque flujo">
+      <h2><span class="num">{{ n + 1 }}</span>{{ f.titulo.split(' · ')[1] }}</h2>
       <p>{{ f.resumen }}</p>
       <details class="pasos">
         <summary>Paso a paso</summary>
@@ -331,68 +348,97 @@ async function borrar(forzar) {
 
       <div class="formularios">
         <form novalidate @submit.prevent="crearCola">
-          <h3>Nueva cola</h3>
-          <p class="muted ayuda">Un buzón donde un servicio deja mensajes y otro los retira a su ritmo.</p>
-          <label>Nombre <input v-model.trim="formCola.nombre" :aria-invalid="!!errores.cola.nombre" /></label>
-          <p v-for="e in errores.cola.nombre" :key="e" class="error-campo">{{ e }}</p>
-          <label>Visibilidad (s) <small class="muted">cuánto se esconde un mensaje mientras alguien lo procesa</small>
-            <input v-model="formCola.visibilidadSegundos" type="number" :aria-invalid="!!errores.cola.visibilidadSegundos" /></label>
-          <p v-for="e in errores.cola.visibilidadSegundos" :key="e" class="error-campo">{{ e }}</p>
-          <label>Retención (s) <small class="muted">cuánto vive un mensaje sin leer</small>
-            <input v-model="formCola.retencionSegundos" type="number" :aria-invalid="!!errores.cola.retencionSegundos" /></label>
-          <p v-for="e in errores.cola.retencionSegundos" :key="e" class="error-campo">{{ e }}</p>
-          <label>DLQ <small class="muted">a dónde va lo que falla demasiadas veces</small>
-            <select v-model="formCola.dlq" :aria-invalid="!!errores.cola.dlq">
-              <option value="">Sin DLQ</option>
-              <option v-for="n in nombresColas" :key="n" :value="n">{{ n }}</option>
-            </select>
+          <header>
+            <h3>Nueva cola</h3>
+            <p class="ayuda">Un buzón: un servicio deja mensajes y otro los retira a su ritmo.</p>
+          </header>
+          <label>Nombre
+            <input v-model.trim="formCola.nombre" :aria-invalid="!!errores.cola.nombre" />
           </label>
-          <p v-for="e in errores.cola.dlq" :key="e" class="error-campo">{{ e }}</p>
-          <label v-if="formCola.dlq">Intentos antes de apartar (1–10) <input v-model="formCola.maxIntentos" type="number" :aria-invalid="!!errores.cola.maxIntentos" /></label>
-          <p v-for="e in errores.cola.maxIntentos" :key="e" class="error-campo">{{ e }}</p>
-          <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear cola</BaseButton>
-          <p v-if="mensajesForm.cola" role="status" :class="Object.keys(errores.cola).length ? 'error' : 'muted'">{{ mensajesForm.cola }}</p>
+          <p v-for="e in errores.cola.nombre" :key="e" class="error-campo">{{ e }}</p>
+          <div class="par">
+            <label>Visibilidad
+              <span class="con-unidad"><input v-model="formCola.visibilidadSegundos" type="number" :aria-invalid="!!errores.cola.visibilidadSegundos" /><span>s</span></span>
+              <small>oculto mientras se procesa</small>
+            </label>
+            <label>Retención
+              <span class="con-unidad"><input v-model="formCola.retencionSegundos" type="number" :aria-invalid="!!errores.cola.retencionSegundos" /><span>s</span></span>
+              <small>{{ duracion(formCola.retencionSegundos) }} sin leerse</small>
+            </label>
+          </div>
+          <p v-for="e in [...(errores.cola.visibilidadSegundos ?? []), ...(errores.cola.retencionSegundos ?? [])]" :key="e" class="error-campo">{{ e }}</p>
+          <div class="par">
+            <label>DLQ
+              <select v-model="formCola.dlq" :aria-invalid="!!errores.cola.dlq">
+                <option value="">Sin DLQ</option>
+                <option v-for="n in nombresColas" :key="n" :value="n">{{ n }}</option>
+              </select>
+              <small>a dónde va lo que falla</small>
+            </label>
+            <label v-if="formCola.dlq">Intentos
+              <input v-model="formCola.maxIntentos" type="number" min="1" max="10" :aria-invalid="!!errores.cola.maxIntentos" />
+              <small>antes de apartarlo (1–10)</small>
+            </label>
+          </div>
+          <p v-for="e in [...(errores.cola.dlq ?? []), ...(errores.cola.maxIntentos ?? [])]" :key="e" class="error-campo">{{ e }}</p>
+          <footer>
+            <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear cola</BaseButton>
+            <p v-if="mensajesForm.cola" role="status" :class="Object.keys(errores.cola).length ? 'error' : 'muted'">{{ mensajesForm.cola }}</p>
+          </footer>
         </form>
 
         <form novalidate @submit.prevent="crearTopico">
-          <h3>Nuevo tópico</h3>
-          <p class="muted ayuda">Un altavoz: lo que se publica acá se copia a cada cola que tenga una regla.</p>
-          <label>Nombre <input v-model.trim="formTopico.nombre" :aria-invalid="!!errores.topico.nombre" /></label>
+          <header>
+            <h3>Nuevo tópico</h3>
+            <p class="ayuda">Un altavoz: lo que se publica acá se copia a cada cola que tenga una regla con él.</p>
+          </header>
+          <label>Nombre
+            <input v-model.trim="formTopico.nombre" :aria-invalid="!!errores.topico.nombre" />
+          </label>
           <p v-for="e in errores.topico.nombre" :key="e" class="error-campo">{{ e }}</p>
-          <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear tópico</BaseButton>
-          <p v-if="mensajesForm.topico" role="status" :class="Object.keys(errores.topico).length ? 'error' : 'muted'">{{ mensajesForm.topico }}</p>
+          <p class="ayuda">Un tópico recién creado no reparte nada: falta conectarlo con una regla.</p>
+          <footer>
+            <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear tópico</BaseButton>
+            <p v-if="mensajesForm.topico" role="status" :class="Object.keys(errores.topico).length ? 'error' : 'muted'">{{ mensajesForm.topico }}</p>
+          </footer>
         </form>
 
         <form novalidate @submit.prevent="crearSuscripcion">
-          <h3>Nueva regla de distribución</h3>
-          <p class="muted ayuda">Conecta un tópico con una cola, y opcionalmente filtra qué mensajes pasan.</p>
-          <label>Tópico <small class="muted">de dónde salen los mensajes</small>
-            <select v-model="formSub.topico" :aria-invalid="!!errores.sub.topico">
-              <option value="" disabled>Elige un tópico</option>
-              <option v-for="t in topicos" :key="t.nombre" :value="t.nombre">{{ t.nombre }}</option>
-            </select>
-          </label>
-          <p v-for="e in errores.sub.topico" :key="e" class="error-campo">{{ e }}</p>
-          <label>Cola <small class="muted">a dónde llegan</small>
-            <select v-model="formSub.cola" :aria-invalid="!!errores.sub.cola">
-              <option value="" disabled>Elige una cola</option>
-              <option v-for="n in nombresColas.filter((n) => !dlqs.includes(n))" :key="n" :value="n">{{ n }}</option>
-            </select>
-          </label>
-          <p v-for="e in errores.sub.cola" :key="e" class="error-campo">{{ e }}</p>
-          <label>Filtro de ejemplo
-            <select @change="formSub.filtro = $event.target.value">
+          <header>
+            <h3>Nueva regla</h3>
+            <p class="ayuda">Conecta un tópico con una cola y decide qué mensajes pasan.</p>
+          </header>
+          <div class="par">
+            <label>Desde el tópico
+              <select v-model="formSub.topico" :aria-invalid="!!errores.sub.topico">
+                <option value="" disabled>Elige</option>
+                <option v-for="t in topicos" :key="t.nombre" :value="t.nombre">{{ t.nombre }}</option>
+              </select>
+            </label>
+            <label>Hacia la cola
+              <select v-model="formSub.cola" :aria-invalid="!!errores.sub.cola">
+                <option value="" disabled>Elige</option>
+                <option v-for="n in nombresColas.filter((n) => !dlqs.includes(n))" :key="n" :value="n">{{ n }}</option>
+              </select>
+            </label>
+          </div>
+          <p v-for="e in [...(errores.sub.topico ?? []), ...(errores.sub.cola ?? [])]" :key="e" class="error-campo">{{ e }}</p>
+          <label>Qué deja pasar
+            <select v-model="filtroElegido">
               <option v-for="f in FILTROS_EJEMPLO" :key="f.etiqueta" :value="f.valor">{{ f.etiqueta }}</option>
+              <option :value="PERSONALIZADO">Personalizado (escribir JSON)</option>
             </select>
           </label>
-          <label>Filtro (JSON, vacío = recibe todo)
-            <textarea v-model="formSub.filtro" rows="4" spellcheck="false" placeholder='{"type": ["oferta.agotada"]}'
+          <label v-if="filtroElegido === PERSONALIZADO">Filtro en JSON
+            <textarea v-model="formSub.filtro" rows="3" spellcheck="false" placeholder='{"type": ["oferta.agotada"]}'
               :aria-invalid="!!errores.sub.filtro" />
           </label>
           <p v-for="e in errores.sub.filtro" :key="e" class="error-campo">{{ e }}</p>
-          <label class="casilla"><input v-model="formSub.entregaCruda" type="checkbox" /> Entrega cruda (sin el sobre de SNS)</label>
-          <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear regla</BaseButton>
-          <p v-if="mensajesForm.sub" role="status" :class="Object.keys(errores.sub).length ? 'error' : 'muted'">{{ mensajesForm.sub }}</p>
+          <label class="casilla"><input v-model="formSub.entregaCruda" type="checkbox" /> Entregar el mensaje tal cual (sin el sobre de SNS)</label>
+          <footer>
+            <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear regla</BaseButton>
+            <p v-if="mensajesForm.sub" role="status" :class="Object.keys(errores.sub).length ? 'error' : 'muted'">{{ mensajesForm.sub }}</p>
+          </footer>
         </form>
       </div>
 
@@ -450,7 +496,6 @@ async function borrar(forzar) {
 .tarjeta .para { color: var(--cep-muted); font-size: var(--cep-fs-sm); }
 .tarjeta ul { margin: var(--cep-sp-1) 0 0; padding-left: var(--cep-sp-4); font-size: var(--cep-fs-sm); display: grid; gap: 2px; }
 .tarjeta .ir { margin-top: var(--cep-sp-2); font-size: var(--cep-fs-sm); color: var(--cep-accent); font-weight: 600; }
-.ayuda { font-size: var(--cep-fs-sm); margin: 0 0 var(--cep-sp-2); }
 .pasos summary { cursor: pointer; font-weight: 600; }
 .pasos ol { display: grid; gap: var(--cep-sp-1); padding-left: var(--cep-sp-6); }
 label small { font-weight: normal; }
@@ -471,11 +516,21 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .formularios { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--cep-sp-4); margin-top: var(--cep-sp-4); }
 @media (min-width: 900px) { .formularios { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 form {
-  display: grid; gap: var(--cep-sp-2); align-content: start;
+  display: flex; flex-direction: column; gap: var(--cep-sp-3);
   padding: var(--cep-sp-4); border: 1px solid var(--cep-line); border-radius: var(--cep-r-lg); background: var(--cep-surface);
 }
+form header { padding-bottom: var(--cep-sp-3); border-bottom: 1px solid var(--cep-line); }
 form h3 { margin: 0; }
-form :deep(button[type='submit']) { margin-top: var(--cep-sp-2); justify-self: start; }
+form footer { margin-top: auto; padding-top: var(--cep-sp-2); display: flex; flex-wrap: wrap; gap: var(--cep-sp-2); align-items: center; }
+form footer p { margin: 0; font-size: var(--cep-fs-sm); }
+.par { display: grid; gap: var(--cep-sp-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+label small { color: var(--cep-muted); font-size: 0.75rem; }
+.con-unidad { display: flex; align-items: center; gap: var(--cep-sp-1); }
+.con-unidad input { flex: 1; min-width: 0; }
+.con-unidad span { color: var(--cep-muted); }
+.ayuda { margin: var(--cep-sp-1) 0 0; font-size: var(--cep-fs-sm); color: var(--cep-muted); }
+.bloque.flujo h2 { display: flex; align-items: center; gap: var(--cep-sp-2); }
+.num { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--cep-ink); color: var(--cep-surface); font-size: var(--cep-fs-md); }
 label { display: grid; gap: var(--cep-sp-1); font-size: var(--cep-fs-sm); }
 .casilla { display: flex; gap: var(--cep-sp-2); align-items: center; }
 input:not([type='checkbox']), select, textarea {
