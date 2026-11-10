@@ -56,6 +56,7 @@ módulo en concreto:
 | El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 199 líneas |
 | El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 119 líneas |
 | El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |
+| **Terraform: qué reemplaza, estructura, fases y reglas del estado** | `infra/terraform/README.md` | 62 líneas |
 
 **No cargues todos los documentos.** Casi ninguna tarea necesita más de dos.
 

@@ -217,3 +217,4 @@ La situación actual de red pública, los dos User Pools y los pasos de la cuent
 | [023](adr/023-cloudflare-como-cdn.md) | Cloudflare como CDN | vigente |
 | [024](adr/024-cors-en-el-api-manager.md) | CORS solo en el API Manager | vigente |
 | [025](adr/025-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta y PostgreSQL | vigente |
+| [033](adr/033-terraform-para-la-infraestructura.md) | Terraform para la infraestructura de AWS | propuesta, fase 0 |
