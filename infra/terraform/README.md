@@ -51,6 +51,28 @@ infra/terraform/
 | 6 | `dominio/` con el proveedor de Cloudflare | ⬜ |
 | 7 | Montar en dos cuentas desde cero y retirar los scripts (en un PR aparte) | ⬜ |
 
+## Si `terraform init` se corta
+
+El proveedor de AWS pesa unos 170 MB. Si la conexión se cae a mitad, `init` falla con
+`unexpected EOF` y parte de cero en cada intento. Se puede bajar aparte con `curl`, que retoma, y
+darle a Terraform la copia local:
+
+```bash
+D=~/.terraform.d/mirror/registry.terraform.io/hashicorp/aws
+V=6.72.0          # la versión que fija .terraform.lock.hcl
+P=linux_amd64     # tu plataforma: windows_amd64, darwin_arm64, ...
+mkdir -p "$D" && cd "$D"
+curl -fL -C - --retry 10 --retry-all-errors -O \
+  https://releases.hashicorp.com/terraform-provider-aws/$V/terraform-provider-aws_${V}_${P}.zip
+curl -fLO https://releases.hashicorp.com/terraform-provider-aws/$V/terraform-provider-aws_${V}_SHA256SUMS
+sha256sum -c --ignore-missing terraform-provider-aws_${V}_SHA256SUMS   # tiene que decir OK
+cd -  # volver a infra/terraform/cuenta
+terraform init -plugin-dir=$HOME/.terraform.d/mirror
+```
+
+`.terraform.lock.hcl` trae la huella de Linux, Mac y Windows, así que la copia local se valida
+igual que una bajada por `init`.
+
 ## Reglas
 
 - **El estado (`terraform.tfstate`) nunca va a git**: guarda el secreto del borde y el del cliente
