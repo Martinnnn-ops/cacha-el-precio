@@ -1,7 +1,7 @@
 # Terraform · la infraestructura de AWS como código
 
-> **Estado (10-11-2026): fase 0.** Están la estructura, las versiones y las variables, pero
-> **todavía no crea nada**. El sistema se sigue montando con los scripts de `tools/`, como
+> **Estado (10-11-2026): fases 0 y 0.5.** Están la estructura, las versiones, las variables y el
+> sondeo de permisos, pero `cuenta/` **todavía no crea nada**. El sistema se sigue montando con los scripts de `tools/`, como
 > explica [`docs/MONTAR-EN-TU-CUENTA.md`](../../docs/MONTAR-EN-TU-CUENTA.md). La decisión y sus
 > costos están en el [ADR-033](../../docs/adr/033-terraform-para-la-infraestructura.md).
 
@@ -34,6 +34,7 @@ infra/terraform/
 │   ├── variables.tf              cuenta_esperada, tiene_dominio, encendido, llave, EC2
 │   └── cuentas/
 │       └── ejemplo.tfvars.example   el único .tfvars que va a git
+├── sondeo/                       prueba de permisos: crea una pieza de cada tipo y se destruye
 └── dominio/                      (fase 6) solo quien administra Cloudflare
 ```
 
@@ -42,7 +43,7 @@ infra/terraform/
 | Fase | Qué | Estado |
 |---|---|---|
 | 0 | Estructura, versiones, variables, `.gitignore`, ADR-033 | ✅ |
-| 0.5 | Sondeo: un recurso de cada tipo, para ver qué permisos niega el Learner Lab | ⬜ |
+| 0.5 | Sondeo: un recurso de cada tipo, para ver qué permisos niega el Learner Lab | ✅ |
 | 1 | Colas, DLQ y SNS desde `topologia.json` | ⬜ |
 | 2 | Grupo de seguridad, EC2 (disco de 20 GB), IP y buckets | ⬜ |
 | 3 | Cognito: pool, clientes, scope, grupos, usuarios de prueba, Google condicional | ⬜ |
@@ -72,6 +73,33 @@ terraform init -plugin-dir=$HOME/.terraform.d/mirror
 
 `.terraform.lock.hcl` trae la huella de Linux, Mac y Windows, así que la copia local se valida
 igual que una bajada por `init`.
+
+## ⚠️ S3 en AWS Academy: el bucket no se crea con `aws_s3_bucket`
+
+Lo encontró el sondeo el 10-11-2026. Después de crear un bucket, el recurso `aws_s3_bucket` lo
+lee entero, incluida su configuración de *object lock*, y una política de la organización de
+Academy (SCP) niega `s3:GetBucketObjectLockConfiguration` con *explicit deny*. El bucket se crea
+igual, pero Terraform lo marca como dañado y no puede seguir.
+
+La salida, probada en `sondeo/`: el bucket lo crea la CLI desde un `terraform_data` (que también lo
+borra al destruir), y Terraform maneja sus ajustes con `aws_s3_bucket_versioning`,
+`aws_s3_bucket_website_configuration`, `aws_s3_bucket_policy` y
+`aws_s3_bucket_public_access_block`, que no consultan el *object lock*. Como `default_tags` no
+llega a lo que crea la CLI, las etiquetas se ponen con `put-bucket-tagging`.
+
+Todo lo demás pasó sin cambios: Cognito (pool, dominio, scope, clientes, grupo y usuario), la HTTP
+API con autorizador JWT, la integración `SQS-SendMessage` asumiendo `LabRole`, las colas con DLQ,
+SNS con filtro, el grupo de seguridad, la EC2 con disco de 20 GB y la IP. Con el token del
+cliente de máquina, `POST /ingesta` respondió 200 y el mensaje llegó a la cola, y sin token, 401.
+
+Para sondear una cuenta nueva:
+
+```bash
+cd infra/terraform/sondeo
+terraform init                     # o con -plugin-dir, ver arriba
+terraform apply   -var cuenta_esperada=$(aws sts get-caller-identity --query Account --output text)
+terraform destroy -var cuenta_esperada=$(aws sts get-caller-identity --query Account --output text)
+```
 
 ## Reglas
 

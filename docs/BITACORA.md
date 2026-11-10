@@ -1,6 +1,37 @@
 # Bitácora del proyecto
 
-Última actualización: 26-10-2026.
+Última actualización: 10-11-2026.
+
+## 10-11 · Terraform: estructura, proveedor y sondeo de permisos — Martín
+
+Rama `feature/terraform`. Arranca el paso de los scripts de `tools/` a Terraform
+([ADR-033](adr/033-terraform-para-la-infraestructura.md)). `infra/terraform/cuenta/` todavía no
+crea nada: esta sesión dejó la base y despejó la duda que podía tumbar el plan entero.
+
+- **Fase 0.** Estructura, versiones (Terraform 1.x, proveedor `hashicorp/aws` 6.72.0), variables
+  por cuenta y el ADR. El `.terraform.lock.hcl` trae las huellas de Linux, Mac y Windows para que
+  `init` funcione en la máquina de los tres.
+- **Lo que costó:** `terraform init` se cortaba bajando el proveedor (176 MB, `unexpected EOF`) y
+  parte de cero en cada intento. Se bajó con `curl -C -`, que retoma, y se usó con `-plugin-dir`.
+  La receta quedó en `infra/terraform/README.md`.
+- **Fase 0.5, sondeo.** `infra/terraform/sondeo/` creó 31 recursos con prefijo `cep-sondeo-` en
+  la cuenta `731705830984` y los destruyó. Pasó todo menos **S3**: el recurso `aws_s3_bucket` lee
+  la configuración de *object lock* y una SCP de Academy la niega con *explicit deny*. Arreglo
+  probado: el bucket lo crea la CLI desde un `terraform_data` y Terraform maneja sus ajustes. Con
+  eso, un segundo `plan` no dio cambios.
+
+```text
+POST /ingesta sin token                → 401
+POST /ingesta con token client_credentials → 200, mensaje en la cola
+Recursos con gestionado-por=terraform  → 14 encontrados por la API de etiquetas
+terraform destroy                      → 31 destruidos, 0 restos
+```
+
+- También se completó el registro de decisiones de `ARQUITECTURA.md`, que se cortaba en el 025.
+
+**Pendiente:** fase 1 (colas y SNS desde `topologia.json`); antes, `crear-mensajeria.py --borrar`
+en la cuenta para que las colas de los scripts no choquen. Decidir si la cuenta con el dominio
+conserva la IP al apagar.
 
 ## 26-10 · El armador pasa a ser un armario digital — Martín
 

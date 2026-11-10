@@ -1,6 +1,6 @@
 # ADR-033 · Terraform para la infraestructura de AWS
 
-Fecha: 10-11-2026 · Estado: propuesta (fase 0). Pasa a aceptado cuando Terraform monte el
+Fecha: 10-11-2026 · Estado: propuesta (fases 0 y 0.5). Pasa a aceptado cuando Terraform monte el
 sistema completo en dos cuentas desde cero.
 
 ## Contexto
@@ -73,9 +73,13 @@ probar) sigue en `tools/`.
 - **Si el estado se pierde**, Terraform cree que la cuenta está vacía y choca por los nombres. Se
   recupera con bloques `import`, porque todos los recursos tienen nombres fijos, pero es trabajo a
   mano.
-- **No se sabe todavía si el Learner Lab da todos los permisos que pide el proveedor.** Terraform
-  lee más atributos que los scripts (un bucket S3, por ejemplo, consulta varias configuraciones).
-  La fase 0.5 lo prueba antes de escribir el resto.
+- **El Learner Lab no deja usar el recurso `aws_s3_bucket`.** Lo comprobó el sondeo de la fase 0.5
+  (10-11-2026, cuenta `731705830984`): tras crear el bucket, el proveedor lee su configuración de
+  *object lock* y una SCP de Academy la niega con *explicit deny*. Los buckets se crean con la CLI
+  desde un `terraform_data` y Terraform maneja solo sus ajustes. Es una costura: lo que crea la CLI
+  no recibe `default_tags` ni aparece en un `plan` si alguien lo cambia a mano. El resto de los
+  recursos (Cognito, HTTP API, `SQS-SendMessage` con `LabRole`, SQS, SNS, EC2, IP) pasó sin cambios.
+  Detalle en [`infra/terraform/README.md`](../../infra/terraform/README.md).
 - **Al apagar, la IP cambia.** En la cuenta con dominio eso deja el registro DNS de `api`
   apuntando a una dirección muerta hasta correr `dominio/`. Mantener la IP solo en esa cuenta
   cuesta unos USD 3,6 al mes de crédito. Decisión pendiente.
