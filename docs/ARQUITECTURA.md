@@ -217,4 +217,10 @@ La situación actual de red pública, los dos User Pools y los pasos de la cuent
 | [023](adr/023-cloudflare-como-cdn.md) | Cloudflare como CDN | vigente |
 | [024](adr/024-cors-en-el-api-manager.md) | CORS solo en el API Manager | vigente |
 | [025](adr/025-catalogo-multi-oferta-postgresql.md) | catálogo multi-oferta y PostgreSQL | vigente |
-| [033](adr/033-terraform-para-la-infraestructura.md) | Terraform para la infraestructura de AWS | propuesta, fase 0 |
+| [026](adr/026-encabezado-secreto-del-borde.md) | el borde se identifica con un encabezado secreto | vigente |
+| [028](adr/028-armario-personal-y-politica-catalogo.md) | armario personal y política editorial del catálogo | implementado en `development` |
+| [029](adr/029-mensajeria-sqs-sns.md) | mensajería asíncrona con SQS y SNS | vigente |
+| [030](adr/030-notification-service.md) | notification-service: seguidores y correo | vigente |
+| [031](adr/031-publicacion-cambios-oferta.md) | cómo publica product-service los cambios de oferta | vigente |
+| [032](adr/032-administracion-de-mensajeria.md) | administración de mensajería dentro del gateway | vigente |
+| [033](adr/033-terraform-para-la-infraestructura.md) | Terraform para la infraestructura de AWS | propuesta, fases 0 y 0.5 |
