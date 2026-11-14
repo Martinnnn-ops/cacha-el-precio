@@ -45,3 +45,9 @@ variable "disco_gb" {
     error_message = "Con menos de 20 GB el build de las imagenes vuelve a llenar el disco."
   }
 }
+
+variable "conservar_ip" {
+  description = "true deja reservada la IP elastica aunque encendido = false (unos USD 3,6 al mes). Sirve en la cuenta con dominio, para que el registro DNS de api no quede apuntando a una IP muerta."
+  type        = bool
+  default     = false
+}

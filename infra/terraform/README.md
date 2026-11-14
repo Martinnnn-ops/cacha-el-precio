@@ -1,7 +1,8 @@
 # Terraform · la infraestructura de AWS como código
 
-> **Estado (14-11-2026): fases 0, 0.5 y 1.** `cuenta/` ya maneja la **mensajería** (colas, DLQ, SNS
-> y suscripciones). Lo demás (EC2, Cognito, API) se sigue montando con los scripts de `tools/`, como
+> **Estado (14-11-2026): fases 0 a 2.** `cuenta/` ya maneja la **mensajería** (colas, DLQ, SNS y
+> suscripciones) y la **base** (grupo de seguridad, EC2, IP y buckets). Cognito y la API se siguen
+> montando con los scripts de `tools/`, como
 > explica [`docs/MONTAR-EN-TU-CUENTA.md`](../../docs/MONTAR-EN-TU-CUENTA.md). La decisión y sus
 > costos están en el [ADR-033](../../docs/adr/033-terraform-para-la-infraestructura.md).
 
@@ -45,7 +46,7 @@ infra/terraform/
 | 0 | Estructura, versiones, variables, `.gitignore`, ADR-033 | ✅ |
 | 0.5 | Sondeo: un recurso de cada tipo, para ver qué permisos niega el Learner Lab | ✅ |
 | 1 | Colas, DLQ y SNS desde `topologia.json` (`cuenta/mensajeria.tf`) | ✅ |
-| 2 | Grupo de seguridad, EC2 (disco de 20 GB), IP y buckets | ⬜ |
+| 2 | Grupo de seguridad, EC2 (disco de 20 GB), IP y buckets (`cuenta/base.tf`) | ✅ |
 | 3 | Cognito: pool, clientes, scope, grupos, usuarios de prueba, Google condicional | ⬜ |
 | 4 | API, rutas, autorizador JWT, `/ingesta` y secreto del borde | ⬜ |
 | 5 | Los 5 `.env` y `tools/tf.sh` (`subir`, `apagar` con respaldo, `estado`) | ⬜ |
@@ -101,10 +102,11 @@ terraform apply   -var cuenta_esperada=$(aws sts get-caller-identity --query Acc
 terraform destroy -var cuenta_esperada=$(aws sts get-caller-identity --query Account --output text)
 ```
 
-## Si `crear-mensajeria.py` ya creó las colas en tu cuenta
+## Si los scripts ya crearon las cosas en tu cuenta
 
-No hace falta borrarlas: se **adoptan** con bloques `import`, sin cortar el servicio. Las URL y el
-ARN no cambian, así que `mensajeria.env` sigue sirviendo. Así se hizo en `731705830984` el 14-11-2026.
+No hace falta borrar nada: se **adoptan** con bloques `import`, sin cortar el servicio. Las URL, los
+ARN y los id no cambian, así que los `.env` siguen sirviendo. Así se hizo en `731705830984` el
+14-11-2026 con la mensajería (fase 1) y con la base (fase 2).
 
 1. Crear `cuenta/importar.tf` (temporal, no va a git) con un bloque por recurso:
 
@@ -133,6 +135,15 @@ ARN no cambian, así que `mensajeria.env` sigue sirviendo. Así se hizo en `7317
    los cambios en sitio son solo las etiquetas `gestionado-por` y `proyecto`.
 3. `terraform apply`, borrar `importar.tf` y correr `plan` otra vez: tiene que decir *No changes*.
 
+Para la base, los id salen de `infra.env` (`INFRA_INSTANCIA`, `INFRA_ALLOCATION`, `INFRA_SG`), y los
+de las reglas del grupo, de `aws ec2 describe-security-group-rules --filters Name=group-id,Values=<sg>`.
+La asociación de la IP se importa con su `eipassoc-…` y los ajustes de cada bucket con el nombre del
+bucket. Los buckets en sí no se importan: el `terraform_data` ve que ya existen y solo los etiqueta.
+
+⚠️ **El `plan` de la base tiene que decir 0 to destroy.** Lo único que cambia en la EC2 es el disco
+(8 → 20 GB, en caliente). Si dice que la instancia *must be replaced*, NO aplicar: la base de datos
+vive en ese disco.
+
 ⚠️ `max_message_size` va fijo en 1 MiB: es lo que trae hoy una cola nueva de SQS, pero el proveedor
 asume 256 KiB (el límite antiguo) y sin el ajuste achicaría las colas.
 
@@ -142,6 +153,9 @@ asume 256 KiB (el límite antiguo) y sin el ajuste achicaría las colas.
   del scraper en texto plano. Es uno por cuenta, vive en el laptop de quien la maneja y se respalda
   en `~/cacha-cuentas/<cuenta>/estado/`.
 - **`.terraform.lock.hcl` sí va a git**: fija la versión exacta del proveedor para los tres.
-- Cada fase se prueba con `apply`, `destroy` y otra vez `apply` antes de darla por buena.
+- Cada fase se prueba con `apply`, `destroy` y otra vez `apply` antes de darla por buena. La
+  excepción es la EC2: su `destroy` borra la base, así que se prueba en la fase 5 con
+  `tools/tf.sh apagar`, que respalda antes.
+- **Terraform nunca borra un bucket.** Un `destroy` solo lo olvida y el siguiente `apply` lo retoma.
 - Las credenciales del Learner Lab vencen cada ~4 horas. Si un `apply` se corta con
   `ExpiredToken`, se pegan las nuevas y se vuelve a correr: retoma lo que faltó.

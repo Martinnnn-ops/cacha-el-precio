@@ -2,7 +2,7 @@
 
 Última actualización: 10-11-2026.
 
-## 14-11 · Terraform fase 1: la mensajería pasa a `cuenta/mensajeria.tf` — Martín
+## 14-11 · Terraform fases 1 y 2: mensajería y base — Martín
 
 Rama `feature/terraform`. `infra/terraform/cuenta/mensajeria.tf` crea las 2 DLQ, las 3 colas, el
 tópico `cep-cambios-oferta`, la política de cada cola y las 2 suscripciones con su filtro. Igual que
@@ -20,8 +20,35 @@ plan después del apply  → No changes
 output mensajeria_env   → idéntico al mensajeria.env que dejaba el script
 ```
 
-**Pendiente:** la prueba `destroy` → `apply` de la fase. Probar el filtro publicando en el tópico con
-la EC2 apagada, para que notification-service no consuma los mensajes de prueba.
+- **Prueba de la fase:** `destroy` (10 destruidos, 0 restos) → `apply` (10 creados en 2 min 22 s,
+  por la espera de 60 s de SQS para reusar un nombre) → `plan` sin cambios. Con la EC2 apagada se
+  publicaron 3 eventos: la baja de 15 % y el agotado llegaron a `notificaciones` y a la auditoría; la
+  baja de 5 %, solo a la auditoría.
+
+### Fase 2: la base pasa a `cuenta/base.tf`
+
+Grupo de seguridad (22, 80, 443, 8080), EC2, IP elástica y los dos buckets, con los mismos nombres
+que `tools/crear-infra.sh`. También se adoptaron con `import` (14 importados, 0 destruidos).
+
+- **La EC2 no se reemplaza nunca por una AMI nueva.** La de la máquina ya no era la última, y sin
+  `ignore_changes = [ami, user_data]` Terraform la habría recreado, y con ella la base de datos.
+- **Disco de 8 a 20 GB en caliente.** Al prender, Amazon Linux estiró la partición sola: el disco
+  quedó en 20 GB con 32 % de uso (estaba al 96 %).
+- **Buckets:** los ajustes usan el nombre del bucket directo. Con `terraform_data.output` el primer
+  plan los veía «por conocer» y los iba a reemplazar. Terraform nunca borra un bucket.
+- `conservar_ip` (por defecto `false`) deja la IP reservada aunque se apague la máquina, para la
+  cuenta con dominio.
+
+```text
+plan con import           → 14 to import, 0 to destroy (disco 8 → 20 y etiquetas)
+plan después del apply    → No changes
+EC2 tras prender          → 20G, 32 % usado, 6 contenedores arriba, datos intactos
+API Gateway               → /health, /productos, /catalogos 200 · /seguimiento, /api/yo, /ingesta 401
+tools/probar-mensajeria.py → TODO OK (docs/evidencia/mensajeria-ec2-20261114-202500.log)
+```
+
+**Pendiente:** el `destroy` de la EC2 se prueba en la fase 5, con `tools/tf.sh apagar` respaldando
+antes.
 
 ## 10-11 · Terraform: estructura, proveedor y sondeo de permisos — Martín
 
