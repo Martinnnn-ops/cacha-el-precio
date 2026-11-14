@@ -1,8 +1,8 @@
 # Terraform · la infraestructura de AWS como código
 
-> **Estado (14-11-2026): fases 0 a 3.** `cuenta/` ya maneja la **mensajería**, la **base** (grupo
-> de seguridad, EC2, IP y buckets) y la **identidad** (Cognito). El API Gateway se sigue montando con
-> `tools/crear-api-gateway.sh`, como
+> **Estado (14-11-2026): fases 0 a 4.** `cuenta/` ya maneja **toda la infraestructura de la cuenta**:
+> mensajería, base (grupo de seguridad, EC2, IP y buckets), identidad (Cognito) y borde (API Gateway).
+> Falta el puente (`tools/tf.sh` y los `.env`), así que por ahora conviven con los scripts, como
 > explica [`docs/MONTAR-EN-TU-CUENTA.md`](../../docs/MONTAR-EN-TU-CUENTA.md). La decisión y sus
 > costos están en el [ADR-033](../../docs/adr/033-terraform-para-la-infraestructura.md).
 
@@ -48,7 +48,7 @@ infra/terraform/
 | 1 | Colas, DLQ y SNS desde `topologia.json` (`cuenta/mensajeria.tf`) | ✅ |
 | 2 | Grupo de seguridad, EC2 (disco de 20 GB), IP y buckets (`cuenta/base.tf`) | ✅ |
 | 3 | Cognito: pool, clientes, scope, grupos, usuarios de prueba, Google condicional (`cuenta/identidad.tf`) | ✅ |
-| 4 | API, rutas, autorizador JWT, `/ingesta` y secreto del borde | ⬜ |
+| 4 | API, rutas, autorizador JWT, `/ingesta` y secreto del borde (`cuenta/api.tf`) | ✅ |
 | 5 | Los 5 `.env` y `tools/tf.sh` (`subir`, `apagar` con respaldo, `estado`) | ⬜ |
 | 6 | `dominio/` con el proveedor de Cloudflare | ⬜ |
 | 7 | Montar en dos cuentas desde cero y retirar los scripts (en un PR aparte) | ⬜ |
@@ -152,6 +152,10 @@ de un usuario, `<pool>/<correo>`. La clave de prueba entra como `TF_VAR_clave_pr
 ⚠️ **El `plan` de Cognito tiene que decir 0 to destroy.** Si un cliente *must be replaced*, su id
 cambia y hay que recompilar el frontend; si es el pool, se pierden los usuarios. `generate_secret`
 va en `ignore_changes` porque Cognito no lo informa al importar y el proveedor recreaba los 3 clientes.
+
+Para la API, los id salen de `aws apigatewayv2 get-integrations` y `get-routes`: cada integración
+se reconoce por su URI y cada ruta por su clave (`GET /productos`). El secreto del borde entra como
+`TF_VAR_borde_secreto` (el de `borde.env`): si fuera otro, Caddy respondería 403 hasta redesplegar.
 
 ⚠️ `max_message_size` va fijo en 1 MiB: es lo que trae hoy una cola nueva de SQS, pero el proveedor
 asume 256 KiB (el límite antiguo) y sin el ajuste achicaría las colas.

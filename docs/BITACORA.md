@@ -2,7 +2,7 @@
 
 Última actualización: 10-11-2026.
 
-## 14-11 · Terraform fases 1 a 3: mensajería, base e identidad — Martín
+## 14-11 · Terraform fases 1 a 4: mensajería, base, identidad y borde — Martín
 
 Rama `feature/terraform`. `infra/terraform/cuenta/mensajeria.tf` crea las 2 DLQ, las 3 colas, el
 tópico `cep-cambios-oferta`, la política de cada cola y las 2 suscripciones con su filtro. Igual que
@@ -63,6 +63,22 @@ plan con import            → 12 to import, 0 to destroy (etiquetas, la misma c
 plan después del apply     → No changes
 output cognito_env         → idéntico a cognito.env, secreto del scraper incluido
 tools/probar-mensajeria.py → TODO OK (401, 403, 200 e ingesta con token de máquina)
+```
+
+### Fase 4: el API Gateway pasa a `cuenta/api.tf`
+
+La HTTP API con CORS de orígenes explícitos, el autorizador JWT con los 3 clientes, las 14
+integraciones hacia la EC2 con `X-Borde-Secreto`, `POST /ingesta` directo a SQS con `LabRole`, las 24
+rutas (la tabla de acceso pública / jwt / scope quedó en un solo `locals`) y los stages `dev` y `prod`
+con su límite de 50/s. El destino del borde se decide solo: el dominio en la cuenta con dominio, y si
+no `http://<IP>:8080`; si la IP cambia, Terraform actualiza las 14 integraciones.
+
+```text
+plan con import            → 43 to import, 0 to destroy (etiquetas; el secreto ya era el de borde.env)
+plan después del apply     → No changes
+output api_gateway_env     → idéntico a api-gateway.env
+rutas                      → públicas 200 · jwt 401 · POST /productos 401 · preflight CORS 204
+tools/probar-mensajeria.py → TODO OK
 ```
 
 **Pendiente:** el `destroy` de la EC2 se prueba en la fase 5, con `tools/tf.sh apagar` respaldando

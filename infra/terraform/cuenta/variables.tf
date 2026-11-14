@@ -81,3 +81,20 @@ variable "clave_prueba" {
     error_message = "La clave de prueba debe cumplir la politica del pool: 8 caracteres, mayuscula, minuscula y numero."
   }
 }
+
+variable "borde_secreto" {
+  description = "Encabezado X-Borde-Secreto que el API Gateway inyecta hacia la EC2 y que Caddy exige en el 8080. Entra como TF_VAR_borde_secreto (tools/tf.sh lo saca de borde.env o lo genera). Si cambia, hay que volver a desplegar."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.borde_secreto) >= 20
+    error_message = "El secreto del borde debe tener al menos 20 caracteres."
+  }
+}
+
+variable "backend_url" {
+  description = "A donde apunta el API Gateway. Vacio = se decide solo: el dominio en la cuenta con dominio, y si no http://<IP de la EC2>:8080."
+  type        = string
+  default     = ""
+}
