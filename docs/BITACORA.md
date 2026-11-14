@@ -2,7 +2,7 @@
 
 Última actualización: 10-11-2026.
 
-## 14-11 · Terraform fases 1 a 4: mensajería, base, identidad y borde — Martín
+## 14-11 · Terraform fases 1 a 5: toda la cuenta y `tools/tf.sh` — Martín
 
 Rama `feature/terraform`. `infra/terraform/cuenta/mensajeria.tf` crea las 2 DLQ, las 3 colas, el
 tópico `cep-cambios-oferta`, la política de cada cola y las 2 suscripciones con su filtro. Igual que
@@ -81,7 +81,38 @@ rutas                      → públicas 200 · jwt 401 · POST /productos 401 �
 tools/probar-mensajeria.py → TODO OK
 ```
 
-**Pendiente:** el `destroy` de la EC2 se prueba en la fase 5, con `tools/tf.sh apagar` respaldando
+### Fase 5: el puente, `tools/tf.sh`
+
+`subir`, `apagar`, `estado` y `plan`. Mete los secretos por variable de entorno (de `borde.env`,
+`cognito.env` y `google.env`, o los genera), escribe los 5 `.env` con los mismos nombres que dejaban
+los scripts, copia el estado a `~/cacha-cuentas/<cuenta>/estado/` y frena si el plan borra algo
+fuera de la EC2 y la IP. Más `tools/hooks/pre-commit`, que frena commits con `.tfstate`, `.tfvars`,
+`.env`, `.pem` o algo con forma de secreto (`git config core.hooksPath tools/hooks`).
+
+- **El ciclo completo, probado.** `apagar` respaldó la base, la bajó al laptop y recién entonces
+  destruyó la EC2, la IP y la asociación (3 recursos) y re-apuntó las 14 integraciones. `subir` creó
+  una EC2 nueva, esperó al cloud-init, corrió `desplegar.sh` con `development` y restauró el
+  respaldo del laptop.
+- **La barrera funcionó a la primera:** el primer `apagar` no pudo respaldar (`respaldos/` en la EC2
+  es de root, lo crea el respaldo horario) y no apagó nada. Ahora respalda con `sudo`, como el timer,
+  y restaura desde `/tmp`.
+- **Bug encontrado:** con `pipefail`, `terraform state list | grep -q` daba falso por SIGPIPE, y
+  `estado` veía cambios pendientes con la máquina apagada. La lista va primero a una variable.
+- La EC2 vieja corría código copiado a mano: antes de borrarla se comprobó que sus 21 archivos
+  cambiados eran idénticos a `origin/development`. La nueva corre `development` limpio (`736be1e`).
+
+```text
+apagar                      → respaldo 260K en respaldos/ · 3 destruidos · /productos 500 (esperado)
+subir                       → EC2 nueva (20 GB, 32 %), desplegar.sh OK, respaldo restaurado
+filas tras restaurar        → Products 224 · ProductOffers 326 · price_history 325 = el respaldo
+borde                       → /health 200 · :8080 directo sin secreto 403
+tools/probar-mensajeria.py  → TODO OK en la máquina nueva
+.env tras subir sin cambios → los 5 idénticos a los de los scripts
+```
+
+**Pendiente:** fase 6 (dominio en Cloudflare, de Panditax) y fase 7 (segunda cuenta desde cero y
+retirar los scripts). `respaldar.sh` no vuelca el esquema `notification` (hoy solo tiene los correos
+simulados de las pruebas)., con `tools/tf.sh apagar` respaldando
 antes. Las fases 2 y 3 no se destruyeron a propósito: borrarían la base y los usuarios.
 
 ## 10-11 · Terraform: estructura, proveedor y sondeo de permisos — Martín

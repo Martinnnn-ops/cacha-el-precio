@@ -1,8 +1,8 @@
 # Terraform · la infraestructura de AWS como código
 
-> **Estado (14-11-2026): fases 0 a 4.** `cuenta/` ya maneja **toda la infraestructura de la cuenta**:
-> mensajería, base (grupo de seguridad, EC2, IP y buckets), identidad (Cognito) y borde (API Gateway).
-> Falta el puente (`tools/tf.sh` y los `.env`), así que por ahora conviven con los scripts, como
+> **Estado (14-11-2026): fases 0 a 5.** `cuenta/` maneja **toda la infraestructura de la cuenta**
+> (mensajería, base, identidad y borde) y `tools/tf.sh` la sube y la apaga, probado en `731705830984`.
+> Los scripts siguen en `tools/` hasta la fase 7 (montar en una segunda cuenta), como
 > explica [`docs/MONTAR-EN-TU-CUENTA.md`](../../docs/MONTAR-EN-TU-CUENTA.md). La decisión y sus
 > costos están en el [ADR-033](../../docs/adr/033-terraform-para-la-infraestructura.md).
 
@@ -49,9 +49,38 @@ infra/terraform/
 | 2 | Grupo de seguridad, EC2 (disco de 20 GB), IP y buckets (`cuenta/base.tf`) | ✅ |
 | 3 | Cognito: pool, clientes, scope, grupos, usuarios de prueba, Google condicional (`cuenta/identidad.tf`) | ✅ |
 | 4 | API, rutas, autorizador JWT, `/ingesta` y secreto del borde (`cuenta/api.tf`) | ✅ |
-| 5 | Los 5 `.env` y `tools/tf.sh` (`subir`, `apagar` con respaldo, `estado`) | ⬜ |
+| 5 | Los 5 `.env`, `tools/tf.sh` (`subir`, `apagar` con respaldo, `estado`) y el hook de secretos | ✅ |
 | 6 | `dominio/` con el proveedor de Cloudflare | ⬜ |
 | 7 | Montar en dos cuentas desde cero y retirar los scripts (en un PR aparte) | ⬜ |
+
+## Uso diario: `tools/tf.sh`
+
+Terraform no se corre a mano: `tools/tf.sh` mete los secretos por variable de entorno, escribe los 5
+`.env` que lee `desplegar.sh` y respalda el estado.
+
+```bash
+cp infra/terraform/cuenta/cuentas/ejemplo.tfvars.example infra/terraform/cuenta/cuentas/<tu-nombre>.tfvars
+git config core.hooksPath tools/hooks     # una vez por clon: frena commits con secretos
+
+./tools/tf.sh subir  <tu-nombre>   # crea o prende; con máquina nueva despliega y restaura el último respaldo
+./tools/tf.sh apagar <tu-nombre>   # respalda la base AL LAPTOP y baja solo la EC2 y la IP
+./tools/tf.sh estado <tu-nombre>   # qué hay y si AWS coincide con el código
+./tools/tf.sh plan   <tu-nombre>   # mirar, sin aplicar
+```
+
+| Barrera | Dónde |
+|---|---|
+| Credenciales vencidas o de otra cuenta → no empieza | `tf.sh` (y `allowed_account_ids`) |
+| El plan borra algo fuera de la EC2 y la IP → hay que escribir `BORRAR` | `tf.sh` |
+| `apagar` sin un respaldo bajado y no vacío → no apaga | `tf.sh` (atajo solo con `SIN_RESPALDO=1`) |
+| Copia del estado tras cada `apply` (las 5 últimas) | `~/cacha-cuentas/<cuenta>/estado/` |
+| Si cambia el user pool, avisa que hay que recompilar el front y rehacer admins | `tf.sh` |
+| Commit con `.tfstate`, `.tfvars`, `.env`, `.pem` o algo con forma de secreto → no entra | `tools/hooks/pre-commit` |
+
+Los secretos salen de los `.env` que ya existan (`borde.env`, `cognito.env`, `google.env`). En una
+cuenta nueva, `tf.sh` genera el del borde y la clave de prueba, y los deja en esos mismos archivos.
+`apagar` deja el sistema respondiendo 500 hasta el próximo `subir`: las integraciones apuntan al
+dominio mientras no hay IP.
 
 ## Si `terraform init` se corta
 

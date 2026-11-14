@@ -40,7 +40,7 @@ siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACI
 | Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
 | Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
 | **Mensajería del EP3: colas, tópicos, contratos, errores, administración, bandeja y simulador** | `docs/MENSAJERIA.md` | 342 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 1280 líneas |
+| Qué se hizo cada semana | `docs/BITACORA.md` | 1424 líneas |
 | Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
 | Presentar el proyecto a alguien de afuera | `README.md` | 218 líneas |
 
@@ -56,7 +56,7 @@ módulo en concreto:
 | El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 199 líneas |
 | El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 119 líneas |
 | El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |
-| **Terraform: qué reemplaza, estructura, fases y reglas del estado** | `infra/terraform/README.md` | 62 líneas |
+| **Terraform: qué reemplaza, `tools/tf.sh`, fases, barreras y reglas del estado** | `infra/terraform/README.md` | 203 líneas |
 
 **No cargues todos los documentos.** Casi ninguna tarea necesita más de dos.
 
