@@ -51,3 +51,33 @@ variable "conservar_ip" {
   type        = bool
   default     = false
 }
+
+variable "sitio_publico" {
+  description = "URL del sitio publico. Va en las direcciones de retorno del cliente frontend."
+  type        = string
+  default     = "https://www.cacha-el-precio.com"
+}
+
+variable "google_client_id" {
+  description = "Client id de Google. Solo se usa con tiene_dominio = true. Entra como TF_VAR_google_client_id (tools/tf.sh lo saca de google.env)."
+  type        = string
+  default     = ""
+}
+
+variable "google_client_secret" {
+  description = "Client secret de Google. NUNCA en un .tfvars: entra como TF_VAR_google_client_secret."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "clave_prueba" {
+  description = "Clave de admin@ y usuario@cachaelprecio.cl. Entra como TF_VAR_clave_prueba (tools/tf.sh la saca de cognito.env o la genera)."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.clave_prueba) >= 8 && can(regex("[A-Z]", var.clave_prueba)) && can(regex("[a-z]", var.clave_prueba)) && can(regex("[0-9]", var.clave_prueba))
+    error_message = "La clave de prueba debe cumplir la politica del pool: 8 caracteres, mayuscula, minuscula y numero."
+  }
+}

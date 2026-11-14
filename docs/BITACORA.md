@@ -2,7 +2,7 @@
 
 Última actualización: 10-11-2026.
 
-## 14-11 · Terraform fases 1 y 2: mensajería y base — Martín
+## 14-11 · Terraform fases 1 a 3: mensajería, base e identidad — Martín
 
 Rama `feature/terraform`. `infra/terraform/cuenta/mensajeria.tf` crea las 2 DLQ, las 3 colas, el
 tópico `cep-cambios-oferta`, la política de cada cola y las 2 suscripciones con su filtro. Igual que
@@ -47,8 +47,26 @@ API Gateway               → /health, /productos, /catalogos 200 · /seguimient
 tools/probar-mensajeria.py → TODO OK (docs/evidencia/mensajeria-ec2-20261114-202500.log)
 ```
 
+### Fase 3: Cognito pasa a `cuenta/identidad.tf`
+
+Pool, dominio del Hosted UI, scope `ingesta`, los clientes `frontend`, `scraper` y `pruebas`, los
+grupos y los dos usuarios de prueba, igual que `tools/crear-cognito.sh`. Google se crea solo con
+`tiene_dominio = true` y sus credenciales por variable de entorno; en esa cuenta el pool queda con
+`deletion_protection`.
+
+- **Lo que costó:** el primer plan recreaba los 3 clientes por `generate_secret`, que Cognito no
+  informa al importar (y cada cliente nuevo trae id nuevo). Quedó en `ignore_changes`.
+- El `import` de un usuario en un grupo va con comas y el `sub`, no con barras y el correo.
+
+```text
+plan con import            → 12 to import, 0 to destroy (etiquetas, la misma clave, unidades de token)
+plan después del apply     → No changes
+output cognito_env         → idéntico a cognito.env, secreto del scraper incluido
+tools/probar-mensajeria.py → TODO OK (401, 403, 200 e ingesta con token de máquina)
+```
+
 **Pendiente:** el `destroy` de la EC2 se prueba en la fase 5, con `tools/tf.sh apagar` respaldando
-antes.
+antes. Las fases 2 y 3 no se destruyeron a propósito: borrarían la base y los usuarios.
 
 ## 10-11 · Terraform: estructura, proveedor y sondeo de permisos — Martín
 
