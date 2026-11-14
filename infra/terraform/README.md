@@ -1,7 +1,7 @@
 # Terraform · la infraestructura de AWS como código
 
-> **Estado (10-11-2026): fases 0 y 0.5.** Están la estructura, las versiones, las variables y el
-> sondeo de permisos, pero `cuenta/` **todavía no crea nada**. El sistema se sigue montando con los scripts de `tools/`, como
+> **Estado (14-11-2026): fases 0, 0.5 y 1.** `cuenta/` ya maneja la **mensajería** (colas, DLQ, SNS
+> y suscripciones). Lo demás (EC2, Cognito, API) se sigue montando con los scripts de `tools/`, como
 > explica [`docs/MONTAR-EN-TU-CUENTA.md`](../../docs/MONTAR-EN-TU-CUENTA.md). La decisión y sus
 > costos están en el [ADR-033](../../docs/adr/033-terraform-para-la-infraestructura.md).
 
@@ -44,7 +44,7 @@ infra/terraform/
 |---|---|---|
 | 0 | Estructura, versiones, variables, `.gitignore`, ADR-033 | ✅ |
 | 0.5 | Sondeo: un recurso de cada tipo, para ver qué permisos niega el Learner Lab | ✅ |
-| 1 | Colas, DLQ y SNS desde `topologia.json` | ⬜ |
+| 1 | Colas, DLQ y SNS desde `topologia.json` (`cuenta/mensajeria.tf`) | ✅ |
 | 2 | Grupo de seguridad, EC2 (disco de 20 GB), IP y buckets | ⬜ |
 | 3 | Cognito: pool, clientes, scope, grupos, usuarios de prueba, Google condicional | ⬜ |
 | 4 | API, rutas, autorizador JWT, `/ingesta` y secreto del borde | ⬜ |
@@ -100,6 +100,41 @@ terraform init                     # o con -plugin-dir, ver arriba
 terraform apply   -var cuenta_esperada=$(aws sts get-caller-identity --query Account --output text)
 terraform destroy -var cuenta_esperada=$(aws sts get-caller-identity --query Account --output text)
 ```
+
+## Si `crear-mensajeria.py` ya creó las colas en tu cuenta
+
+No hace falta borrarlas: se **adoptan** con bloques `import`, sin cortar el servicio. Las URL y el
+ARN no cambian, así que `mensajeria.env` sigue sirviendo. Así se hizo en `731705830984` el 14-11-2026.
+
+1. Crear `cuenta/importar.tf` (temporal, no va a git) con un bloque por recurso:
+
+   ```hcl
+   import {
+     to = aws_sqs_queue.cola["ofertas-crudas"]     # también: dlq["..."], las otras colas
+     id = "https://sqs.us-east-1.amazonaws.com/<cuenta>/cep-ofertas-crudas"
+   }
+   import {
+     to = aws_sns_topic.topico["cambios-oferta"]
+     id = "arn:aws:sns:us-east-1:<cuenta>:cep-cambios-oferta"
+   }
+   import {
+     to = aws_sqs_queue_policy.desde_sns["notificaciones"]   # id = URL de la cola
+     id = "https://sqs.us-east-1.amazonaws.com/<cuenta>/cep-notificaciones"
+   }
+   import {
+     to = aws_sns_topic_subscription.suscripcion["cambios-oferta->notificaciones"]
+     id = "<ARN de la suscripción>"
+   }
+   ```
+
+   Los ARN de las suscripciones salen de
+   `aws sns list-subscriptions-by-topic --topic-arn arn:aws:sns:us-east-1:<cuenta>:cep-cambios-oferta`.
+2. `terraform plan -var-file=cuentas/<tu-nombre>.tfvars`. Tiene que decir **0 to add, 0 to destroy**;
+   los cambios en sitio son solo las etiquetas `gestionado-por` y `proyecto`.
+3. `terraform apply`, borrar `importar.tf` y correr `plan` otra vez: tiene que decir *No changes*.
+
+⚠️ `max_message_size` va fijo en 1 MiB: es lo que trae hoy una cola nueva de SQS, pero el proveedor
+asume 256 KiB (el límite antiguo) y sin el ajuste achicaría las colas.
 
 ## Reglas
 

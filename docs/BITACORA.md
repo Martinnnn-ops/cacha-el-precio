@@ -2,6 +2,27 @@
 
 Última actualización: 10-11-2026.
 
+## 14-11 · Terraform fase 1: la mensajería pasa a `cuenta/mensajeria.tf` — Martín
+
+Rama `feature/terraform`. `infra/terraform/cuenta/mensajeria.tf` crea las 2 DLQ, las 3 colas, el
+tópico `cep-cambios-oferta`, la política de cada cola y las 2 suscripciones con su filtro. Igual que
+`tools/crear-mensajeria.py`, lo lee todo de `infra/mensajeria/topologia.json`, que sigue siendo la
+única fuente (ADR-029).
+
+- **Se adoptó en vez de borrar.** En `731705830984` las colas del script se pasaron al estado con
+  bloques `import`, sin borrarlas ni cortar el servicio. La receta quedó en `infra/terraform/README.md`.
+- **Lo que apareció:** las colas tienen 1 MiB de tamaño máximo (el límite actual de SQS), pero el
+  proveedor asume 256 KiB y las iba a achicar. Quedó fijo en 1 MiB.
+
+```text
+plan con import         → 10 to import, 0 to add, 0 to destroy (solo cambian etiquetas)
+plan después del apply  → No changes
+output mensajeria_env   → idéntico al mensajeria.env que dejaba el script
+```
+
+**Pendiente:** la prueba `destroy` → `apply` de la fase. Probar el filtro publicando en el tópico con
+la EC2 apagada, para que notification-service no consuma los mensajes de prueba.
+
 ## 10-11 · Terraform: estructura, proveedor y sondeo de permisos — Martín
 
 Rama `feature/terraform`. Arranca el paso de los scripts de `tools/` a Terraform
