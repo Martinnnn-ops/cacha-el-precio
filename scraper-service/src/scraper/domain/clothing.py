@@ -115,6 +115,24 @@ _EXCLUSIONES = {
     "toallas",
     "billetera",
     "billeteras",
+    # No son ropa ni calzado aunque la ficha mencione prendas (regalo, combina
+    # con…): bolsos, perfumería, juguetería y menaje se colaban por eso.
+    "mochila",
+    "mochilas",
+    "cartera",
+    "carteras",
+    "morral",
+    "morrales",
+    "perfume",
+    "perfumes",
+    "colonia",
+    "colonias",
+    "peluche",
+    "peluches",
+    "juguete",
+    "juguetes",
+    "termo",
+    "termos",
 }
 
 
@@ -135,7 +153,13 @@ def texto_parece_vestimenta(texto_crudo: str) -> bool:
 
 def es_vestimenta(producto: Product) -> bool:
     """Solo acepta productos cuyo contenido indique ropa o calzado."""
-    if motivo_infantil(producto.name, producto.taxonomy_context or ""):
+    # El público infantil muchas veces no aparece en el nombre ("Polera
+    # estampada") sino en la ruta de la URL o en el contexto de taxonomía
+    # (.../nino/poleras/...). Si no se mira la URL, esas prendas se cuelan por
+    # la ingesta directa a la base, que no pasa por el respaldo de edad del
+    # Product Service.
+    contexto_edad = f"{producto.taxonomy_context or ''} {producto.product_url}"
+    if motivo_infantil(producto.name, contexto_edad):
         return False
     return texto_parece_vestimenta(
         f"{producto.name} {producto.taxonomy_context or ''} "

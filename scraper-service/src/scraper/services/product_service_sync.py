@@ -49,7 +49,9 @@ class ProductServiceSync:
 
     def sincronizar(self, producto: Product) -> bool:
         """Crea o actualiza la oferta en Product Service."""
-        if motivo_infantil(producto.name, producto.taxonomy_context or ""):
+        if motivo_infantil(
+            producto.name, f"{producto.taxonomy_context or ''} {producto.product_url}"
+        ):
             return False
         clasificacion = clasificacion_de(producto)
         payload = {
