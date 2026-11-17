@@ -262,9 +262,29 @@ subir)
       if [[ "$r" != "n" && "$r" != "N" ]]; then
         # Se sube a /tmp: respaldos/ en la EC2 es de root (lo crea el respaldo horario).
         DIR_TMP="/tmp/restaurar-$(basename "$ULTIMO")"
-        scp -i "$LLAVE" -o LogLevel=ERROR -q -r "$ULTIMO" "ec2-user@$IP:$DIR_TMP" \
-          && ssh_ec2 "$IP" "cd /opt/cacha-el-precio && echo RESTAURAR | sudo ./tools/respaldar.sh --restaurar $DIR_TMP" \
-          | sed 's/^/  /'
+        # Se reintenta y se revisa el resultado. El 17-11, en la prueba desde cero,
+        # la copia se corto una vez ("Connection closed by remote host") y el script
+        # siguio como si nada: terminaba en 0 con la base vacia. Al reintentar a mano
+        # funciono, asi que el corte es pasajero.
+        # Antes de cada intento se borra DIR_TMP: si quedo a medias, `scp -r` copiaria
+        # el respaldo DENTRO de la carpeta vieja y la restauracion no lo encontraria.
+        restaurado=0
+        for intento in 1 2 3; do
+          if ssh_ec2 "$IP" "rm -rf $DIR_TMP" \
+             && scp -i "$LLAVE" -o LogLevel=ERROR -q -r "$ULTIMO" "ec2-user@$IP:$DIR_TMP" \
+             && ssh_ec2 "$IP" "cd /opt/cacha-el-precio && echo RESTAURAR | sudo ./tools/respaldar.sh --restaurar $DIR_TMP" \
+                | sed 's/^/  /'; then
+            restaurado=1; break
+          fi
+          (( intento < 3 )) && { amar "  intento $intento fallo; reintento en 15 s"; sleep 15; }
+        done
+        if (( restaurado == 0 )); then
+          rojo "  NO se pudo restaurar el respaldo: la base quedo VACIA."
+          gris "  a mano, desde la raiz del repo:"
+          gris "    scp -i $LLAVE -r $ULTIMO ec2-user@$IP:$DIR_TMP"
+          gris "    ssh -i $LLAVE ec2-user@$IP 'cd /opt/cacha-el-precio && sudo ./tools/respaldar.sh --restaurar $DIR_TMP'"
+          FALLO_RESTAURAR=1
+        fi
       fi
     else
       amar "  no hay respaldo en respaldos/: el catalogo parte vacio (correr el scraper)"
@@ -277,6 +297,8 @@ subir)
   echo "  Sitio $(leer "$RAIZ/infra.env" INFRA_SITIO_URL)"
   [[ -n "$IP" ]] && echo "  EC2   $IP"
   gris "  comprobar: curl -s -o /dev/null -w '%{http_code}\\n' $API/health   # 200"
+  # Todo lo demas quedo arriba, pero sin los datos no es un "listo": se sale con error.
+  [[ "${FALLO_RESTAURAR:-0}" == "1" ]] && { rojo "  OJO: la base quedo vacia (ver arriba)."; exit 1; }
   ;;
 
 # ---------------------------------------------------------------------------

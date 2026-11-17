@@ -85,12 +85,16 @@ if [[ "${1:-}" == "--restaurar" ]]; then
   read -r -p "  Escribe RESTAURAR para continuar: " confirmacion
   [[ "$confirmacion" == "RESTAURAR" ]] || { gris "  cancelado"; exit 0; }
 
+  # Si algo falla se sale con error, no solo se avisa: tools/tf.sh llama a esto
+  # por ssh y solo se entera por el codigo de salida (17-11: un restore fallido
+  # terminaba en 0 y el catalogo quedaba vacio sin que nadie lo notara).
   if [[ -f "$CARPETA/database.sql" ]]; then
     docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" \
       -v ON_ERROR_STOP=1 < "$CARPETA/database.sql" >/dev/null \
-      && verde "  esquemas scraper y product restaurados" || rojo "  fallo el restore de Postgres"
+      && verde "  esquemas scraper y product restaurados" \
+      || { rojo "  fallo el restore de Postgres"; exit 1; }
   else
-    rojo "  el respaldo no trae database.sql"
+    rojo "  el respaldo no trae database.sql"; exit 1
   fi
 
   verde "Listo. Comprueba con: curl -H 'Version: 1.0' http://localhost:8081/api/products"
