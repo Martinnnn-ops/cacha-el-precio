@@ -36,7 +36,7 @@ infra/terraform/
 │   └── cuentas/
 │       └── ejemplo.tfvars.example   el único .tfvars que va a git
 ├── sondeo/                       prueba de permisos: crea una pieza de cada tipo y se destruye
-└── dominio/                      (fase 6) solo quien administra Cloudflare
+└── dominio/                      (fase 6) el registro A de api en Cloudflare
 ```
 
 ## Fases
@@ -50,7 +50,7 @@ infra/terraform/
 | 3 | Cognito: pool, clientes, scope, grupos, usuarios de prueba, Google condicional (`cuenta/identidad.tf`) | ✅ |
 | 4 | API, rutas, autorizador JWT, `/ingesta` y secreto del borde (`cuenta/api.tf`) | ✅ |
 | 5 | Los 5 `.env`, `tools/tf.sh` (`subir`, `apagar` con respaldo, `estado`) y el hook de secretos | ✅ |
-| 6 | `dominio/` con el proveedor de Cloudflare | ⬜ |
+| 6 | Registro `api` en Cloudflare, adoptado con `import` (`dominio/dns.tf`) | ✅ |
 | 7 | Montar en dos cuentas desde cero y retirar los scripts (en un PR aparte) | ⬜ |
 
 ## Uso diario: `tools/tf.sh`
@@ -201,3 +201,23 @@ asume 256 KiB (el límite antiguo) y sin el ajuste achicaría las colas.
 - **Terraform nunca borra un bucket.** Un `destroy` solo lo olvida y el siguiente `apply` lo retoma.
 - Las credenciales del Learner Lab vencen cada ~4 horas. Si un `apply` se corta con
   `ExpiredToken`, se pegan las nuevas y se vuelve a correr: retoma lo que faltó.
+
+## El dominio: `dominio/` (fase 6)
+
+Maneja **un solo registro**: el A de `api.cacha-el-precio.com`, con nube gris (Caddy saca su propio
+certificado). `www` y la raíz apuntan al bucket S3 de la cuenta de Panditax y se quedan a mano en
+Cloudflare, igual que el correo (MX, SPF, DKIM, DMARC) y la verificación de Google.
+
+Necesita un token de Cloudflare con permiso **DNS: Edit** solo sobre la zona `cacha-el-precio.com`,
+guardado fuera del repo en `~/cacha-cuentas/cloudflare.env` (`CLOUDFLARE_API_TOKEN=...`, permisos 600).
+
+```bash
+cd infra/terraform/dominio
+set -a; . ~/cacha-cuentas/cloudflare.env; set +a
+terraform init                                   # solo la primera vez
+terraform apply -var api_ip=<INFRA_IP del infra.env de la cuenta activa>
+```
+
+La IP se pasa a mano a propósito: así `dominio/` no necesita leer el estado de otra cuenta. El
+estado es local; si otra persona la corre con el estado vacío, el bloque `import` vuelve a adoptar
+el mismo registro en vez de crear uno duplicado.
