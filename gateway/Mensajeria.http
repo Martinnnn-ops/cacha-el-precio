@@ -4,7 +4,7 @@
 #        En local, el gateway levantado con MENSAJERIA_MODO=memoria.
 # @token: access_token de un usuario del grupo admin. Se saca con:
 #   aws cognito-idp admin-initiate-auth --auth-flow ADMIN_USER_PASSWORD_AUTH ...
-#   (ver tools/crear-cognito.sh). Con un usuario sin el grupo admin todo da 403.
+#   (ver tools/hacer-admin.sh). Con un usuario sin el grupo admin todo da 403.
 #
 # Lo mismo está automatizado en gateway.Tests/AdministracionMensajeriaHttpTests.cs.
 

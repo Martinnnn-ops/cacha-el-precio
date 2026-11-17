@@ -103,10 +103,10 @@ Thumbs.db
 # La evidencia del EP1 si se versiona: es lo que se cita en el informe.
 !docs/evidencia/*.log
 
-# Configuracion de Cognito generada por tools/crear-cognito.sh (cambia por cuenta)
+# Configuracion de Cognito que escribe tools/tf.sh (cambia por cuenta)
 cognito.env
 
-# Generado por tools/crear-api-gateway.sh: cambia con cada cuenta de AWS
+# Lo escribe tools/tf.sh: cambia con cada cuenta de AWS
 api-gateway.env
 
 # Respaldos de datos: nunca al repo
@@ -119,7 +119,7 @@ google.env
 infra.env
 borde.env
 
-# Generado por tools/crear-mensajeria.py: URLs de colas y ARN del topico (cambian por cuenta)
+# Lo escribe tools/tf.sh: URLs de colas y ARN del topico (cambian por cuenta)
 mensajeria.env
 
 # Cache de Python (scripts de tools/ y el scraper)

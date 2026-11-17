@@ -10,7 +10,7 @@ namespace CachaElPrecio.Gateway.Mensajeria;
 //
 // Todo cuelga de /api/admin/mensajeria y exige el grupo admin de Cognito,
 // igual que /api/admin/diagnostico. El API Gateway, antes, exige un token
-// válido (ruta jwt en tools/crear-api-gateway.sh).
+// válido (ruta jwt en infra/terraform/cuenta/api.tf).
 public static class EndpointsMensajeria
 {
     public const string Ruta = "/api/admin/mensajeria";

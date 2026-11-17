@@ -336,7 +336,7 @@ public sealed class ServicioAdministracion(
     }
 
     // Deja AWS igual que topologia.json (crea lo que falta y corrige lo distinto).
-    // Hace lo mismo que tools/crear-mensajeria.py, pero desde la aplicacion. Es
+    // Hace lo mismo que Terraform (mensajeria.tf), pero desde la aplicacion. Es
     // idempotente: aplicarla dos veces seguidas no cambia nada la segunda vez.
     // No borra lo "extra": eso se decide a mano.
     public async Task<IReadOnlyList<Accion>> AplicarTopologiaAsync(CancellationToken ct)

@@ -1,5 +1,5 @@
 {
-  "_about": "Unico lugar donde se declaran las colas, topicos y reglas de distribucion de Cacha el Precio. Lo leen tools/crear-mensajeria.sh y el componente de administracion. Ver docs/MENSAJERIA.md y ADR-029.",
+  "_about": "Unico lugar donde se declaran las colas, topicos y reglas de distribucion de Cacha el Precio. Lo leen Terraform (infra/terraform/cuenta/mensajeria.tf) y el componente de administracion. Ver docs/MENSAJERIA.md y ADR-029.",
   "version": 1,
   "prefix": "cep-",
   "deadLetterQueues": [

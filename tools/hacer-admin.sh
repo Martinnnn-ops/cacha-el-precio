@@ -7,7 +7,7 @@
 #   En el sitio solo se entra con Google, y un usuario de Google NO existe en
 #   el pool hasta que entra por primera vez. Ademas Cognito no lo nombra por su
 #   correo sino como "Google_<numero>", que no se puede adivinar. Por eso
-#   crear-cognito.sh no puede meterlo al grupo al crear el pool: todavia no hay
+#   Terraform no puede meterlo al grupo al crear el pool: todavia no hay
 #   a quien meter. Este script lo busca por el correo, que si se conoce.
 #
 #   El orden obligado es:
@@ -23,7 +23,7 @@
 #   ./hacer-admin.sh --quitar correo@gmail.com
 #   ./hacer-admin.sh --listar
 #
-# Lee el pool de cognito.env (lo escribe crear-cognito.sh).
+# Lee el pool de cognito.env (lo escribe tools/tf.sh).
 #
 # Codigos de salida: 0 todo bien · 1 error de AWS o de uso ·
 #                    2 algun correo todavia no existe en el pool
@@ -51,7 +51,7 @@ uso() {
 REGION="${REGION:-${COGNITO_REGION:-us-east-1}}"
 POOL_ID="${COGNITO_USER_POOL_ID:-}"
 if [[ -z "$POOL_ID" ]]; then
-  rojo "  No encuentro cognito.env. Corre antes ./tools/crear-cognito.sh"
+  rojo "  No encuentro cognito.env. Corre antes ./tools/tf.sh subir <tu-nombre>"
   exit 1
 fi
 
@@ -65,11 +65,11 @@ if ! CUENTA="$(aws_ sts get-caller-identity --query Account --output text 2>/dev
 fi
 
 # cognito.env puede haber quedado de OTRA cuenta (se cambio de laboratorio y no
-# se volvio a correr crear-cognito.sh). Sin esta comprobacion el error seria un
+# se volvio a correr tools/tf.sh). Sin esta comprobacion el error seria un
 # "ResourceNotFoundException" que no dice nada.
 if ! aws_ cognito-idp describe-user-pool --user-pool-id "$POOL_ID" >/dev/null 2>&1; then
   rojo "  El pool $POOL_ID de cognito.env no existe en la cuenta $CUENTA."
-  rojo "  Corre ./tools/crear-cognito.sh en esta cuenta y vuelve a intentarlo."
+  rojo "  Corre ./tools/tf.sh subir <tu-nombre> en esta cuenta y vuelve a intentarlo."
   exit 1
 fi
 gris "  cuenta $CUENTA, pool $POOL_ID"

@@ -17,7 +17,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 # La topologia de la mensajeria viaja dentro de la imagen (T11): es la misma
-# que lee tools/crear-mensajeria.py, asi el panel y el script no se contradicen.
+# que lee Terraform (infra/terraform/cuenta/mensajeria.tf), asi el panel y la
+# infraestructura no se contradicen.
 COPY infra/mensajeria/topologia.json /app/topologia.json
 
 ENV ASPNETCORE_HTTP_PORTS=8080 \

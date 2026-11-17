@@ -193,7 +193,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-}
-      # Salen de mensajeria.env (tools/crear-mensajeria.py). Si vienen vacías, el
+      # Salen de mensajeria.env (lo escribe tools/tf.sh). Si vienen vacías, el
       # consumidor no arranca y el servicio igual sirve /health.
       SQS_NOTIFICACIONES_URL: ${SQS_NOTIFICACIONES_URL:-}
       SQS_NOTIFICACIONES_DLQ_URL: ${SQS_NOTIFICACIONES_DLQ_URL:-}

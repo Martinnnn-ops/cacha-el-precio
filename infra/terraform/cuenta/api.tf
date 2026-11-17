@@ -91,7 +91,10 @@ data "aws_iam_role" "lab" {
 resource "aws_apigatewayv2_api" "api" {
   name          = local.nombre
   protocol_type = "HTTP"
-  description   = "API Manager de Cacha el Precio. Creada por tools/crear-api-gateway.sh"
+  # El texto nombra un script que ya no existe (se retiro el 17-11), pero se deja
+  # tal cual a proposito: es la descripcion REAL de la API en AWS, adoptada con
+  # import. Cambiarla haria que cada cuenta modifique su API en el proximo subir.
+  description = "API Manager de Cacha el Precio. Creada por tools/crear-api-gateway.sh"
 
   cors_configuration {
     allow_origins = local.origenes

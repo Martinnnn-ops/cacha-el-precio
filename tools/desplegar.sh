@@ -3,12 +3,11 @@
 # Despliega "Cacha el Precio" en la EC2 y sube el sitio al bucket.
 #
 # POR QUE ESTE SCRIPT EXISTE
-#   crear-infra.sh deja la maquina lista, crear-cognito.sh la identidad y
-#   crear-api-gateway.sh el borde. Faltaba el ultimo tramo: meter la aplicacion
-#   dentro. Era el unico paso que quedaba "a mano" y por eso era el que se hacia
-#   distinto cada vez.
-#
-#   Con esto, migrar de cuenta son cuatro comandos y un cambio de DNS.
+#   Terraform (tools/tf.sh subir) deja la cuenta lista: maquina, identidad,
+#   borde y mensajeria, y escribe los .env que lee este script. Falta el ultimo
+#   tramo: meter la aplicacion dentro. tf.sh lo llama solo cuando la maquina es
+#   nueva; a mano sirve para redesplegar codigo nuevo en la misma maquina.
+#   (Hasta el 17-11 la cuenta la armaban los scripts crear-*, ver ADR-033.)
 #
 # QUE HACE
 #   1. Arma el .env del servidor desde cognito.env e infra.env
@@ -45,30 +44,29 @@ titulo() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 titulo "0. Comprobaciones"
 
 for f in infra.env cognito.env; do
-  [[ -f "$RAIZ/$f" ]] || { rojo "  falta $f — corre primero crear-infra.sh y crear-cognito.sh"; exit 1; }
+  [[ -f "$RAIZ/$f" ]] || { rojo "  falta $f — corre primero ./tools/tf.sh subir <tu-nombre>"; exit 1; }
 done
 set -a; . "$RAIZ/infra.env"; . "$RAIZ/cognito.env"
 # api-gateway.env es opcional aqui: solo hace falta para compilar el frontend,
 # y --solo-backend no lo necesita. Si falta, el paso 4 avisa y para.
 [ -f "$RAIZ/api-gateway.env" ] && . "$RAIZ/api-gateway.env"
-# El secreto que Caddy exige en el 8080. Lo genera crear-api-gateway.sh.
+# El secreto que Caddy exige en el 8080. Lo genera tools/tf.sh (borde.env).
 [ -f "$RAIZ/borde.env" ] && . "$RAIZ/borde.env"
-# Las colas y el topico del EP3. Los genera crear-mensajeria.py.
+# Las colas y el topico del EP3. Los escribe tools/tf.sh desde Terraform.
 [ -f "$RAIZ/mensajeria.env" ] && . "$RAIZ/mensajeria.env"
 set +a
 verde "  infra.env y cognito.env leidos"
 # Sin mensajeria.env el sistema arrancaria igual, pero con TODA la mensajeria
 # apagada y sin ningun error visible: el consumidor de ofertas no arranca,
 # product-service no publica en SNS y notification-service no lee su cola.
-# Por eso, si falta, se crea aca (crear-mensajeria.py es idempotente) y si
-# eso falla, se detiene el despliegue.
+# Por eso, si falta, se detiene el despliegue.
+# Hasta el 17-11, aqui se creaban las colas con crear-mensajeria.py. Ya no: las
+# colas son de Terraform, y crearlas por fuera haria que Terraform choque con
+# ellas por el nombre. Este script solo revisa; no crea nada en AWS.
 if [[ -z "${SQS_OFERTAS_CRUDAS_URL:-}" ]]; then
-  gris "  no hay mensajeria.env: lo genero con tools/crear-mensajeria.py"
-  REGION="$INFRA_REGION" python3 "$RAIZ/tools/crear-mensajeria.py" >/dev/null \
-    || { rojo "  fallo crear-mensajeria.py; correlo a mano para ver el error"; exit 1; }
-  set -a; . "$RAIZ/mensajeria.env"; set +a
-  [[ -n "${SQS_OFERTAS_CRUDAS_URL:-}" ]] \
-    || { rojo "  mensajeria.env no trae SQS_OFERTAS_CRUDAS_URL; revisa topologia.json"; exit 1; }
+  rojo "  falta mensajeria.env (o no trae SQS_OFERTAS_CRUDAS_URL)."
+  rojo "  Corre antes: ./tools/tf.sh subir <tu-nombre>"
+  exit 1
 fi
 verde "  mensajeria.env leido (cola ${SQS_OFERTAS_CRUDAS_URL##*/})"
 
@@ -94,7 +92,7 @@ SOLO="${1:-}"
 if [[ "$SOLO" != "--solo-front" ]]; then
 if [[ "$SOLO" != "--solo-front" && -z "${BORDE_SECRETO:-}" ]]; then
   rojo "  Falta borde.env, y sin el Caddy respondera 403 a todo el trafico del borde."
-  rojo "  Corre antes: ./tools/crear-api-gateway.sh"
+  rojo "  Corre antes: ./tools/tf.sh subir <tu-nombre>"
   exit 1
 fi
 
@@ -311,7 +309,7 @@ fi
 # 3.5 Respaldo automatico diario
 #
 #    POR QUE. El 10-09 se perdieron 221 productos con su historial al terminar
-#    la instancia. crear-infra.sh --borrar ya respalda antes de destruir, pero
+#    la instancia. tools/tf.sh apagar ya respalda antes de destruir, pero
 #    eso solo cubre el borrado DELIBERADO. No cubre que el laboratorio caduque,
 #    que la maquina se caiga, ni que alguien la termine desde la consola.
 #
@@ -336,7 +334,7 @@ if [[ "$SOLO" != "--solo-front" ]]; then
 titulo "3.5 Respaldo automatico diario"
 
 if [[ -z "${INFRA_BUCKET_RESPALDOS:-}" ]]; then
-  gris "  no hay INFRA_BUCKET_RESPALDOS en infra.env; vuelve a correr crear-infra.sh"
+  gris "  no hay INFRA_BUCKET_RESPALDOS en infra.env; vuelve a correr ./tools/tf.sh subir <tu-nombre>"
 else
   $SSH "sudo bash -s" <<REMOTO2 >/dev/null 2>&1
 set -e
@@ -409,14 +407,14 @@ cd "$RAIZ/frontend" || { rojo "  no encuentro frontend/"; exit 1; }
 # en las rutas, enrutar hacia los servicios, y el CORS con origenes explicitos),
 # y un borde que nadie atraviesa no demuestra ninguno de los tres.
 #
-# Se lee de api-gateway.env, que lo escribe crear-api-gateway.sh, asi que cada
+# Se lee de api-gateway.env, que lo escribe tools/tf.sh, asi que cada
 # cuenta apunta sola a SU propio borde sin editar nada.
 if [[ -n "${API_PUBLICA:-}" ]]; then
   API_PUB="$API_PUBLICA"
 elif [[ -n "${API_GATEWAY_URL_PROD:-}" ]]; then
   API_PUB="$API_GATEWAY_URL_PROD"
 else
-  rojo "  No encuentro api-gateway.env. Corre antes ./tools/crear-api-gateway.sh"
+  rojo "  No encuentro api-gateway.env. Corre antes ./tools/tf.sh subir <tu-nombre>"
   rojo "  (o pasa API_PUBLICA=... a mano si sabes lo que haces)"
   exit 1
 fi

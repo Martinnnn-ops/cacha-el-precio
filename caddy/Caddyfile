@@ -67,7 +67,7 @@ api.cacha-el-precio.com {
 # conoce el secreto, asi que es el unico camino posible. Sin eso, "todo el
 # trafico pasa por el borde" era una costumbre del frontend, no una garantia.
 #
-# El secreto lo genera tools/crear-api-gateway.sh, lo inyecta el propio API
+# El secreto lo genera tools/tf.sh (borde.env), lo inyecta el propio API
 # Gateway en cada integracion, y llega aqui por el entorno del contenedor.
 #
 # El valor por defecto es a proposito imposible de acertar: si la variable no

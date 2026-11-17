@@ -17,7 +17,7 @@ Gateway, como lo usaria una persona. Deja la evidencia en docs/evidencia/.
 
 Uso:  python3 tools/probar-mensajeria.py      (LLAVE=~/labsuser.pem por defecto)
 Requiere cognito.env, api-gateway.env, infra.env y la aws cli con credenciales.
-Usa los usuarios de prueba de crear-cognito.sh (admin@ y usuario@).
+Usa los usuarios de prueba que crea Terraform (admin@ y usuario@).
 """
 
 from __future__ import annotations
