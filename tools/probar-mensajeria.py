@@ -197,6 +197,8 @@ check("ninguna cola nueva despues de intentarlo", estado == 200 and len(despues)
 
 # ---------------------------------------------------------------------------
 log("\nB. FLUJO 1 CON ERROR: una oferta invalida por POST /ingesta")
+# Para que los externalId de esta corrida no choquen con los de otra.
+sufijo = uuid.uuid4().hex[:5]
 estado, prods = http("GET", f"{BASE}/productos")
 producto = next(p for p in prods if p.get("offers"))
 oferta = producto["offers"][0]
