@@ -5,8 +5,9 @@ Gateway, como lo usaria una persona. Deja la evidencia en docs/evidencia/.
 
   A. Administracion (T11): 401 sin token, 403 sin el grupo admin, 200 con el
      admin; consultar colas, topicos con sus filtros, la topologia y una DLQ
-     con su diagnostico; casos invalidos (400 { campo, error }) y conflictos
-     (409); crear y borrar una cola con su DLQ y una regla con filtro.
+     con su diagnostico; el 409 de mirar una cola con DLQ. Desde el 17-11 el
+     panel no crea, cambia ni borra infraestructura (es de Terraform): se
+     comprueba que esas rutas ya no existen y que no aparece ninguna cola.
   B. Flujo 1 con error: una oferta con price -1 por POST /ingesta llega a la
      DLQ en el primer intento, con error-type=definitivo, vista desde el panel.
   C. Flujo 2 en la EC2: el admin sigue un producto real, su oferta baja 30%
@@ -134,10 +135,6 @@ def esperar(descripcion: str, condicion, segundos: int = 90):
     return None
 
 
-def errores_campos(cuerpo) -> list[str]:
-    return [e.get("campo") for e in (cuerpo.get("errores") or [])] if isinstance(cuerpo, dict) else []
-
-
 # =============================================================================
 EVIDENCIA.parent.mkdir(parents=True, exist_ok=True)
 log("EVIDENCIA DE LA MENSAJERIA EN LA EC2 — Cacha el Precio · T13")
@@ -174,55 +171,29 @@ check("GET /topologia: AWS igual a topologia.json", estado == 200 and topo.get("
       "; ".join(f"{d['estado']} {d['nombre']}" for d in topo.get("diferencias", []) if d["estado"] != "extra")
       if isinstance(topo, dict) else str(topo)[:100])
 
-log("   — validacion: 400 con { campo, error } —")
-invalidos = [
-    ("nombre sin el prefijo cep-", "colas", {"nombre": "ofertas"}, "nombre"),
-    ("nombre con mayusculas y guion bajo", "colas", {"nombre": "cep-Ofertas_Crudas"}, "nombre"),
-    ("la DLQ indicada no existe", "colas", {"nombre": "cep-x", "dlq": "cep-no-existe", "maxIntentos": 3}, "dlq"),
-    ("maxIntentos fuera de 1..10", "colas", {"nombre": "cep-x", "dlq": "cep-ofertas-crudas-dlq", "maxIntentos": 11}, "maxIntentos"),
-    ("visibilidad sobre 12 h", "colas", {"nombre": "cep-x", "visibilidadSegundos": 50000}, "visibilidadSegundos"),
-    ("filtro sobre un atributo que nadie publica", "suscripciones",
-     {"topico": "cep-cambios-oferta", "cola": "cep-auditoria-precios", "filtro": {"tienda": ["paris"]}}, "filtro"),
-    ("filtro con un type que no existe", "suscripciones",
-     {"topico": "cep-cambios-oferta", "cola": "cep-auditoria-precios", "filtro": {"type": ["precio.subio"]}}, "filtro"),
-]
-for descripcion, ruta, cuerpo, campo in invalidos:
-    estado, r = http("POST", f"{ADMIN}/{ruta}", t_admin, cuerpo)
-    error = next((e["error"] for e in (r.get("errores") or []) if e.get("campo") == campo), "") if isinstance(r, dict) else ""
-    check(f"400 · {descripcion}", estado == 400 and campo in errores_campos(r), f"{campo}: {error}"[:110])
+log("   — conflicto: 409 —")
+estado, r = http("GET", f"{ADMIN}/colas/cep-ofertas-crudas/mensajes", t_admin)
+check("409 · mirar una cola con DLQ sumaria intentos", estado == 409,
+      (r.get("mensaje", "") if isinstance(r, dict) else "")[:100])
 
-log("   — conflictos: 409 —")
-conflictos = [
-    ("la cola ya existe", "POST", "colas", {"nombre": "cep-ofertas-crudas"}),
-    ("es la DLQ de otra cola (ni forzando)", "DELETE", "colas/cep-ofertas-crudas-dlq?forzar=true", None),
-    ("el topico tiene suscripciones", "DELETE", "topicos/cep-cambios-oferta?forzar=true", None),
-    ("mirar una cola con DLQ sumaria intentos", "GET", "colas/cep-ofertas-crudas/mensajes", None),
-    ("lo declarado en topologia.json pide ?forzar=true", "DELETE", "suscripciones/cep-cambios-oferta/cep-auditoria-precios", None),
+log("   — el panel no toca la infraestructura (es de Terraform) —")
+cuantas = len(colas) if isinstance(colas, list) else -1
+sin_rutas = [
+    ("crear una cola", "POST", "colas", {"nombre": "cep-intruso"}),
+    ("borrar una cola", "DELETE", "colas/cep-ofertas-crudas-dlq", None),
+    ("crear un topico", "POST", "topicos", {"nombre": "cep-intruso"}),
+    ("borrar un topico", "DELETE", "topicos/cep-cambios-oferta", None),
+    ("crear una regla", "POST", "suscripciones", {"topico": "cep-cambios-oferta", "cola": "cep-intruso"}),
+    ("cambiar una regla", "PUT", "suscripciones/cep-cambios-oferta/cep-notificaciones", {"filtro": None}),
+    ("borrar una regla", "DELETE", "suscripciones/cep-cambios-oferta/cep-auditoria-precios", None),
+    ("aplicar la topologia", "POST", "topologia/aplicar", None),
 ]
-for descripcion, metodo, ruta, cuerpo in conflictos:
+for descripcion, metodo, ruta, cuerpo in sin_rutas:
     estado, r = http(metodo, f"{ADMIN}/{ruta}", t_admin, cuerpo)
-    check(f"409 · {descripcion}", estado == 409, (r.get("mensaje", "") if isinstance(r, dict) else "")[:100])
-
-log("   — gestionar: crear y borrar destinos y reglas —")
-sufijo = uuid.uuid4().hex[:5]
-dlq_demo, cola_demo = f"cep-demo-{sufijo}-dlq", f"cep-demo-{sufijo}"
-pasos = [
-    ("crear la DLQ", "POST", "colas", {"nombre": dlq_demo, "retencionSegundos": 1209600}, 201),
-    ("crear la cola con su DLQ tras 3 intentos", "POST", "colas",
-     {"nombre": cola_demo, "visibilidadSegundos": 45, "dlq": dlq_demo, "maxIntentos": 3}, 201),
-    ("regla: solo los agotados llegan a la cola", "POST", "suscripciones",
-     {"topico": "cep-cambios-oferta", "cola": cola_demo, "filtro": {"type": ["oferta.agotada"]}}, 201),
-    ("cambiar el filtro: bajas de 30% o mas", "PUT", f"suscripciones/cep-cambios-oferta/{cola_demo}",
-     {"filtro": {"type": ["precio.bajo"], "discountPct": [{"numeric": [">=", 30]}]}}, 200),
-    ("borrar la regla", "DELETE", f"suscripciones/cep-cambios-oferta/{cola_demo}", None, 204),
-    ("borrar la cola", "DELETE", f"colas/{cola_demo}", None, 204),
-]
-for descripcion, metodo, ruta, cuerpo, esperado in pasos:
-    estado, r = http(metodo, f"{ADMIN}/{ruta}", t_admin, cuerpo)
-    check(f"{esperado} · {descripcion}", estado == esperado, "" if estado == esperado else str(r)[:120])
-# La DLQ solo se puede borrar cuando el listado de SQS ya no muestra la cola que la usaba.
-estado = esperar("borrar la DLQ", lambda: (s := http("DELETE", f"{ADMIN}/colas/{dlq_demo}", t_admin)[0]) in (204, 404) and s, 60)
-check("204 · borrar la DLQ (cuando SQS ya no lista la cola que la usaba)", estado == 204)
+    check(f"{estado} · {descripcion}: la ruta ya no existe", estado in (404, 405))
+estado, despues = http("GET", f"{ADMIN}/colas", t_admin)
+check("ninguna cola nueva despues de intentarlo", estado == 200 and len(despues) == cuantas,
+      f"{cuantas} antes, {len(despues) if isinstance(despues, list) else '?'} despues")
 
 # ---------------------------------------------------------------------------
 log("\nB. FLUJO 1 CON ERROR: una oferta invalida por POST /ingesta")

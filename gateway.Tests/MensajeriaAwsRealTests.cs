@@ -40,14 +40,13 @@ public class MensajeriaAwsRealTests
         servicio = new ServicioAdministracion(aws, CargarTopologia(), NullLogger<ServicioAdministracion>.Instance);
     }
 
+    // Solo compara: lo que creó Terraform tiene que coincidir con topologia.json.
+    // Ya no aplica la topología (17-11): eso tocaría recursos de Terraform.
     [FactAws]
-    public async Task La_topologia_real_esta_sincronizada_y_aplicarla_no_cambia_nada()
+    public async Task La_topologia_real_esta_sincronizada()
     {
         var estado = await servicio.CompararTopologiaAsync(Ct);
         Assert.True(estado.Sincronizada, string.Join("\n", estado.Diferencias.Select(d => $"{d.Estado} {d.Nombre}: {d.Detalle}")));
-
-        var acciones = await servicio.AplicarTopologiaAsync(Ct);
-        Assert.All(acciones, a => Assert.Equal("sin cambios", a.Resultado));
 
         var crudas = await servicio.ObtenerColaAsync("cep-ofertas-crudas", Ct);
         Assert.Equal(new ReglaDlq("cep-ofertas-crudas-dlq", 5), crudas.Dlq);

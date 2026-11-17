@@ -20,15 +20,8 @@ export const verMensajes = (cola) => http.get(`${BASE}/colas/${nombre(cola)}/men
 // El redrive espera a SQS (hasta ~25 s); el borde corta a los 30.
 export const reprocesar = (dlq) => http.post(`${BASE}/colas/${nombre(dlq)}/redrive`, null, { timeout: 30000 })
 
-export const crearCola = (datos) => http.post(`${BASE}/colas`, datos)
-export const crearTopico = (datos) => http.post(`${BASE}/topicos`, datos)
-export const crearSuscripcion = (datos) => http.post(`${BASE}/suscripciones`, datos)
-
-const forzar = (si) => (si ? '?forzar=true' : '')
-export const borrarCola = (n, f) => http.delete(`${BASE}/colas/${nombre(n)}${forzar(f)}`)
-export const borrarTopico = (n, f) => http.delete(`${BASE}/topicos/${nombre(n)}${forzar(f)}`)
-export const borrarSuscripcion = (topico, cola, f) =>
-  http.delete(`${BASE}/suscripciones/${nombre(topico)}/${nombre(cola)}${forzar(f)}`)
+// Crear y borrar colas, topicos y reglas ya no existe (17-11): la mensajeria es
+// de Terraform y el gateway quito esas rutas.
 
 /**
  * Traduce un error del panel a { mensaje, campos }. El 400 del servidor trae

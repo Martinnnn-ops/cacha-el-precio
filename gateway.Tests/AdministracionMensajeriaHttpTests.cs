@@ -24,9 +24,9 @@ namespace CachaElPrecio.Gateway.Tests;
 /// en la EC2.
 ///
 ///   · sin token → 401; con token pero sin el grupo admin → 403
-///   · casos válidos → 200/201/204
-///   · casos inválidos → 400 con { campo, error }, o 409 si choca con lo que hay
-///   · aplicar la topología dos veces no duplica nada
+///   · mirar colas, tópicos, mensajes y la topología; redrive de una DLQ
+///   · desde el 17-11, crear, cambiar o borrar colas, tópicos y reglas ya no
+///     existe (404/405): eso es de Terraform
 /// </summary>
 public class AdministracionMensajeriaHttpTests : IDisposable
 {
@@ -89,8 +89,8 @@ public class AdministracionMensajeriaHttpTests : IDisposable
         var r = await usuario.GetAsync("/api/admin/mensajeria/colas");
         Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
 
-        var crear = await usuario.PostAsJsonAsync("/api/admin/mensajeria/colas", new { nombre = "cep-intruso" });
-        Assert.Equal(HttpStatusCode.Forbidden, crear.StatusCode);
+        var redrive = await usuario.PostAsync("/api/admin/mensajeria/colas/cep-ofertas-crudas-dlq/redrive", null);
+        Assert.Equal(HttpStatusCode.Forbidden, redrive.StatusCode);
     }
 
     // ── Consultar ────────────────────────────────────────────────────────
@@ -114,27 +114,37 @@ public class AdministracionMensajeriaHttpTests : IDisposable
         Assert.Equal("definitivo", mensajes[0].GetProperty("diagnostico").GetProperty("error-type").GetString());
     }
 
-    // ── Gestionar (casos válidos) ────────────────────────────────────────
+    // ── El panel no toca la infraestructura (17-11) ──────────────────────
+    // Colas, tópicos y reglas son de Terraform. Si estas rutas volvieran a
+    // existir, el panel podría crear o borrar recursos por fuera de Terraform.
 
-    [Fact]
-    public async Task Crear_suscribir_con_filtro_y_borrar_todo()
+    public static TheoryData<string, string> RutasQueYaNoExisten => new()
     {
-        await Esperar(admin.PostAsJsonAsync("/api/admin/mensajeria/colas",
-            new { nombre = "cep-prueba-dlq" }), HttpStatusCode.Created);
-        var cola = await Json(await admin.PostAsJsonAsync("/api/admin/mensajeria/colas",
-            new { nombre = "cep-prueba", visibilidadSegundos = 45, dlq = "cep-prueba-dlq", maxIntentos = 3 }), HttpStatusCode.Created);
-        Assert.Equal(45, cola.GetProperty("visibilidadSegundos").GetInt32());
+        { "POST", "/api/admin/mensajeria/colas" },
+        { "DELETE", "/api/admin/mensajeria/colas/cep-ofertas-crudas" },
+        { "POST", "/api/admin/mensajeria/topicos" },
+        { "DELETE", "/api/admin/mensajeria/topicos/cep-cambios-oferta" },
+        { "POST", "/api/admin/mensajeria/suscripciones" },
+        { "PUT", "/api/admin/mensajeria/suscripciones/cep-cambios-oferta/cep-notificaciones" },
+        { "DELETE", "/api/admin/mensajeria/suscripciones/cep-cambios-oferta/cep-notificaciones" },
+        { "POST", "/api/admin/mensajeria/topologia/aplicar" },
+    };
 
-        await Esperar(admin.PostAsJsonAsync("/api/admin/mensajeria/suscripciones", new
+    [Theory]
+    [MemberData(nameof(RutasQueYaNoExisten))]
+    public async Task El_panel_no_crea_cambia_ni_borra_infraestructura(string metodo, string ruta)
+    {
+        int colasAntes = (await Json(await admin.GetAsync("/api/admin/mensajeria/colas"), HttpStatusCode.OK)).GetArrayLength();
+
+        using var pedido = new HttpRequestMessage(new HttpMethod(metodo), ruta)
         {
-            topico = "cep-cambios-oferta",
-            cola = "cep-prueba",
-            filtro = new { type = new[] { "oferta.agotada" } }
-        }), HttpStatusCode.Created);
+            Content = JsonContent.Create(new { nombre = "cep-prueba", topico = "cep-cambios-oferta", cola = "cep-prueba" })
+        };
+        var r = await admin.SendAsync(pedido);
 
-        await Esperar(admin.DeleteAsync("/api/admin/mensajeria/suscripciones/cep-cambios-oferta/cep-prueba"), HttpStatusCode.NoContent);
-        await Esperar(admin.DeleteAsync("/api/admin/mensajeria/colas/cep-prueba"), HttpStatusCode.NoContent);
-        await Esperar(admin.DeleteAsync("/api/admin/mensajeria/colas/cep-prueba-dlq"), HttpStatusCode.NoContent);
+        // 404 si la ruta no existe con ningún método; 405 si existe solo con GET.
+        Assert.Contains(r.StatusCode, new[] { HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
+        Assert.Equal(colasAntes, (await Json(await admin.GetAsync("/api/admin/mensajeria/colas"), HttpStatusCode.OK)).GetArrayLength());
     }
 
     [Fact]
@@ -146,71 +156,11 @@ public class AdministracionMensajeriaHttpTests : IDisposable
     }
 
     [Fact]
-    public async Task Aplicar_la_topologia_dos_veces_no_duplica_nada()
-    {
-        int colasAntes = (await Json(await admin.GetAsync("/api/admin/mensajeria/colas"), HttpStatusCode.OK)).GetArrayLength();
+    public async Task La_topologia_se_puede_comparar() =>
+        Assert.True((await Json(await admin.GetAsync("/api/admin/mensajeria/topologia"), HttpStatusCode.OK))
+            .GetProperty("sincronizada").GetBoolean());
 
-        var primera = await Json(await admin.PostAsync("/api/admin/mensajeria/topologia/aplicar", null), HttpStatusCode.OK);
-        var segunda = await Json(await admin.PostAsync("/api/admin/mensajeria/topologia/aplicar", null), HttpStatusCode.OK);
-
-        Assert.All(segunda.GetProperty("acciones").EnumerateArray(),
-            a => Assert.Equal("sin cambios", a.GetProperty("resultado").GetString()));
-        Assert.True(segunda.GetProperty("estado").GetProperty("sincronizada").GetBoolean());
-        Assert.Equal(primera.GetProperty("acciones").GetArrayLength(), segunda.GetProperty("acciones").GetArrayLength());
-        Assert.Equal(colasAntes, (await Json(await admin.GetAsync("/api/admin/mensajeria/colas"), HttpStatusCode.OK)).GetArrayLength());
-    }
-
-    // ── Validación: 400 con { campo, error } ─────────────────────────────
-
-    public static TheoryData<string, object, string> SolicitudesInvalidas => new()
-    {
-        { "/api/admin/mensajeria/colas", new { nombre = "ofertas" }, "nombre" },                        // sin prefijo cep-
-        { "/api/admin/mensajeria/colas", new { nombre = "cep-Ofertas_Crudas" }, "nombre" },             // mayúsculas y _
-        { "/api/admin/mensajeria/colas", new { nombre = "cep-x", dlq = "cep-no-existe", maxIntentos = 3 }, "dlq" },
-        { "/api/admin/mensajeria/colas", new { nombre = "cep-x", dlq = "cep-ofertas-crudas-dlq", maxIntentos = 11 }, "maxIntentos" },
-        { "/api/admin/mensajeria/colas", new { nombre = "cep-x", visibilidadSegundos = 50000 }, "visibilidadSegundos" },
-        { "/api/admin/mensajeria/colas", new { nombre = "cep-x", retencionSegundos = 30 }, "retencionSegundos" },
-        { "/api/admin/mensajeria/topicos", new { nombre = "" }, "nombre" },
-        { "/api/admin/mensajeria/suscripciones",
-            new { topico = "cep-cambios-oferta", cola = "cep-auditoria-precios", filtro = new { tienda = new[] { "paris" } } }, "filtro" },
-        { "/api/admin/mensajeria/suscripciones",
-            new { topico = "cep-cambios-oferta", cola = "cep-auditoria-precios", filtro = new { type = new[] { "precio.subio" } } }, "filtro" },
-        { "/api/admin/mensajeria/suscripciones", new { topico = "cep-no-existe", cola = "cep-auditoria-precios" }, "topico" },
-    };
-
-    [Theory]
-    [MemberData(nameof(SolicitudesInvalidas))]
-    public async Task Solicitud_invalida_responde_400_con_campo_y_error(string ruta, object cuerpo, string campo)
-    {
-        var r = await Json(await admin.PostAsJsonAsync(ruta, cuerpo), HttpStatusCode.BadRequest);
-
-        var errores = r.GetProperty("errores").EnumerateArray().ToList();
-        Assert.Contains(errores, e => e.GetProperty("campo").GetString() == campo);
-        Assert.All(errores, e => Assert.False(string.IsNullOrWhiteSpace(e.GetProperty("error").GetString())));
-    }
-
-    // ── Conflictos: 409 ──────────────────────────────────────────────────
-
-    [Fact]
-    public async Task Crear_una_cola_que_ya_existe_responde_409() =>
-        await Esperar(admin.PostAsJsonAsync("/api/admin/mensajeria/colas", new { nombre = "cep-ofertas-crudas" }), HttpStatusCode.Conflict);
-
-    [Fact]
-    public async Task Borrar_una_dlq_en_uso_responde_409_aunque_se_fuerce() =>
-        await Esperar(admin.DeleteAsync("/api/admin/mensajeria/colas/cep-ofertas-crudas-dlq?forzar=true"), HttpStatusCode.Conflict);
-
-    [Fact]
-    public async Task Borrar_una_cola_con_suscripciones_responde_409() =>
-        await Esperar(admin.DeleteAsync("/api/admin/mensajeria/colas/cep-auditoria-precios?forzar=true"), HttpStatusCode.Conflict);
-
-    [Fact]
-    public async Task Borrar_un_topico_con_suscripciones_responde_409() =>
-        await Esperar(admin.DeleteAsync("/api/admin/mensajeria/topicos/cep-cambios-oferta?forzar=true"), HttpStatusCode.Conflict);
-
-    [Fact]
-    public async Task Suscribir_dos_veces_lo_mismo_responde_409() =>
-        await Esperar(admin.PostAsJsonAsync("/api/admin/mensajeria/suscripciones",
-            new { topico = "cep-cambios-oferta", cola = "cep-notificaciones" }), HttpStatusCode.Conflict);
+    // ── Mirar mensajes ───────────────────────────────────────────────────
 
     [Fact]
     public async Task Mirar_una_cola_con_dlq_responde_409_porque_sumaria_intentos() =>

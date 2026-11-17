@@ -1,20 +1,18 @@
 <script setup>
 import { computed } from 'vue'
 import BaseButton from '@/shared/components/BaseButton.vue'
-import ConfirmarBorrado from '@/modules/admin/components/ConfirmarBorrado.vue'
 import { etiqueta } from '@/modules/admin/data/flujos'
 
 // Las colas de un flujo (o las sueltas) en una tabla encerrada en su caja, con
 // sus contadores y acciones. Cada DLQ va justo debajo de su cola (↳), así el
-// par se lee junto. El estado de borrado y de carga lo lleva el panel.
+// par se lee junto. El estado de carga lo lleva el panel. Desde el 17-11 no hay
+// boton de borrar: las colas son de Terraform.
 const props = defineProps({
   colas: { type: Array, required: true },
   ocupado: { type: Boolean, default: false },
-  borrando: { type: Object, default: null },
-  errorBorrado: { type: String, default: '' },
   revisando: { type: String, default: null },
 })
-const emit = defineEmits(['ver', 'redrive', 'pedir-borrado', 'confirmar', 'cancelar'])
+const emit = defineEmits(['ver', 'redrive'])
 
 // Orden de la tabla: cada cola seguida de su DLQ; las DLQ sin su cola, al final.
 const ordenadas = computed(() => {
@@ -73,16 +71,7 @@ function rol(c) {
               <BaseButton v-if="!c.dlq" variante="secundario" tamano="chico" @click="emit('ver', c.nombre)">Ver mensajes</BaseButton>
               <BaseButton v-if="c.esDlqDe.length" tamano="chico" :disabled="ocupado || !c.mensajesVisibles"
                 :title="`Devuelve los mensajes a ${c.esDlqDe[0]} para reintentarlos`" @click="emit('redrive', c.nombre)">Reintentar</BaseButton>
-              <BaseButton variante="texto" tamano="chico"
-                @click="emit('pedir-borrado', { tipo: 'cola', nombre: c.nombre, declarado: c.declaradaEnTopologia })">Borrar</BaseButton>
             </div></td>
-          </tr>
-          <tr v-if="borrando?.tipo === 'cola' && borrando?.nombre === c.nombre">
-            <td colspan="5">
-              <ConfirmarBorrado :nombre="c.nombre" :declarado="c.declaradaEnTopologia" :ocupado="ocupado"
-                @confirmar="(f) => emit('confirmar', f)" @cancelar="emit('cancelar')" />
-              <p v-if="errorBorrado" role="alert" class="error">{{ errorBorrado }}</p>
-            </td>
           </tr>
         </template>
       </tbody>
@@ -121,6 +110,5 @@ tr.elegida { outline: 2px solid var(--cep-accent); outline-offset: -2px; }
 thead .num { font-size: var(--cep-fs-sm); }
 .acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--cep-sp-1); }
 code { font-family: var(--cep-font-mono); font-size: var(--cep-fs-sm); }
-.error { color: var(--cep-alerta); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>

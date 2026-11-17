@@ -8,6 +8,15 @@ namespace CachaElPrecio.Gateway.Mensajeria;
 // traducen HTTP a métodos de ServicioAdministracion y sus excepciones a
 // respuestas; no saben nada de SQS ni de SNS.
 //
+// Desde el 17-11 el panel NO crea, cambia ni borra colas, tópicos ni reglas:
+// eso es de Terraform (infra/terraform/cuenta/mensajeria.tf), y si el panel lo
+// hiciera por fuera, Terraform chocaría con esos recursos o los desharía en el
+// próximo apply. Se quitaron POST/DELETE de colas y tópicos, POST/PUT/DELETE de
+// suscripciones y POST /topologia/aplicar. El panel mira, revisa mensajes,
+// devuelve DLQs a su cola (redrive: mueve mensajes, no toca la infraestructura)
+// y simula avisos. Para cambiar la mensajería: editar topologia.json y correr
+// tools/tf.sh subir.
+//
 // Todo cuelga de /api/admin/mensajeria y exige el grupo admin de Cognito,
 // igual que /api/admin/diagnostico. El API Gateway, antes, exige un token
 // válido (ruta jwt en infra/terraform/cuenta/api.tf).
@@ -87,18 +96,6 @@ public static class EndpointsMensajeria
         admin.MapGet("/colas/{nombre}", async (string nombre, ServicioAdministracion s, CancellationToken ct) =>
             Results.Ok(await s.ObtenerColaAsync(nombre, ct)));
 
-        admin.MapPost("/colas", async (CrearColaSolicitud solicitud, ServicioAdministracion s, CancellationToken ct) =>
-        {
-            var cola = await s.CrearColaAsync(solicitud, ct);
-            return Results.Created($"{Ruta}/colas/{cola.Nombre}", cola);
-        });
-
-        admin.MapDelete("/colas/{nombre}", async (string nombre, bool? forzar, ServicioAdministracion s, CancellationToken ct) =>
-        {
-            await s.EliminarColaAsync(nombre, forzar ?? false, ct);
-            return Results.NoContent();
-        });
-
         // Ver lo que hay en una DLQ (o en la auditoria) sin borrarlo, y devolver una DLQ a su cola.
         admin.MapGet("/colas/{nombre}/mensajes", async (string nombre, int? maximo, ServicioAdministracion s, CancellationToken ct) =>
             Results.Ok(await s.VerMensajesAsync(nombre, maximo ?? 10, ct)));
@@ -110,45 +107,15 @@ public static class EndpointsMensajeria
         admin.MapGet("/topicos", async (ServicioAdministracion s, CancellationToken ct) =>
             Results.Ok(await s.ListarTopicosAsync(ct)));
 
-        admin.MapPost("/topicos", async (CrearTopicoSolicitud solicitud, ServicioAdministracion s, CancellationToken ct) =>
-        {
-            var topico = await s.CrearTopicoAsync(solicitud, ct);
-            return Results.Created($"{Ruta}/topicos/{topico.Nombre}", topico);
-        });
-
-        admin.MapDelete("/topicos/{nombre}", async (string nombre, bool? forzar, ServicioAdministracion s, CancellationToken ct) =>
-        {
-            await s.EliminarTopicoAsync(nombre, forzar ?? false, ct);
-            return Results.NoContent();
-        });
-
         // ── Suscripciones (reglas de distribución) ─────────────────────────
         admin.MapGet("/suscripciones", async (ServicioAdministracion s, CancellationToken ct) =>
             Results.Ok(await s.ListarSuscripcionesAsync(ct)));
 
-        admin.MapPost("/suscripciones", async (CrearSuscripcionSolicitud solicitud, ServicioAdministracion s, CancellationToken ct) =>
-        {
-            var sub = await s.CrearSuscripcionAsync(solicitud, ct);
-            return Results.Created($"{Ruta}/suscripciones/{sub.Topico}/{sub.Cola}", sub);
-        });
-
-        admin.MapPut("/suscripciones/{topico}/{cola}",
-            async (string topico, string cola, CrearSuscripcionSolicitud solicitud, ServicioAdministracion s, CancellationToken ct) =>
-                Results.Ok(await s.ActualizarSuscripcionAsync(topico, cola, solicitud, ct)));
-
-        admin.MapDelete("/suscripciones/{topico}/{cola}",
-            async (string topico, string cola, bool? forzar, ServicioAdministracion s, CancellationToken ct) =>
-            {
-                await s.EliminarSuscripcionAsync(topico, cola, forzar ?? false, ct);
-                return Results.NoContent();
-            });
-
         // ── Topología: lo declarado contra lo que existe ───────────────────
+        // Solo compara. Si AWS quedó distinto de topologia.json, se arregla con
+        // tools/tf.sh subir, no desde aquí.
         admin.MapGet("/topologia", async (ServicioAdministracion s, CancellationToken ct) =>
             Results.Ok(await s.CompararTopologiaAsync(ct)));
-
-        admin.MapPost("/topologia/aplicar", async (ServicioAdministracion s, CancellationToken ct) =>
-            Results.Ok(new { acciones = await s.AplicarTopologiaAsync(ct), estado = await s.CompararTopologiaAsync(ct) }));
 
         // ── Correos generados por notification-service (la bandeja) ────────
         BandejaCorreosProxy.Mapear(admin);

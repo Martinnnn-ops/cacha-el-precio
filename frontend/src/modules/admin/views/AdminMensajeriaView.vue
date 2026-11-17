@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import BaseButton from '@/shared/components/BaseButton.vue'
 import BandejaCorreos from '@/modules/admin/components/BandejaCorreos.vue'
 import DiagramaFlujos from '@/modules/admin/components/DiagramaFlujos.vue'
@@ -16,7 +16,13 @@ import * as api from '@/modules/admin/services/mensajeria.service'
 // Una sola pagina que se lee de arriba abajo, ordenada por flujo y no por tipo
 // de recurso, porque asi se explica: primero que hay en la pagina, despues cada
 // flujo con sus reglas, colas y fallas, luego los correos que genera el flujo 2
-// y al final la administracion (crear/borrar).
+// y al final lo que exista fuera de los flujos.
+//
+// Desde el 17-11 el panel solo mira: no crea, cambia ni borra colas, topicos ni
+// reglas. Eso es de Terraform (infra/terraform/cuenta/mensajeria.tf, que lee
+// infra/mensajeria/topologia.json). Si el panel lo hiciera, Terraform chocaria
+// con esos recursos o los desharia en el proximo apply. El redrive se queda:
+// mueve mensajes, no toca la infraestructura.
 
 // Las secciones del indice de arriba, con lo que le sirven al admin.
 const SECCIONES = [
@@ -38,10 +44,10 @@ const SECCIONES = [
     ],
   },
   {
-    id: 'administrar',
-    titulo: 'Administrar',
-    para: 'Cambiar la mensajería sin entrar a la consola de AWS.',
-    acciones: ['Crear colas, tópicos y reglas.', 'Probar que el servidor rechaza datos inválidos.'],
+    id: 'otros',
+    titulo: 'Fuera de los flujos',
+    para: 'Lo que existe en AWS pero no es parte de ningún flujo, y cómo se cambia la mensajería.',
+    acciones: ['Ver si quedó algo creado a mano.', 'Saber dónde se cambian colas, tópicos y reglas.'],
   },
 ]
 function irA(id) {
@@ -80,8 +86,6 @@ onMounted(() => {
 })
 onBeforeUnmount(() => clearInterval(reloj))
 
-const nombresColas = computed(() => colas.value.map((c) => c.nombre))
-
 // Lo de cada flujo, en el orden en que se explica; lo demas va a «Otros».
 const colasDe = (f) => f.colas.map((n) => colas.value.find((c) => sinPrefijo(c.nombre) === n)).filter(Boolean)
 const topicosDe = (f) => f.topicos.map((n) => topicos.value.find((t) => sinPrefijo(t.nombre) === n)).filter(Boolean)
@@ -93,27 +97,6 @@ const topicosSueltos = computed(() => topicos.value.filter((t) => !esDeUnFlujo(t
 const totalApartados = computed(() =>
   colas.value.filter((c) => c.esDlqDe.length).reduce((n, c) => n + c.mensajesVisibles, 0))
 
-// Lo que deja pasar una regla nueva: un filtro de la lista o uno escrito a mano.
-const PERSONALIZADO = '__personalizado__'
-const filtroElegido = ref('')
-watch(filtroElegido, (v) => { if (v !== PERSONALIZADO) formSub.filtro = v })
-
-// 345600 -> «4 días»: los segundos solos no se leen.
-function duracion(segundos) {
-  const s = Number(segundos) || 0
-  if (s >= 86400) return `${+(s / 86400).toFixed(1)} día(s)`
-  if (s >= 3600) return `${+(s / 3600).toFixed(1)} hora(s)`
-  return `${+(s / 60).toFixed(1)} minuto(s)`
-}
-
-// Filtros de ejemplo para no escribir el JSON de memoria.
-const FILTROS_EJEMPLO = [
-  { etiqueta: 'Sin filtro (recibe todo)', valor: '' },
-  { etiqueta: 'Solo agotados', valor: '{"type": ["oferta.agotada"]}' },
-  { etiqueta: 'Bajas de 30% o más', valor: '{"type": ["precio.bajo"], "discountPct": [{"numeric": [">=", 30]}]}' },
-  { etiqueta: 'Agotados y reposiciones', valor: '{"type": ["oferta.agotada", "oferta.repuesta"]}' },
-]
-const dlqs = computed(() => colas.value.filter((c) => c.esDlqDe.length).map((c) => c.nombre))
 const hora = computed(() => actualizado.value?.toLocaleTimeString('es-CL') ?? '')
 
 // ── Mensajes apartados (DLQ) y auditoria ──────────────────────────────────
@@ -150,89 +133,6 @@ async function reprocesar(dlq) {
     ocupado.value = false
   }
 }
-
-// ── Crear (con los errores por campo que devuelve el servidor) ─────────────
-const formCola = reactive({ nombre: 'cep-', visibilidadSegundos: 30, retencionSegundos: 345600, dlq: '', maxIntentos: 5 })
-const formTopico = reactive({ nombre: 'cep-' })
-const formSub = reactive({ topico: '', cola: '', filtro: '', entregaCruda: true })
-const errores = reactive({ cola: {}, topico: {}, sub: {} })
-const mensajesForm = reactive({ cola: '', topico: '', sub: '' })
-
-async function enviar(clave, accion, datos, alTerminar) {
-  errores[clave] = {}
-  mensajesForm[clave] = ''
-  ocupado.value = true
-  try {
-    await accion(datos)
-    mensajesForm[clave] = 'Creado.'
-    alTerminar?.()
-    await cargar()
-  } catch (e) {
-    const { mensaje, campos } = api.leerError(e)
-    errores[clave] = campos
-    mensajesForm[clave] = mensaje
-  } finally {
-    ocupado.value = false
-  }
-}
-
-function crearCola() {
-  const conDlq = formCola.dlq !== ''
-  enviar('cola', api.crearCola, {
-    nombre: formCola.nombre,
-    visibilidadSegundos: Number(formCola.visibilidadSegundos),
-    retencionSegundos: Number(formCola.retencionSegundos),
-    dlq: conDlq ? formCola.dlq : null,
-    maxIntentos: conDlq ? Number(formCola.maxIntentos) : null,
-  }, () => { formCola.nombre = 'cep-' })
-}
-
-function crearTopico() {
-  enviar('topico', api.crearTopico, { nombre: formTopico.nombre }, () => { formTopico.nombre = 'cep-' })
-}
-
-function crearSuscripcion() {
-  let filtro = null
-  if (formSub.filtro.trim()) {
-    try {
-      filtro = JSON.parse(formSub.filtro)
-    } catch {
-      errores.sub = { filtro: ['No es un JSON válido. Ejemplo: {"type": ["oferta.agotada"]}'] }
-      mensajesForm.sub = ''
-      return
-    }
-  }
-  enviar('sub', api.crearSuscripcion,
-    { topico: formSub.topico, cola: formSub.cola, filtro, entregaCruda: formSub.entregaCruda },
-    () => { formSub.filtro = '' })
-}
-
-// ── Borrar (confirmando con el nombre) ─────────────────────────────────────
-const borrando = ref(null) // { tipo, nombre, declarado, topico?, cola? }
-const errorBorrado = ref('')
-
-function pedirBorrado(item) {
-  borrando.value = item
-  errorBorrado.value = ''
-}
-
-async function borrar(forzar) {
-  const b = borrando.value
-  ocupado.value = true
-  try {
-    if (b.tipo === 'cola') await api.borrarCola(b.nombre, forzar)
-    if (b.tipo === 'topico') await api.borrarTopico(b.nombre, forzar)
-    if (b.tipo === 'sub') await api.borrarSuscripcion(b.topico, b.cola, forzar)
-    borrando.value = null
-    if (revisando.value === b.nombre) revisando.value = null
-    await cargar()
-  } catch (e) {
-    errorBorrado.value = api.leerError(e).mensaje
-  } finally {
-    ocupado.value = false
-  }
-}
-
 </script>
 
 <template>
@@ -291,16 +191,13 @@ async function borrar(forzar) {
       </details>
 
       <h3 class="sub">Colas</h3>
-      <TablaColas :colas="colasDe(f)" :ocupado="ocupado" :borrando="borrando" :error-borrado="errorBorrado"
-        :revisando="revisando" @ver="verMensajes" @redrive="reprocesar" @pedir-borrado="pedirBorrado"
-        @confirmar="borrar" @cancelar="borrando = null" />
+      <TablaColas :colas="colasDe(f)" :ocupado="ocupado" :revisando="revisando"
+        @ver="verMensajes" @redrive="reprocesar" />
 
       <template v-if="topicosDe(f).length">
         <h3 class="sub">Reglas de distribución</h3>
         <p class="muted">Quien publica en el tópico no sabe quién escucha: cada regla decide qué copia llega a qué cola.</p>
-        <ReglasTopico v-for="t in topicosDe(f)" :key="t.nombre" :topico="t" :ocupado="ocupado"
-          :borrando="borrando" :error-borrado="errorBorrado"
-          @pedir-borrado="pedirBorrado" @confirmar="borrar" @cancelar="borrando = null" />
+        <ReglasTopico v-for="t in topicosDe(f)" :key="t.nombre" :topico="t" />
       </template>
 
       <template v-if="revisando && flujoDeRevisando === f.id">
@@ -337,120 +234,20 @@ async function borrar(forzar) {
     <!-- ═════════ Correos que genero el flujo 2 ═════════ -->
     <BandejaCorreos id="correos" class="bloque" :actualizado="actualizado" />
 
-    <!-- ═════════ Administrar ═════════ -->
-    <section id="administrar" class="bloque">
-      <h2>Administrar</h2>
+    <!-- ═════════ Fuera de los flujos ═════════ -->
+    <section id="otros" class="bloque">
+      <h2>Fuera de los flujos</h2>
       <p class="muted">
-        Crear y borrar colas, tópicos y reglas. El servidor valida cada campo: si un nombre o un valor no sirve, el
-        error aparece bajo ese campo. Lo declarado en <code>topologia.json</code> pide confirmación extra para
-        borrarse, porque lo usa un flujo.
+        Este panel solo mira: colas, tópicos y reglas los maneja <strong>Terraform</strong>. Para cambiar algo, se
+        edita <code>infra/mensajeria/topologia.json</code> y se corre <code>./tools/tf.sh subir &lt;tu-nombre&gt;</code>.
+        Si el estado de arriba dice «AWS distinto de topologia.json», se arregla de la misma forma.
       </p>
-
-      <div class="formularios">
-        <form novalidate @submit.prevent="crearCola">
-          <header>
-            <h3>Nueva cola</h3>
-            <p class="ayuda">Un buzón: un servicio deja mensajes y otro los retira a su ritmo.</p>
-          </header>
-          <label>Nombre
-            <input v-model.trim="formCola.nombre" :aria-invalid="!!errores.cola.nombre" />
-          </label>
-          <p v-for="e in errores.cola.nombre" :key="e" class="error-campo">{{ e }}</p>
-          <div class="par">
-            <label>Visibilidad
-              <span class="con-unidad"><input v-model="formCola.visibilidadSegundos" type="number" :aria-invalid="!!errores.cola.visibilidadSegundos" /><span>s</span></span>
-              <small>oculto mientras se procesa</small>
-            </label>
-            <label>Retención
-              <span class="con-unidad"><input v-model="formCola.retencionSegundos" type="number" :aria-invalid="!!errores.cola.retencionSegundos" /><span>s</span></span>
-              <small>{{ duracion(formCola.retencionSegundos) }} sin leerse</small>
-            </label>
-          </div>
-          <p v-for="e in [...(errores.cola.visibilidadSegundos ?? []), ...(errores.cola.retencionSegundos ?? [])]" :key="e" class="error-campo">{{ e }}</p>
-          <div class="par">
-            <label>DLQ
-              <select v-model="formCola.dlq" :aria-invalid="!!errores.cola.dlq">
-                <option value="">Sin DLQ</option>
-                <option v-for="n in nombresColas" :key="n" :value="n">{{ n }}</option>
-              </select>
-              <small>a dónde va lo que falla</small>
-            </label>
-            <label v-if="formCola.dlq">Intentos
-              <input v-model="formCola.maxIntentos" type="number" min="1" max="10" :aria-invalid="!!errores.cola.maxIntentos" />
-              <small>antes de apartarlo (1–10)</small>
-            </label>
-          </div>
-          <p v-for="e in [...(errores.cola.dlq ?? []), ...(errores.cola.maxIntentos ?? [])]" :key="e" class="error-campo">{{ e }}</p>
-          <footer>
-            <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear cola</BaseButton>
-            <p v-if="mensajesForm.cola" role="status" :class="Object.keys(errores.cola).length ? 'error' : 'muted'">{{ mensajesForm.cola }}</p>
-          </footer>
-        </form>
-
-        <form novalidate @submit.prevent="crearTopico">
-          <header>
-            <h3>Nuevo tópico</h3>
-            <p class="ayuda">Un altavoz: lo que se publica acá se copia a cada cola que tenga una regla con él.</p>
-          </header>
-          <label>Nombre
-            <input v-model.trim="formTopico.nombre" :aria-invalid="!!errores.topico.nombre" />
-          </label>
-          <p v-for="e in errores.topico.nombre" :key="e" class="error-campo">{{ e }}</p>
-          <p class="ayuda">Un tópico recién creado no reparte nada: falta conectarlo con una regla.</p>
-          <footer>
-            <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear tópico</BaseButton>
-            <p v-if="mensajesForm.topico" role="status" :class="Object.keys(errores.topico).length ? 'error' : 'muted'">{{ mensajesForm.topico }}</p>
-          </footer>
-        </form>
-
-        <form novalidate @submit.prevent="crearSuscripcion">
-          <header>
-            <h3>Nueva regla</h3>
-            <p class="ayuda">Conecta un tópico con una cola y decide qué mensajes pasan.</p>
-          </header>
-          <div class="par">
-            <label>Desde el tópico
-              <select v-model="formSub.topico" :aria-invalid="!!errores.sub.topico">
-                <option value="" disabled>Elige</option>
-                <option v-for="t in topicos" :key="t.nombre" :value="t.nombre">{{ t.nombre }}</option>
-              </select>
-            </label>
-            <label>Hacia la cola
-              <select v-model="formSub.cola" :aria-invalid="!!errores.sub.cola">
-                <option value="" disabled>Elige</option>
-                <option v-for="n in nombresColas.filter((n) => !dlqs.includes(n))" :key="n" :value="n">{{ n }}</option>
-              </select>
-            </label>
-          </div>
-          <p v-for="e in [...(errores.sub.topico ?? []), ...(errores.sub.cola ?? [])]" :key="e" class="error-campo">{{ e }}</p>
-          <label>Qué deja pasar
-            <select v-model="filtroElegido">
-              <option v-for="f in FILTROS_EJEMPLO" :key="f.etiqueta" :value="f.valor">{{ f.etiqueta }}</option>
-              <option :value="PERSONALIZADO">Personalizado (escribir JSON)</option>
-            </select>
-          </label>
-          <label v-if="filtroElegido === PERSONALIZADO">Filtro en JSON
-            <textarea v-model="formSub.filtro" rows="3" spellcheck="false" placeholder='{"type": ["oferta.agotada"]}'
-              :aria-invalid="!!errores.sub.filtro" />
-          </label>
-          <p v-for="e in errores.sub.filtro" :key="e" class="error-campo">{{ e }}</p>
-          <label class="casilla"><input v-model="formSub.entregaCruda" type="checkbox" /> Entregar el mensaje tal cual (sin el sobre de SNS)</label>
-          <footer>
-            <BaseButton type="submit" tamano="chico" :disabled="ocupado">Crear regla</BaseButton>
-            <p v-if="mensajesForm.sub" role="status" :class="Object.keys(errores.sub).length ? 'error' : 'muted'">{{ mensajesForm.sub }}</p>
-          </footer>
-        </form>
-      </div>
-
-      <h3 class="sub">Recursos fuera de los flujos</h3>
       <p v-if="!colasSueltas.length && !topicosSueltos.length" class="muted">
-        Ninguno: todo lo que existe pertenece a un flujo. Lo que crees arriba aparece en esta lista.
+        No hay nada fuera de los flujos: todo lo que existe es de Terraform.
       </p>
-      <TablaColas v-if="colasSueltas.length" :colas="colasSueltas" :ocupado="ocupado" :borrando="borrando"
-        :error-borrado="errorBorrado" :revisando="revisando" @ver="verMensajes" @redrive="reprocesar"
-        @pedir-borrado="pedirBorrado" @confirmar="borrar" @cancelar="borrando = null" />
-      <ReglasTopico v-for="t in topicosSueltos" :key="t.nombre" :topico="t" :ocupado="ocupado" :borrando="borrando"
-        :error-borrado="errorBorrado" @pedir-borrado="pedirBorrado" @confirmar="borrar" @cancelar="borrando = null" />
+      <TablaColas v-if="colasSueltas.length" :colas="colasSueltas" :ocupado="ocupado" :revisando="revisando"
+        @ver="verMensajes" @redrive="reprocesar" />
+      <ReglasTopico v-for="t in topicosSueltos" :key="t.nombre" :topico="t" />
       <template v-if="revisando && flujoDeRevisando === 'otros'">
         <h3 class="sub">Mensajes en <code>{{ revisando }}</code></h3>
         <p class="muted">Se leen sin borrarlos. SQS entrega una muestra de hasta 10 por lectura.</p>
@@ -498,13 +295,11 @@ async function borrar(forzar) {
 .tarjeta .ir { margin-top: var(--cep-sp-2); font-size: var(--cep-fs-sm); color: var(--cep-accent); font-weight: 600; }
 .pasos summary { cursor: pointer; font-weight: 600; }
 .pasos ol { display: grid; gap: var(--cep-sp-1); padding-left: var(--cep-sp-6); }
-label small { font-weight: normal; }
 .barra { display: flex; flex-wrap: wrap; gap: var(--cep-sp-3); align-items: center; margin-top: var(--cep-sp-4); }
 .estado { font-size: var(--cep-fs-sm); padding: var(--cep-sp-05) var(--cep-sp-2); border-radius: var(--cep-r-pill); border: 1px solid; }
 .estado.ok { color: var(--cep-exito); }
 .estado.alerta { color: var(--cep-alerta); }
-.error, .error-campo { color: var(--cep-alerta); }
-.error-campo { margin: 0 0 var(--cep-sp-2); font-size: var(--cep-fs-sm); }
+.error { color: var(--cep-alerta); }
 .aviso { color: var(--cep-accent); }
 code, pre { font-family: var(--cep-font-mono); font-size: var(--cep-fs-sm); }
 pre { overflow-x: auto; padding: var(--cep-sp-3); background: var(--cep-sunken); border-radius: var(--cep-r-md); }
@@ -513,35 +308,6 @@ pre { overflow-x: auto; padding: var(--cep-sp-3); background: var(--cep-sunken);
 dl { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: var(--cep-sp-1) var(--cep-sp-3); margin: 0; }
 dt { font-family: var(--cep-font-mono); font-size: var(--cep-fs-sm); color: var(--cep-muted); }
 dd { margin: 0; overflow-wrap: anywhere; }
-.formularios { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--cep-sp-4); margin-top: var(--cep-sp-4); }
-@media (min-width: 900px) { .formularios { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-form {
-  display: flex; flex-direction: column; gap: var(--cep-sp-3);
-  padding: var(--cep-sp-4); border: 1px solid var(--cep-line); border-radius: var(--cep-r-lg); background: var(--cep-surface);
-}
-form header { padding-bottom: var(--cep-sp-3); border-bottom: 1px solid var(--cep-line); }
-form h3 { margin: 0; }
-form footer { margin-top: auto; padding-top: var(--cep-sp-2); display: flex; flex-wrap: wrap; gap: var(--cep-sp-2); align-items: center; }
-form footer p { margin: 0; font-size: var(--cep-fs-sm); }
-.par { display: grid; gap: var(--cep-sp-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
-label small { color: var(--cep-muted); font-size: 0.75rem; }
-.con-unidad { display: flex; align-items: center; gap: var(--cep-sp-1); }
-.con-unidad input { flex: 1; min-width: 0; }
-.con-unidad span { color: var(--cep-muted); }
-.ayuda { margin: var(--cep-sp-1) 0 0; font-size: var(--cep-fs-sm); color: var(--cep-muted); }
 .bloque.flujo h2 { display: flex; align-items: center; gap: var(--cep-sp-2); }
 .num { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--cep-ink); color: var(--cep-surface); font-size: var(--cep-fs-md); }
-label { display: grid; gap: var(--cep-sp-1); font-size: var(--cep-fs-sm); }
-.casilla { display: flex; gap: var(--cep-sp-2); align-items: center; }
-input:not([type='checkbox']), select, textarea {
-  min-height: var(--cep-control-h-sm);
-  padding: var(--cep-sp-1) var(--cep-sp-2);
-  font: inherit;
-  color: var(--cep-ink);
-  background: var(--cep-surface);
-  border: 1px solid var(--cep-line-media);
-  border-radius: var(--cep-r-md);
-}
-textarea { font-family: var(--cep-font-mono); }
-[aria-invalid='true'] { border-color: var(--cep-alerta); }
 </style>
