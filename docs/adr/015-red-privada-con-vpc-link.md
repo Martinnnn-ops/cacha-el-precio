@@ -102,3 +102,8 @@ Si esta cuenta de Academy se agota o la resetean:
 
 Ninguno de los tres pide editar nada: el nombre del dominio de Cognito se deriva del número de
 cuenta y los IDs quedan en `cognito.env`, que no se versiona porque cambia con cada cuenta.
+
+> ⚠️ **Nota del 18-11-2026.** `crear-red.sh` nunca existió y `crear-cognito.sh` se retiró el 17-11:
+> la cuenta entera la monta Terraform con `tools/tf.sh subir`
+> ([ADR-033](033-terraform-para-la-infraestructura.md)). Si algún día se construye la red privada,
+> va en `infra/terraform/cuenta/`.

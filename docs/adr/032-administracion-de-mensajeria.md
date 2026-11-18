@@ -1,6 +1,7 @@
 # ADR-032 · Administración de mensajería dentro del gateway
 
-Fecha: 18-10-2026 · Estado: aceptado (T11 del EP3).
+Fecha: 18-10-2026 · Estado: aceptado (T11 del EP3). **Modificado el 17-11-2026**: el panel ya no crea
+ni borra recursos ([ver al final](#actualización-del-17-11-2026-el-panel-solo-mira)).
 
 ## Contexto
 
@@ -56,3 +57,31 @@ Vive **en el gateway** (carpeta `gateway/Mensajeria/`), en tres capas:
 - Probado sin AWS en `gateway.Tests`: 62 tests de reglas y validación, y 25 por HTTP contra el
   gateway completo (401, 403, 400 con `{ campo, error }`, 409, 404 y la topología aplicada dos
   veces). La demo en vivo está en `gateway/Mensajeria.http`.
+
+## Actualización del 17-11-2026: el panel solo mira
+
+**Contexto.** Con el [ADR-033](033-terraform-para-la-infraestructura.md), Terraform pasó a crear las
+colas, el tópico y las suscripciones desde `topologia.json`. El panel seguía pudiendo crear y borrar
+lo mismo. Dos dueños de un mismo recurso chocan: una cola creada desde el panel hace fallar el
+próximo `apply` por el nombre, y una borrada desde el panel Terraform la vuelve a crear sin avisar.
+
+**Decisión.** Terraform es el único que crea, cambia o borra infraestructura de mensajería. Del
+panel se quitaron `POST`/`DELETE /colas`, `POST`/`DELETE /topicos`,
+`POST`/`PUT`/`DELETE /suscripciones` y `POST /topologia/aplicar`, y en el frontend la sección
+«Administrar» y su confirmación de borrado. Se queda lo que opera sobre **mensajes**: listar, ver
+una DLQ, el redrive, la bandeja de correos y el simulador de avisos. `GET /topologia` sigue
+comparando lo declarado con lo que existe; si difiere, se corrige con `tools/tf.sh subir`.
+
+**Consecuencias.**
+
+- Cambiar la mensajería es editar `topologia.json` y correr `tf.sh subir`, que muestra el plan
+  antes de aplicar. Ya no se puede desde el navegador.
+- 🟠 **La pauta del EP3 pedía un componente que «encapsule crear, modificar y eliminar»** esos
+  recursos. El EP3 ya se evaluó con el panel completo; si en la defensa de la EFT se pregunta, la
+  respuesta es este ADR: la gestión se movió a Terraform a propósito, y el panel quedó como consola
+  de operación.
+- Los métodos de crear y borrar de `ServicioAdministracion`, `ValidadorSolicitudes` y sus pruebas
+  siguen en el código sin ninguna ruta que los llame. `AplicarTopologiaAsync` se usa para sembrar el
+  modo memoria. Queda como deuda en [CONTEXTO](../CONTEXTO.md#deuda-abierta).
+- Probado en la EC2 el 17-11 con `tools/probar-mensajeria.py`: las 8 rutas de escritura responden
+  404/405 y no se crea ninguna cola.

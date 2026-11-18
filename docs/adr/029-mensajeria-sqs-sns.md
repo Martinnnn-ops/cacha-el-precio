@@ -41,7 +41,9 @@ de correos por SMTP de Gmail, detrás de una interfaz `IEnviadorCorreo` con una 
 real y otra que solo registra en el log.
 
 Toda la topología se declara en **un solo archivo**, `infra/mensajeria/topologia.json`. Lo
-aplican `tools/crear-mensajeria.py` y el componente de administración; ningún servicio crea
+aplicaban `tools/crear-mensajeria.py` y el componente de administración; desde el 17-11-2026 lo
+aplica **solo Terraform** (`infra/terraform/cuenta/mensajeria.tf`, [ADR-033](033-terraform-para-la-infraestructura.md))
+y el panel solo lo compara ([ADR-032](032-administracion-de-mensajeria.md)). Ningún servicio crea
 colas ni tópicos por su cuenta.
 
 Reglas de procesamiento (detalle en [MENSAJERIA.md](../MENSAJERIA.md)):
@@ -73,7 +75,7 @@ Reglas de procesamiento (detalle en [MENSAJERIA.md](../MENSAJERIA.md)):
   [ADR-031](031-publicacion-cambios-oferta.md).
 ## Comprobado en AWS Academy (14-10-2026, cuenta `731705830984`)
 
-- **Opción A confirmada.** `tools/probar-mensajeria-academy.py` respondió HTTP 200 y el mensaje
+- **Opción A confirmada.** `tools/probar-mensajeria-academy.py` (retirado el 18-11-2026; hoy lo cubre `infra/terraform/sondeo/`) respondió HTTP 200 y el mensaje
   llegó a la cola: API Gateway escribe directo en SQS asumiendo `LabRole`, cuya trust policy ya
   incluye `apigateway.amazonaws.com`. La ruta `POST /ingesta` va a la cola sin código nuevo en
   el gateway.

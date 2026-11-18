@@ -1,188 +1,163 @@
 # Evaluaciones: qué se pide y cómo lo cumplimos
 
-> Las dos rúbricas del ramo traducidas a acciones concretas. Los PDF originales están en
-> [rubricas/](rubricas/).
-> El checklist operativo de tareas está en [TAREAS.md](TAREAS.md).
->
-> Documento vivo · Última revisión: 07-09-2026
+> **Qué es.** Cada evaluación del ramo traducida a lo que hay en el sistema, más el vocabulario
+> para el informe y el guion de la demo.
+> **Para quién.** Los tres, para preparar entregas y la defensa. Los PDF del EP1 y el EP2 están en
+> [`rubricas/`](rubricas/).
+> **Última revisión:** 18-11-2026.
+
+> 📍 **En 10 segundos:** los seis EP valen el 60% del ramo y la **EFT el 40%**. El EP1 y el EP2
+> evaluaron casi solo **identidad, API Manager y frontend** (EP2: nota 7,0). El EP3 evaluó la
+> **mensajería** (presentado, sin nota todavía). La **EFT es el 2-dic a las 17:00** e integra todo,
+> más **Kinesis, DLQ, logs avanzados** y módulos extra, con **defensa individual**.
+
+**Leyenda:** ✅ cumplido · 🟡 a medias · ⬜ falta · 🔎 por confirmar
 
 ---
 
-## Índice
+## 1 · Cómo se compone la nota
 
-1. [Cómo se califica, y cómo usamos esa información](#1-cómo-se-califica-y-cómo-usamos-esa-información)
-2. [Requisitos del ramo y cómo los cumplimos](#2-requisitos-del-ramo-y-cómo-los-cumplimos)
-3. [Guion de la demo de EP2](#3-guion-de-la-demo-de-ep2)
+| | % de los parciales | % de la nota final | Estado |
+|---|---|---|---|
+| EP1 · Encargo | 16% | 9,6% | ✅ entregado el 13-09 |
+| EP2 · Presentación | 24% | 14,4% | ✅ **7,0** |
+| EP3 · Encargo | 12% | 7,2% | ✅ entregado el 18-10, presentado el 21-10 · nota 🔎 |
+| EP4 · EP5 · EP6 | 18% · 12% · 18% | 10,8% · 7,2% · 10,8% | 🔎 si la EFT los reemplaza o se suma |
+| **Evaluación Final Transversal** | — | **40%** | ⬜ **2-dic, 17:00** |
 
----
-
-## 1. Cómo se califica, y cómo usamos esa información
-
-
-Leímos las dos rúbricas indicador por indicador. Sirven para **priorizar el orden de trabajo**,
-no para dictar el proyecto: la docente dio libertad de nube, de lenguaje y de idea, y lo que se
-pide es un sistema **funcional, escalable y defendible**. Con eso en mente, el dato útil es este:
-
-> Ambas rúbricas evalúan casi por completo **la capa de identidad, el API Manager y el frontend**.
-> El scraping, el matching, la mensajería y el historial de precios no tienen indicador propio.
-
-La lectura correcta **no** es "el dominio no importa". El dominio de precios es lo que hace que
-esta sea una arquitectura con razón de ser y no un CRUD de ejemplo, y es de lo que se habla
-cuando preguntan *"¿por qué separaste esto en microservicios?"*. La lectura correcta es:
-
-> **La capa de seguridad se construye primero y se termina bien; el dominio crece alrededor
-> y no se deja para el final.**
-
-### Cómo se compone la nota del ramo
-
-Los seis EP **no se suman directo a la nota final**: entre los seis reparten el 100%
-del bloque de parciales, y ese bloque vale el **60% de la asignatura**. El otro 40%
-es la Evaluación Final Transversal.
-
-| | % de parciales | % de la nota final |
-|---|---|---|
-| EP1 · Encargo | 16% | **9,6%** |
-| EP2 · Presentación | 24% | **14,4%** |
-| EP3 · Encargo | 12% | 7,2% |
-| EP4 · Presentación | 18% | 10,8% |
-| EP5 · Encargo | 12% | 7,2% |
-| EP6 · Presentación | 18% | 10,8% |
-| **Evaluación Final Transversal** | — | **40%** |
-
-Para pasar de una columna a la otra se multiplica por 0,6.
-
-### Mapa de puntaje
-
-**EP1 · Encargo (16% de los parciales = 9,6% de la nota final) — código por GitHub**
-
-> 📅 **Las tres fechas, en orden de importancia:** ☁️ **6-sep, sistema en la nube** (sin esto no
-> hay entrega) · 🔒 **10-sep, code freeze** · 📤 **13-sep 23:59, entrega formal**.
-> Del 10 al 13 no se toca código: es informe, ensayo y grabación.
-
-| Peso | Indicador | Dueño |
-|---|---|---|
-| **60%** | Frontend: flujo de usuario OIDC completo, obtiene los tokens necesarios, guard de ruta, interceptor que adjunta el token, **lee roles y scopes desde los claims** | Integrante 1 |
-| **40%** | BFF: valida **issuer** y **audience**, verifica **firma** y **vigencia**, **autorización por rol**, responde **códigos de error adecuados** | Integrante 2 |
-
-> ### Lo que se confirmó en clase el 26-08
->
-> La rúbrica no lo dice con estas palabras, pero el EP1 **no se entrega solo como código**:
->
-> 1. **API Manager e IDaaS van sí o sí.** Son el mínimo del MVP, no un extra que se suma si
->    alcanza el tiempo.
-> 2. **El sistema tiene que estar desplegado.** Corriendo en internet, no en `localhost`.
-> 3. **Informe ejecutivo de 5 páginas** contando la portada — o sea, 4 de contenido — y lo
->    fundamental de ese informe es **justificar la elección de la herramienta de IDaaS y la
->    del API Manager**.
->
-> **Consecuencia para el calendario:** la [Semana 2](TAREAS.md#-semana-2--31-ago--6-sep--todo-a-la-nube)
-> deja de ser holgura y pasa a ser la ruta crítica. Si el sistema no está en la nube el 6 de
-> septiembre, el EP1 no se puede entregar aunque el código esté impecable.
->
-> **Lo que NO entra en el EP1:** Kafka, la analítica por ventanas y la calidad del matching.
-> Se construyen después, y no se les dan horas antes del code freeze del 10 de septiembre.
-
-**EP2 · Presentación (24% de los parciales = 14,4% de la nota final) — nota individual, 5–10 minutos**
-
-| Peso | Indicador | Presenta |
-|---|---|---|
-| 20% | API Manager valida JWT en las rutas: issuer, audience, pruebas con **200 / 401 / 403** | Integrante 2 |
-| 15% | **Authorization Code + PKCE**: code_verifier, code_challenge, `state` y `nonce` | Integrante 1 |
-| 15% | **Evidencia** de cada ruta: llamadas **con y sin token**, JSON esperado | Integrante 2 |
-| 13% | Rutas del API Manager hacia los microservicios | Integrante 3 |
-| 10% | **Tenant** en el IDaaS: usuarios de prueba, **roles**, políticas | Integrante 1 |
-| 10% | App registrada en el tenant: clientId, redirect URIs, roles y scopes | Integrante 1 |
-| 10% | Flujo de usuario: **registro** e inicio de sesión desde el frontend | Integrante 1 |
-| 7% | **CORS** en el API Manager | Integrante 3 |
-
-### Cuatro consecuencias prácticas
-
-1. **EP2 es nota individual.** Dice: *"cada estudiante fundamenta la propuesta desarrollada,
-   justificando el diseño y tecnologías utilizadas"*. No es que haya que memorizar la pauta —
-   es que los tres tenemos que **entender de verdad** el flujo de autenticación, porque la
-   pregunta le puede tocar a cualquiera. Por eso la Semana 0 los tres levantan su propio login.
-
-2. **Hay que mostrar el sistema andando en la nube.** Aparece en la mayoría de los indicadores
-   de EP2. El despliegue no es el último paso: es requisito para poder presentar. Va en la Semana 2.
-
-3. **Cuatro cosas que valen puntos y no estaban en el plan**, ya incorporadas: **CORS**,
-   **roles** (no solo scopes, porque sin roles no hay 403), `state` y `nonce`, y el **registro**
-   de usuarios además del login.
-
-4. **La presentación dura 5–10 minutos.** Pocos slides, casi todo demo en vivo.
-
-### Sobre la libertad que nos dieron
-
-La pauta está redactada sobre un caso de ejemplo (Pedidos360, Angular, Azure AD, Spring Boot),
-pero la docente aclaró que **la idea, el lenguaje y la nube son libres mientras se justifiquen**.
-Nosotros vamos con **ASP.NET Core + AWS + Cognito** en el backend y **Vue 3** en el frontend, y esa
-justificación está escrita en [ARQUITECTURA.md](ARQUITECTURA.md).
-
-> 📌 **Vue, no React.** Varios documentos decían React porque así estaba planificado; el frontend
-> se construyó en Vue 3. No cambia nada de la nota —la pauta pide una librería certificada OIDC,
-> no una en concreto— pero conviene decirlo antes de que alguien note la diferencia entre el
-> informe y el código.
-
-Lo único que conviene tener presente es que la pauta usa vocabulario de Azure ("tenant",
-"user flow", "MSAL"). No es un problema — son conceptos estándar de OIDC con otro nombre
-comercial. Basta nombrar la equivalencia una vez en el informe y en la presentación
-(tabla en §2) y seguir adelante.
+**La lectura que guió el proyecto:** las rúbricas evalúan sobre todo las capas de plataforma
+(identidad, API Manager, mensajería). El dominio de precios es lo que hace que la arquitectura
+tenga razón de ser y no sea un CRUD de ejemplo, y es de lo que se habla cuando preguntan *«¿por qué
+separaste esto en microservicios?»*. Por eso: **la plataforma se termina bien primero, y el dominio
+crece alrededor**.
 
 ---
 
-## 2. Requisitos del ramo y cómo los cumplimos
+## 2 · EFT · 2-dic-2026, 17:00 (40%)
 
-| Requisito | Con qué se cumple |
+Producto final, que integra todo lo de los parciales. **La defensa es individual**: el profe tiene
+preguntas preparadas para medir la participación de cada uno. La entrega vence un minuto antes de
+presentar.
+
+| Entregable | Estado |
 |---|---|
-| **OpenID Connect** | **Cognito User Pool**: emite `id_token`, `access_token` y `refresh_token`, publica su JWKS |
-| **Login con Google** | Google como **IdP federado** en el User Pool (adicional al registro propio) |
-| **OAuth2** | **Authorization Code + PKCE** para el frontend · **Client Credentials** para el scraper |
-| **API Manager** | **API Gateway HTTP API** con JWT Authorizer: stages dev/prod, CORS de orígenes explícitos, throttling de 50 req/s. Y desde el 10-09 es el **único camino de entrada**: la EC2 responde 403 a quien no traiga el encabezado que solo el borde inyecta ([ADR-026](adr/026-encabezado-secreto-del-borde.md)) |
-| **Integración** | HTTP interno entre scraper y Product Service; mensajería pospuesta hasta tener consumidores reales (ver [ADR-020](adr/020-csharp-y-simplificacion-de-servicios.md)) |
-| **Validación en los servicios** | El **BFF en ASP.NET Core** valida firma, issuer, vigencia, `client_id` y `cognito:groups` contra el JWKS. Y antes que él, el **JWT Authorizer del API Gateway** corta en el borde: un token falso no llega a gastar instancia |
+| Informe ejecutivo | ⬜ |
+| Informe técnico | ⬜ |
+| Repos de GitHub | ✅ |
+| Diagramas | 🟡 están en Mermaid en los docs; falta pasarlos al informe |
+| **Video de 10 a 15 minutos** explicando la aplicación (sin explicar código) | ⬜ |
 
-### Equivalencias de vocabulario (una tabla en el informe y listo)
-
-La pauta usa nombres comerciales de Azure. Son los mismos conceptos de OIDC. Se menciona una vez
-y no se vuelve a tocar:
-
-| La rúbrica dice | En Cognito es | Qué mostramos en la presentación |
+| Módulo | Cómo se cumple | Estado |
 |---|---|---|
-| "crea un **tenant**" | **User Pool** — la unidad de aislamiento de identidad de Cognito | El User Pool con usuarios de prueba, grupos y política de contraseñas |
-| "crea el **flujo de usuario**" | **Hosted UI** con sign-up habilitado + verificación por email | Registro de un usuario nuevo en vivo, y después login |
-| "la librería **MSAL**" | **PKCE implementado a mano** sobre `fetch` (Vue 3) | El `code_verifier` con `crypto.getRandomValues`, el `code_challenge` con SHA-256, y `state` contra CSRF. Se puede mostrar el código, que es más convincente que una librería |
-| "**guards** y **MsalInterceptor**" | Guard de Vue Router (`beforeEach` + `meta.requiereSesion`) + interceptor de Axios | Ruta protegida que redirige si no hay sesión; el header `Authorization` en DevTools |
-| "**roles** y políticas" | **Grupos de Cognito** → claim `cognito:groups` | Usuario en grupo `admin` vs `usuario`, y el 403 que resulta |
-| "**scopes**" | **Resource Server** con custom scopes | `precios:leer`, `seguimiento:escribir`, `ingesta:escribir` |
-| "valida **audience**" | Ver la nota de abajo | La configuración del authorizer + el código de validación en el BFF |
+| Frontend, backend, IDaaS, API Manager | lo de los parciales | ✅ |
+| Mensajería con DLQ | SQS + SNS del EP3 | ✅ |
+| **Kinesis** | stream de precios capturados → precio habitual | ⬜ [PLAN-EFT §5](PLAN-EFT.md#5--kinesis-los-precios-capturados) |
+| «DLC» 🔎 (creemos que es DLQ) | las de SQS + la del lector de Kinesis | 🟡 |
+| **Logs avanzados** | correlationId + logs JSON | ⬜ [PLAN-EFT §3](PLAN-EFT.md#3--correlationid-y-logs-en-json) |
+| Trazabilidad e idempotencia (clase del 12-11) | lector de auditoría | ⬜ [PLAN-EFT §4](PLAN-EFT.md#4--la-cola-de-auditoría-que-nadie-leía) |
+| Kafka | 🚫 descartado en la clase del 17-11 | — |
+| Módulos extra | Terraform, CI/CD, armario digital, bandeja de correos, panel, Grafana | 🟡 |
 
-El detalle técnico del `audience` en Cognito está en
-[ARQUITECTURA.md](ARQUITECTURA.md#seguridad).
+El plan completo y el orden están en [PLAN-EFT](PLAN-EFT.md).
 
 ---
 
-## 3. Guion de la demo de EP2
+## 3 · EP3 · Mensajería asíncrona (encargo, 12%)
 
-Son **5 a 10 minutos**. Casi todo demo en vivo, pocos slides. Orden sugerido:
+| Indicador | Peso | Con qué se cumplió |
+|---|---|---|
+| Canales y rutas **centralizados** | 12% | `infra/mensajeria/topologia.json`, el único lugar |
+| Destinos y reglas por caso de uso | 13% | dos flujos; el filtro del tópico manda a cada cola lo suyo |
+| Negocio separado de la mensajería | 10% | `IColaMensajes`, `IPublicadorEventos`, `IAdministradorMensajeria`: el negocio no toca el SDK |
+| Consumidores por responsabilidad | 15% | `ConsumidorOfertas` y `ConsumidorNotificaciones` |
+| **Confirmación, reintentos y errores** | **20%** | recuperable / definitivo / recuperable agotado, DLQ con diagnóstico |
+| Interfaz de administración | 13% | el panel de mensajería |
+| Encapsular crear/modificar/eliminar recursos | 10% | `ServicioAdministracion`. ⚠️ **Desde el 17-11 eso lo hace Terraform** y el panel solo mira ([ADR-032](adr/032-administracion-de-mensajeria.md)) |
+| Validar las solicitudes de administración | 7% | `ValidadorSolicitudes`, con casos válidos e inválidos en `Mensajeria.http` |
 
-| Min | Qué se muestra |
+> **Para la defensa:** el cambio del 17-11 se explica así: crear y borrar recursos desde un panel
+> los dejaba fuera del código y sin revisión. Con Terraform el cambio se escribe, se ve el plan y
+> recién entonces se aplica, y sirve igual en cualquier cuenta.
+
+---
+
+## 4 · EP1 y EP2 · Identidad y API Manager
+
+**EP1 (encargo):** 60% el **frontend** con el flujo OIDC completo (tokens, guard, interceptor,
+roles y scopes de los claims) y 40% el **BFF** validando emisor, audiencia, firma, vigencia y rol,
+con los códigos de error correctos. Se confirmó en clase que, además, el sistema tenía que estar
+desplegado y llevar un informe ejecutivo de 5 páginas que justificara el IDaaS y el API Manager.
+
+**EP2 (presentación individual, 7,0):**
+
+| Peso | Indicador |
 |---|---|
-| 0–1 | **El problema**: el caso del SERNAC, 65% de descuento que era 30%. Un slide, nada más |
-| 1–2 | Diagrama de arquitectura y por qué está separado así |
-| 2–4 | **Registro de un usuario en vivo** → login → DevTools mostrando `code_challenge`, `state` y `nonce` |
-| 4–5 | El token decodificado en pantalla: claims, scopes y `cognito:groups` |
-| 5–7 | **Postman**: la misma ruta con token (**200**), sin token (**401**), usuario común en ruta admin (**403**), y el token de máquina escribiendo (**pasa el scope**). Todo **a través del API Gateway** |
-| 7–8 | Consola de AWS: API Gateway con las 13 rutas, su CORS y el throttling; la EC2 con los contenedores. **Y el remate**: llamar a la EC2 directa, saltándose el borde → **403**. Demuestra que el API Manager no es opcional |
-| 8–9 | El producto: buscar un modelo, ver el descuento real y el gráfico de historial |
-| 9–10 | Cierre: *"el historial ya está capturado, así que agregar alertas de bajada de precio es un servicio nuevo que lo lee — no hay que tocar lo que existe"* |
+| 20% | El API Manager valida el JWT: 200 / 401 / 403 |
+| 15% | Authorization Code + PKCE: `code_verifier`, `code_challenge`, `state`, `nonce` |
+| 15% | Evidencia de cada ruta, con y sin token |
+| 13% | Rutas del API Manager hacia los microservicios |
+| 10% | Tenant: usuarios de prueba, roles y políticas |
+| 10% | App registrada: clientId, redirect URIs, roles y scopes |
+| 10% | Registro e inicio de sesión desde el frontend |
+| 7% | CORS en el API Manager |
+
+### Requisitos del ramo y cómo los cumplimos
+
+| Requisito | Con qué |
+|---|---|
+| **OpenID Connect** | Cognito user pool: `id_token`, `access_token`, `refresh_token` y JWKS |
+| **Login con Google** | Google como proveedor federado en el pool |
+| **OAuth2** | Authorization Code + PKCE para el front · `client_credentials` para el scraper |
+| **API Manager** | API Gateway HTTP API: JWT Authorizer, stages, CORS explícito, 50 req/s, y **único camino de entrada** ([ADR-026](adr/026-encabezado-secreto-del-borde.md)) |
+| **Integración** | SQS + SNS desde el EP3 ([ADR-029](adr/029-mensajeria-sqs-sns.md)) |
+| **Validación en los servicios** | el BFF revalida firma, emisor, vigencia, `client_id` y grupos |
+
+### Equivalencias de vocabulario
+
+La pauta usa nombres de Azure. Son los mismos conceptos de OIDC: se nombra la equivalencia una vez
+en el informe y listo.
+
+| La rúbrica dice | En Cognito es | Qué se muestra |
+|---|---|---|
+| «tenant» | **user pool** | el pool con usuarios de prueba, grupos y política de contraseñas |
+| «flujo de usuario» | **Hosted UI** con registro y verificación por correo | registro en vivo y después login |
+| «MSAL» | **PKCE implementado sobre `fetch`** en Vue 3 | el `code_verifier`, el `code_challenge` SHA-256 y el `state` |
+| «guards» y «MsalInterceptor» | guard de Vue Router + interceptor | ruta protegida que redirige; el `Authorization` en DevTools |
+| «roles» | **grupos** → claim `cognito:groups` | `admin` contra `usuario`, y el 403 |
+| «scopes» | **resource server** con scope propio | `ingesta`, solo para el scraper |
+| «valida audience» | `client_id` (el access token no trae `aud`) | [ARQUITECTURA §6](ARQUITECTURA.md#6--seguridad-e-identidad) |
+
+> 📌 **Vue, no React.** Algunos documentos viejos decían React. La pauta pide una librería OIDC, no
+> una en concreto.
+
+---
+
+## 5 · Guion para la demo y el video
+
+Sirve para la defensa de la EFT y para el video. Casi todo en vivo, pocos slides.
+
+| Bloque | Qué se muestra |
+|---|---|
+| El problema | el caso del SERNAC: 65% de descuento que era 30%. Un slide |
+| La arquitectura | el diagrama general y por qué está separado así |
+| Identidad | login con Google, el token decodificado: claims, scopes y `cognito:groups` |
+| El borde | la misma ruta con token (**200**), sin token (**401**), usuario común en ruta admin (**403**), y la EC2 directa sin pasar por el borde (**403**) |
+| El producto | buscar una prenda, la ficha con las tiendas, el historial y el precio habitual |
+| Mensajería | un cambio de precio que termina en correo; una DLQ con su diagnóstico en el panel |
+| Kinesis y trazabilidad | el stream recibiendo precios; un pedido seguido por su `correlationId`; el tablero de Grafana |
+| Infraestructura | `tf.sh subir` en una cuenta vacía: todo desde el código |
+| Cierre | qué se haría después: emparejamiento por modelo, más tiendas, feed personalizado |
 
 ### Antes de presentar
 
-- [ ] ~~Grabar un video de respaldo~~ — **descartado el 10-09, no hay que entregarlo.** Grábalo igual si la demo en vivo te pone nervioso, pero no es una tarea del proyecto
-- [ ] Tener los usuarios de prueba creados y las contraseñas a mano
-- [ ] Postman con la colección lista y las tres llamadas guardadas
-- [ ] Verificar que el ambiente de AWS está prendido (no apagado por ahorro de crédito)
-- [ ] Ensayar cronometrado: si pasa de 10 minutos, se corta contenido
+- [ ] AWS prendido (`tf.sh subir`) y la lista del dueño del dominio ([OPERAR-EN-AWS §5](OPERAR-EN-AWS.md#5--lista-del-dueño-del-dominio))
+- [ ] Usuarios de prueba y admin con Google listos
+- [ ] Las llamadas 200 / 401 / 403 guardadas
+- [ ] El catálogo con datos y el historial con varios días
+- [ ] Ensayo cronometrado; **los tres tienen que poder responder sobre cualquier pieza**
 
-> Cada indicador tiene un presentador asignado en [TAREAS.md](TAREAS.md), pero **los tres deben
-> poder responder cualquier pregunta**. En EP2 la nota es individual.
+## Ver también
+
+- [PLAN-EFT](PLAN-EFT.md): lo que falta construir
+- [EL-PROYECTO](EL-PROYECTO.md): la idea, para el inicio de la presentación
+- [ARQUITECTURA](ARQUITECTURA.md): las respuestas a «¿por qué así?»

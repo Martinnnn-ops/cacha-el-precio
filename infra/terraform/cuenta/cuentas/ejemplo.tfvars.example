@@ -1,0 +1,11 @@
+# Copia este archivo como cuentas/<tu-nombre>.tfvars y cambia los valores.
+# Los .tfvars de cada persona NO van al repositorio (los ignora el .gitignore).
+#
+#   cp cuentas/ejemplo.tfvars.example cuentas/martin.tfvars
+
+cuenta_esperada = "123456789012" # aws sts get-caller-identity --query Account --output text
+tiene_dominio   = false          # true solo en la cuenta a la que apunta cacha-el-precio.com
+llave_ssh       = "vockey"
+
+# El client secret de Google NO va aqui. Entra por variable de entorno
+# (TF_VAR_google_client_secret), y tools/tf.sh la saca de google.env.

@@ -92,7 +92,7 @@ public sealed class AdministradorMensajeriaAws(
             ["VisibilityTimeout"] = cola.VisibilidadSegundos.ToString(),
             ["MessageRetentionPeriod"] = cola.RetencionSegundos.ToString(),
             ["ReceiveMessageWaitTimeSeconds"] = cola.EsperaSegundos.ToString(),
-            // Cifrado en reposo con clave administrada por SQS (igual que crear-mensajeria.py).
+            // Cifrado en reposo con clave administrada por SQS (igual que mensajeria.tf).
             ["SqsManagedSseEnabled"] = "true"
         };
 
@@ -260,7 +260,7 @@ public sealed class AdministradorMensajeriaAws(
 
     // Una cola solo acepta mensajes de SNS si su politica lo permite, y solo de los
     // topicos que la tienen suscrita (aws:SourceArn). Misma politica que arma
-    // tools/crear-mensajeria.py.
+    // Terraform en infra/terraform/cuenta/mensajeria.tf.
     private Task AplicarPoliticaColaAsync(string urlCola, string arnCola, ISet<string> origenes, CancellationToken ct)
     {
         string politica = origenes.Count == 0 ? "" : JsonSerializer.Serialize(new

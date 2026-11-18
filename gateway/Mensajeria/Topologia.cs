@@ -5,7 +5,8 @@ namespace CachaElPrecio.Gateway.Mensajeria;
 
 // infra/mensajeria/topologia.json leido tal cual. Es el UNICO lugar donde se
 // declaran colas, topicos y reglas (ADR-029): este servicio y
-// tools/crear-mensajeria.py leen el mismo archivo y no inventan nombres.
+// Terraform (infra/terraform/cuenta/mensajeria.tf) leen el mismo archivo y no
+// inventan nombres.
 public sealed class TopologiaDeclarada
 {
     public int Version { get; init; }

@@ -54,6 +54,10 @@ lo que la REST API agrega.
 Todo se crea con **`tools/crear-api-gateway.sh`**, idempotente y con modo `--borrar`, por la
 misma razón que Cognito: la cuenta es de AWS Academy y se puede agotar.
 
+> ⚠️ **Nota del 18-11-2026.** Desde el 14-11 la API la maneja Terraform
+> (`infra/terraform/cuenta/api.tf`, adoptada con `import` sin recrearla) y el script se retiró el
+> 17-11 ([ADR-033](033-terraform-para-la-infraestructura.md)). Hoy son 24 rutas.
+
 ### Qué quedó funcionando, medido
 
 Probado el 07-09 con un token real del app client `pruebas`. Evidencia completa en
@@ -97,7 +101,7 @@ EC2. Un token vencido o falso no gasta instancia.
   rutas ni authorizer.
 - **El backend está en otra cuenta de AWS** que la del API Gateway. Funciona porque la
   integración es contra una URL pública, pero es una rareza que hay que resolver o explicar.
-  Ver [`INTEGRACION.md` §0.2](../INTEGRACION.md).
+  Ver [`INTEGRACION.md` §0.2](../HISTORIA.md).
 - **El authorizer confía en un solo user pool.** Mientras el frontend emita tokens del otro, sus
   llamadas por esta puerta darán 401. No es un defecto del API Gateway: es el problema de los dos
   pools, que se decide aparte.
@@ -111,6 +115,6 @@ La `aws-cli v1` —la que trae AWS Academy— interpreta **cualquier parámetro 
 `Could not connect to the endpoint URL`. Muerde en `--authorization-scopes`, porque nuestro scope
 es `https://api.cachaelprecio.cl/ingesta`.
 
-Es la misma trampa que ya estaba anotada en [`DESPLIEGUE.md`](../DESPLIEGUE.md) para el resource
+Es la misma trampa que ya estaba anotada en [`DESPLIEGUE.md`](../HISTORIA.md) para el resource
 server de Cognito. Se resuelve pasando el cuerpo con `--cli-input-json`, que funciona igual en la
 v1 y en la v2.

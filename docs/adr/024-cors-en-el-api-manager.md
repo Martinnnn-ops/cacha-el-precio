@@ -15,6 +15,9 @@ tools/crear-api-gateway.sh:126   AllowOrigins=https://www.cacha-el-precio.com,ht
 caddy/Caddyfile:24               Access-Control-Allow-Origin "https://www.cacha-el-precio.com"
 ```
 
+> Nota del 18-11-2026: el CORS del API Gateway vive hoy en `infra/terraform/cuenta/api.tf`; el
+> script de la línea de arriba se retiró el 17-11 ([ADR-033](033-terraform-para-la-infraestructura.md)).
+
 El propio `Caddyfile` avisa en un comentario de que eso es transitorio, y de que
 *«tenerlo en los dos lados a la vez manda dos cabeceras y el navegador rechaza la respuesta»*.
 

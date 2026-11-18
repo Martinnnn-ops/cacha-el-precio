@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Hook de pre-commit: frena un commit que trae un secreto (fase 5, ADR-033).
+#
+# El repo no tiene CI, asi que la revision va aqui. Se activa UNA vez por clon:
+#   git config core.hooksPath tools/hooks
+#
+# Frena dos cosas:
+#   1. Archivos que nunca van a git: el estado de Terraform (trae el secreto del
+#      borde y el del scraper en claro), los .tfvars de cada uno, el plan
+#      guardado, las llaves .pem y los .env que generan tf.sh y los scripts.
+#   2. Contenido con forma de secreto: llaves de AWS, el secreto de Google, y
+#      BORDE_SECRETO / CLIENT_SECRET con un valor real.
+#
+# Si un secreto ya se subio, borrarlo del commit NO basta: hay que rotarlo.
+# Para saltarse el hook en un falso positivo: git commit --no-verify
+# ---------------------------------------------------------------------------
+rojo() { printf '\033[0;31m%s\033[0m\n' "$1"; }
+
+ARCHIVOS="$(git diff --cached --name-only --diff-filter=ACMR)"
+[[ -z "$ARCHIVOS" ]] && exit 0
+MALO=0
+
+# 1. Archivos prohibidos por su nombre
+while IFS= read -r f; do
+  base="$(basename "$f")"
+  case "$base" in
+    *.tfstate|*.tfstate.*|plan.bin|*.tfplan|*.pem|\
+    infra.env|cognito.env|api-gateway.env|borde.env|mensajeria.env|google.env|.env)
+      rojo "  ✗ $f no va al repositorio"; MALO=1 ;;
+    *.tfvars)
+      rojo "  ✗ $f: los .tfvars de cada uno no van al repo (solo *.tfvars.example)"; MALO=1 ;;
+  esac
+done <<< "$ARCHIVOS"
+
+# 2. Contenido con forma de secreto (solo las lineas que se agregan)
+PATRON='(AKIA|ASIA)[A-Z0-9]{16}|aws_secret_access_key *= *[A-Za-z0-9/+]{30,}|aws_session_token *= *[A-Za-z0-9/+=]{40,}|GOCSPX-[A-Za-z0-9_-]{10,}|(BORDE_SECRETO|CLIENT_SECRET|CLAVE_PRUEBA)=[A-Za-z0-9/+=_-]{12,}'
+HALLAZGOS="$(git diff --cached -U0 --diff-filter=ACMR -- . ':(exclude)tools/hooks/pre-commit' \
+  | grep -E '^\+[^+]' | grep -oE "$PATRON" | sed -E 's/(.{12}).*/\1…/' | sort -u)"
+if [[ -n "$HALLAZGOS" ]]; then
+  rojo "  ✗ El commit trae algo con forma de secreto:"
+  sed 's/^/      /' <<< "$HALLAZGOS"
+  MALO=1
+fi
+
+if [[ $MALO -ne 0 ]]; then
+  rojo "  Commit detenido. Saca esos archivos con: git restore --staged <archivo>"
+  exit 1
+fi
+exit 0

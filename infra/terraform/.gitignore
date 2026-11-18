@@ -1,0 +1,17 @@
+# Lo que Terraform genera y NO va al repositorio.
+# El .gitignore de la raiz ya cubre .terraform/, *.tfstate, *.tfstate.* y *.tfvars
+# (salvo *.tfvars.example). Aqui va lo que falta.
+
+# El plan guardado por tools/tf.sh: trae los valores de los secretos en claro.
+plan.bin
+*.tfplan
+
+# Candado del estado mientras corre un apply (si se corta, queda suelto).
+.terraform.tfstate.lock.info
+
+# Informes de caida de Terraform.
+crash.log
+crash.*.log
+
+# OJO: .terraform.lock.hcl SI va al repositorio. Fija la version exacta del
+# proveedor de AWS para que los tres obtengan el mismo plan con el mismo codigo.

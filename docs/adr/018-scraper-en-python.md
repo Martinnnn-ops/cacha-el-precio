@@ -57,7 +57,7 @@ ciclo de vida y su propia base. Lo único que cambia es en qué está escrito.
 - **Dos ecosistemas de dependencias** que vigilar, y por lo tanto dos superficies distintas.
 - **El conocimiento se puede concentrar en una persona.** Si solo uno del equipo toca Python, ese
   servicio queda sin segunda opinión — y en un ramo donde la nota es individual, eso perjudica a
-  los tres. Se compensa con el `README.arquitectura.md` del servicio, que explica cómo agregar
+  los tres. Se compensa con el README del servicio (antes `README.arquitectura.md`), que explica cómo agregar
   una tienda sin haber escrito el resto.
 - **El ADR-013 quedó reemplazado** para los servicios activos por el ADR-020.
 
