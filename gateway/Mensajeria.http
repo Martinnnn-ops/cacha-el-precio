@@ -6,7 +6,7 @@
 #   aws cognito-idp admin-initiate-auth --auth-flow ADMIN_USER_PASSWORD_AUTH ...
 #   (ver tools/hacer-admin.sh). Con un usuario sin el grupo admin todo da 403.
 #
-# Lo mismo está automatizado en gateway.Tests/AdministracionMensajeriaHttpTests.cs.
+# Lo mismo está automatizado en tests/gateway.Tests/AdministracionMensajeriaHttpTests.cs.
 
 @base = http://localhost:8080
 @token = pega-aca-el-access-token

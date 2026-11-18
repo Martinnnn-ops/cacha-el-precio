@@ -25,7 +25,7 @@ public sealed class FactAwsAttribute : FactAttribute
 /// sistema salvo para leerlos: crea los suyos con el nombre cep-prueba-XXXX y
 /// los borra al final, pase lo que pase.
 ///
-///     CEP_AWS_REAL=1 dotnet test gateway.Tests --filter MensajeriaAwsRealTests
+///     CEP_AWS_REAL=1 dotnet test tests/gateway.Tests --filter MensajeriaAwsRealTests
 /// </summary>
 public class MensajeriaAwsRealTests
 {

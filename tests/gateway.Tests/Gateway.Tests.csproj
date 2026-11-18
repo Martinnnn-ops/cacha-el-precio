@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\gateway\Gateway.csproj" />
+    <ProjectReference Include="..\..\gateway\Gateway.csproj" />
   </ItemGroup>
 
 </Project>
