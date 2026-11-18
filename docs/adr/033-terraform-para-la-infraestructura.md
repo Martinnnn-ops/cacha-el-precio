@@ -1,7 +1,8 @@
 # ADR-033 · Terraform para la infraestructura de AWS
 
-Fecha: 10-11-2026 · Estado: propuesta (fases 0 y 0.5). Pasa a aceptado cuando Terraform monte el
-sistema completo en dos cuentas desde cero.
+Fecha: 10-11-2026 · Estado: **aceptado el 17-11-2026**. Terraform montó el sistema completo desde
+cero en una segunda cuenta (fase 7) y los cuatro scripts `crear-*` se retiraron. El resultado está
+[al final](#resultado-17-11-2026).
 
 ## Contexto
 
@@ -18,7 +19,7 @@ están probados en dos cuentas, pero tienen tres problemas que ya costaron horas
 3. **No se puede ver un cambio antes de aplicarlo.** No hay nada parecido a un «qué va a pasar».
 
 Además, las cuentas del Learner Lab se agotan. La idea de las tres cuentas
-([MIGRACION.md](../MIGRACION.md)) exige poder montar el sistema entero en otra cuenta rápido y
+([OPERAR-EN-AWS](../OPERAR-EN-AWS.md)) exige poder montar el sistema entero en otra cuenta rápido y
 sin sorpresas.
 
 ## Alternativas
@@ -85,4 +86,35 @@ probar) sigue en `tools/`.
   cuesta unos USD 3,6 al mes de crédito. Decisión pendiente.
 - Los tres tienen que instalar Terraform 1.15 o más nuevo.
 - Mientras dure la transición hay dos formas de crear lo mismo, y la documentación tiene que dejar
-  claro cuál vale en cada cuenta.
+  claro cuál vale en cada cuenta. *(Terminó el 17-11: ya hay una sola.)*
+
+## Resultado (17-11-2026)
+
+| Fase | Qué | Dónde se probó |
+|---|---|---|
+| 0 y 0.5 | Estructura, proveedor y sondeo de permisos | `731705830984`, 10-11 |
+| 1 a 4 | Mensajería, base, identidad y API, **adoptadas con `import`** desde lo que habían creado los scripts, sin cortar el servicio | `731705830984`, 14-11 |
+| 5 | `tools/tf.sh` (`subir`, `apagar`, `estado`, `plan`) y el hook de pre-commit; ciclo apagar → subir con respaldo y restauración | `731705830984`, 14-11 |
+| 6 | El registro `api` en Cloudflare (`infra/terraform/dominio/`), adoptado con `import` | zona `cacha-el-precio.com`, 17-11 |
+| 7 | Montaje desde cero en una cuenta vacía: 81 recursos, despliegue, restauración y `probar-mensajeria.py` TODO OK; después, `apagar` | `081199126041`, 17-11 |
+
+**Lo que se retiró con la fase 7:** `crear-infra.sh`, `crear-cognito.sh`, `crear-api-gateway.sh` y
+`crear-mensajeria.py`. `desplegar.sh` ya no crea colas: si falta `mensajeria.env`, se detiene y pide
+`tf.sh subir`. El panel de mensajería dejó de crear y borrar recursos
+([ADR-032, actualización](032-administracion-de-mensajeria.md#actualización-del-17-11-2026-el-panel-solo-mira)).
+
+**Consecuencias que aparecieron al usarlo:**
+
+- **Una carpeta del repo maneja una sola cuenta.** `tf.sh` usa un estado y un juego de `.env` por
+  carpeta. Para tener dos cuentas a la vez hace falta una segunda copia (se usó `git worktree`).
+- **La restauración del respaldo puede cortarse** («Connection closed by remote host», causa no
+  encontrada). En la prueba del 17-11 `tf.sh` terminó en 0 con la base vacía; ahora reintenta tres
+  veces y, si no puede, termina con error. `respaldar.sh --restaurar` también sale con error.
+- **El 🅐/🅑 dejó de ser automático.** El script del borde miraba el DNS; Terraform lo decide con
+  `tiene_dominio` en el `.tfvars`. Es más explícito, pero hay que acordarse de cambiarlo si el
+  dominio salta de cuenta.
+- **Se perdió `ADMINS=` de `google.env`**, que leía `crear-cognito.sh` para dar el grupo `admin`.
+  Ahora es siempre `tools/hacer-admin.sh`, a mano.
+- **El token de Cloudflare** de `dominio/` vive fuera del repo y quedó sin fecha de vencimiento:
+  conviene rotarlo o ponerle una después de la EFT.
+- La decisión pendiente sobre la IP quedó como opción: `conservar_ip = true` la reserva al apagar.

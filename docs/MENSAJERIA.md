@@ -1,17 +1,30 @@
-# Mensajería asíncrona (EP3)
+# Mensajería: el contrato de las colas
 
-Cómo se comunican los servicios por colas y tópicos. La decisión y sus porqués están en
-[ADR-029](adr/029-mensajeria-sqs-sns.md). Este documento es el **contrato**: si algo de aquí
-cambia, se avisa al equipo antes de tocar el código.
+> **Qué es.** Cómo se comunican los servicios por colas y tópicos: los flujos, los sobres, los
+> errores, el panel y el correo. Es el **contrato**: si algo de aquí cambia, se avisa al equipo
+> antes de tocar el código. El porqué está en el [ADR-029](adr/029-mensajeria-sqs-sns.md).
+> **Para quién.** Quien toque un productor, un consumidor o el panel.
+> **Última revisión:** 18-11-2026.
+
+> 📍 **En 10 segundos:** **flujo 1**, el scraper publica cada `oferta.capturada` por
+> `POST /ingesta` → SQS `cep-ofertas-crudas` → product-service. **Flujo 2**, product-service
+> publica `precio.bajo`, `oferta.agotada` y `oferta.repuesta` en SNS `cep-cambios-oferta`, que
+> reparte a `cep-notificaciones` (con filtro, para los correos) y a `cep-auditoria-precios` (todo).
+> Lo que falla va a una DLQ con su diagnóstico. Desde el 17-11 la topología la crea **solo
+> Terraform** y el panel **solo mira** (ver [Administración](#administración-t11)).
 
 - **Topología** (colas, tópicos, reglas): [`infra/mensajeria/topologia.json`](../infra/mensajeria/topologia.json). Es el único lugar donde se declaran.
-- **Crear todo en tu cuenta:** `python3 tools/crear-mensajeria.py` (`--estado`, `--borrar`), o desde la
-  aplicación con `POST /api/admin/mensajeria/topologia/aplicar` (ver [Administración](#administración-t11)).
-- **Sondeo de Academy:** `python3 tools/probar-mensajeria-academy.py` (¿API Gateway → SQS con LabRole?).
+- **Crear todo en tu cuenta:** `./tools/tf.sh subir <tu-nombre>`. Terraform
+  ([`infra/terraform/cuenta/mensajeria.tf`](../infra/terraform/cuenta/mensajeria.tf)) lee
+  `topologia.json` y crea las colas, las DLQ, el tópico, las políticas y las suscripciones. Para
+  cambiar algo: editar `topologia.json` y volver a correr `subir`; el plan muestra la diferencia
+  antes de aplicarla. Hasta el 17-11 esto lo hacía `tools/crear-mensajeria.py`, ya retirado.
+- **Sondeo de Academy:** ¿el API Gateway puede escribir en SQS con LabRole? Lo respondió el 14-10 un
+  script que se retiró el 18-11; hoy ese sondeo lo hace `infra/terraform/sondeo/`.
   ✅ Respondió que sí el 14-10-2026: **opción A**.
-- **La puerta `POST /ingesta`** la crea `tools/crear-api-gateway.sh` (integración `SQS-SendMessage`
-  con `LabRole`, scope `ingesta`). Si las colas no existen, ese script corre antes
-  `crear-mensajeria.py`. El cuerpo del POST llega tal cual a la cola: es el sobre de abajo.
+- **La puerta `POST /ingesta`** la crea Terraform en `infra/terraform/cuenta/api.tf` (integración
+  `SQS-SendMessage` con `LabRole`, scope `ingesta`), en el mismo `apply` que las colas. El cuerpo
+  del POST llega tal cual a la cola: es el sobre de abajo.
 
 ## Los dos flujos
 
@@ -240,33 +253,45 @@ que valida el sobre (`type=oferta.capturada`, `version=1`) y guarda `data` con
 Cada log lleva `eventId`, `MessageId`, el intento y el resultado. Sin `SQS_OFERTAS_CRUDAS_URL` el
 consumidor no arranca (registra «desactivado») y la API HTTP sigue igual. El negocio habla con
 `IColaMensajes`, igual que notification-service. Probado en
-`product-service.Tests/ConsumidorOfertasTests.cs`.
+`tests/product-service.Tests/ConsumidorOfertasTests.cs`.
 
 ## Administración (T11)
 
-Panel para consultar y gestionar la mensajería, en el gateway bajo `/api/admin/mensajeria`. Exige el
-grupo `admin` de Cognito (403 sin él). Decisión en [ADR-032](adr/032-administracion-de-mensajeria.md);
+Panel para consultar la mensajería y operar sobre sus mensajes, en el gateway bajo
+`/api/admin/mensajeria`. Exige el grupo `admin` de Cognito (403 sin él).
+
+> ⚠️ **Cambió el 17-11-2026: el panel ya no crea, cambia ni borra infraestructura.** Se quitaron
+> `POST`/`DELETE` de colas y tópicos, `POST`/`PUT`/`DELETE` de suscripciones y
+> `POST /topologia/aplicar` (ahora responden 404/405). **Por qué:** con la mensajería en Terraform,
+> una cola creada desde el panel choca por el nombre en el próximo `apply`, y una borrada desde el
+> panel Terraform la vuelve a crear. Dos dueños de lo mismo terminan diciendo cosas distintas. El
+> panel conserva lo que opera sobre **mensajes**, no sobre recursos: mirar, revisar una DLQ,
+> devolverla a su cola y simular avisos. Detalle y costo en el
+> [ADR-032](adr/032-administracion-de-mensajeria.md#actualización-del-17-11-2026-el-panel-solo-mira). Decisión en [ADR-032](adr/032-administracion-de-mensajeria.md);
 demo con casos válidos e inválidos en [`gateway/Mensajeria.http`](../gateway/Mensajeria.http).
 
 | Método y ruta | Qué hace |
 |---|---|
 | `GET /colas` · `GET /colas/{nombre}` | Mensajes visibles, en proceso y demorados, DLQ y `maxIntentos`, de qué colas es DLQ |
-| `POST /colas` · `DELETE /colas/{nombre}` | Crear (con DLQ opcional) y borrar |
 | `GET /colas/{nombre}/mensajes` | Lo que hay en una DLQ (con su diagnóstico) o en `cep-auditoria-precios`, **sin borrarlo**. Solo colas sin DLQ propia: para SQS mirar es una recepción y suma intentos (409) |
 | `POST /colas/{dlq}/redrive` | Devolver los mensajes de la DLQ a su cola (`?destino=` si la usan varias). `mensajesMovidos` no confía solo en el contador aproximado de SQS: si al terminar no queda ninguno de los que había, informa cuántos había antes |
-| `GET /topicos` · `POST` · `DELETE /topicos/{nombre}` | Tópicos con sus suscripciones y filtros |
-| `GET /suscripciones` · `POST` · `PUT` · `DELETE /suscripciones/{topico}/{cola}` | Reglas de distribución; al suscribir se ajusta la política de la cola |
-| `GET /topologia` | `topologia.json` contra lo que existe (falta, distinta, extra) |
-| `POST /topologia/aplicar` | Crea lo que falta y corrige lo distinto. Idempotente; no borra lo extra |
+| `GET /topicos` | Tópicos con sus suscripciones y filtros |
+| `GET /suscripciones` | Reglas de distribución |
+| `GET /topologia` | `topologia.json` contra lo que existe (falta, distinta, extra). Si algo no coincide, se arregla con `tf.sh subir`, no desde aquí |
 | `GET /correos` · `GET /correos/{id}` | La bandeja: los correos que generó notification-service, el destinatario enmascarado (`a•••@gmail.com`). Proxy de solo lectura a sus rutas internas; `502` si no responde. Ver [Bandeja de correos](#bandeja-de-correos) |
 | `GET /correos/ejemplo/{tipo}` | El correo de un tipo armado con una prenda inventada, sin enviarlo |
 | `POST /simular-aviso` | `{ productId, tipo, descuento? }` → `202`. Publica en `cep-cambios-oferta` un cambio inventado con los datos reales del producto, con el mismo sobre y atributos que product-service y `source = "panel-admin"`. Recorre el flujo 2 de verdad; **no cambia precios del catálogo**. `400` por campo, `404` si el producto no existe |
 
 Errores: `400 { estado, error, mensaje, errores: [{ campo, error }] }` cuando la forma está mal
-(nombre sin `cep-` o con mayúsculas, rangos de AWS, `maxIntentos` fuera de 1..10, filtro sobre un
-atributo que nadie publica o con un `type` que no existe, DLQ o tópico inexistente) y `409` cuando
-choca con lo que hay (ya existe, es DLQ de otra, tiene suscripciones, está declarado en
-`topologia.json` y no se pidió `?forzar=true`). Un permiso que el LabRole niega sale como `502`.
+(por ejemplo, un `productId` o un `tipo` inválido en `simular-aviso`), `404` si la cola o el producto
+no existen y `409` cuando la operación no aplica (mirar los mensajes de una cola que tiene DLQ
+propia). Un permiso que el LabRole niega sale como `502`. Las rutas de escritura que se quitaron
+responden `404`/`405`, y `tools/probar-mensajeria.py` lo comprueba.
+
+⚠️ Los métodos de crear y borrar de `ServicioAdministracion` y sus validaciones
+(`ValidadorSolicitudes`) siguen en el código y en `tests/gateway.Tests`, aunque ya ninguna ruta los
+llama. `AplicarTopologiaAsync` también sigue: es lo que siembra el modo memoria. Anotado como deuda
+en [CONTEXTO](CONTEXTO.md#deuda-abierta).
 
 `MENSAJERIA_MODO=memoria` simula todo sin AWS (por defecto si no se configura); en la EC2 va `aws`.
 
@@ -282,9 +307,10 @@ de la cuenta solo para el grupo `admin`. Es **una sola página ordenada por fluj
 4. **Correos:** «Probar el flujo 2» con tres botones fijos (bajó 30% → llega correo; bajó 5% → la
    regla lo filtra; se agotó → llega correo) y una barra de cuatro pasos que avanza sola hasta que
    el correo aparece en la bandeja.
-5. **Administrar:** crear colas, tópicos y reglas (filtros de ejemplo; JSON solo si se elige
-   «personalizado»), con el `{ campo, error }` del servidor junto a cada campo, y borrar escribiendo
-   el nombre.
+5. **Fuera de los flujos:** las colas que no son de ningún flujo y su revisión de mensajes.
+
+Hasta el 17-11 había una sección **Administrar** para crear colas, tópicos y reglas y borrarlas
+escribiendo el nombre. Se quitó junto con las rutas de escritura.
 
 Las colas se refrescan cada 10 s. El grupo se lee del access token solo para decidir qué mostrar: el
 gateway responde 403 igual.
@@ -326,7 +352,7 @@ timeout 5 bash -c '</dev/tcp/smtp.gmail.com/587' && echo "587 abierto" || echo "
 
 ## Variables de entorno
 
-`tools/crear-mensajeria.py` escribe `mensajeria.env` (no va al repo) con:
+`tools/tf.sh` escribe `mensajeria.env` (no va al repo) a partir de las salidas de Terraform, con:
 
 ```
 MENSAJERIA_REGION=us-east-1

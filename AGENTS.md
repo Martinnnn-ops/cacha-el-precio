@@ -5,66 +5,58 @@ Guía para agentes de IA que trabajen en este repo. **Lee solo lo que la tarea n
 ## Qué es esto
 
 "Cacha el Precio": comparador de precios de **ropa y calzado** en Chile. Proyecto del ramo
-**DSY1107 · Desarrollo Cloud Native I**, equipo de 3, primera entrega **13-sep-2026**.
-**Ya está en producción**: `www.cacha-el-precio.com` y `api.cacha-el-precio.com` — con el matiz de
-que la EC2 **no se mantiene encendida 24/7**, por créditos limitados en la cuenta que la aloja. Que
-la API no responda es lo normal fuera de las sesiones de trabajo, no una avería.
+**DSY1107 · Desarrollo Cloud Native I**, equipo de 3. **Lo que sigue es la EFT, el 2-dic-2026 a
+las 17:00.** Está en producción (`www.cacha-el-precio.com` y `api.cacha-el-precio.com`), pero la
+EC2 **no se mantiene encendida 24/7** por los créditos de AWS Academy: que la API no responda es lo
+normal fuera de las sesiones de trabajo, no una avería.
 
-Stack: **.NET 10 / ASP.NET Core / C#** para `gateway` (BFF) y `product-service` ·
-**Python 3 / FastAPI** para `scraper-service` ·
-**Vue 3 + Vite** en `frontend/`, incorporado con `git subtree` desde
-[el repositorio de Panditax](https://github.com/Panditax727/Cacha-el-Precio-Frontend), que sigue
-siendo su origen y se puede sincronizar en los dos sentidos (ver `docs/INTEGRACION-FRONTEND.md` §11) ·
-**AWS Cognito** como IDaaS · **EC2 con Docker Compose**.
+Stack: **.NET 10 / ASP.NET Core** para `gateway` (BFF), `product-service` y `notification-service` ·
+**Python 3.14 / FastAPI** para `scraper-service` · **Vue 3 + Vite** en `frontend/`, incorporado con
+`git subtree` desde el repo de Panditax, que es el que se publica (ver `docs/DESARROLLO.md`) ·
+**Cognito** · **API Gateway** · **SQS + SNS** · **EC2 con Docker Compose** · **Terraform**.
 
-> 🔴 **Antes de tocar nada, lee `docs/INTEGRACION.md`.** El sistema desplegado y lo que dicen los
-> documentos **no coinciden en todo**, y ese archivo es el que lleva la cuenta: qué decisiones se
-> tomaron construyendo, cuáles contradicen un ADR, y qué está roto ahora mismo. Si escribes algo
-> dando por buena una parte de `ARQUITECTURA.md` sin cruzarla con ese documento, es probable que
-> estés programando contra un sistema que ya no existe.
+> 🔴 **Antes de tocar nada, lee `docs/CONTEXTO.md`.** Es una página: qué corre, qué está decidido,
+> qué está abierto y qué documento leer para cada tarea. Si das por buena una parte de otro
+> documento sin cruzarla con ese, puedes estar programando contra un sistema que ya no existe.
 
 ## Índice de documentos — abre solo el que corresponda
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| **Qué está roto, qué se decidió construyendo, qué contradice lo escrito** | `docs/INTEGRACION.md` | 484 líneas |
-| Política de marcas/edad, armario personal, limpieza respaldada y pruebas | `docs/CATALOGO-PERSONAL.md` | 87 líneas |
-| **El frontend: cómo entró al monorepo, qué contrato habla y el plan por fases** | `docs/INTEGRACION-FRONTEND.md` | 939 líneas |
-| La idea, el alcance, las tiendas, el modelo de datos, los riesgos, costos | `docs/PLAN.md` | 408 líneas |
-| Historias de usuario, requisitos funcionales y no funcionales | `docs/REQUISITOS.md` | 396 líneas |
-| Límites de servicios, BFF, persistencia, escalado y ADR | `docs/ARQUITECTURA.md` y `docs/adr/020-*.md` | — |
-| Quién hace qué, estado semana a semana, git flow, checklist | `docs/TAREAS.md` | 291 líneas |
-| **Levantar el proyecto en una cuenta de AWS nueva** (o cuando se acaben los tokens) | `docs/MIGRACION.md` | 361 líneas |
-| **Montar el sistema en tu cuenta paso a paso** (recetas, panel de mensajería, lista del dueño del dominio) | `docs/MONTAR-EN-TU-CUENTA.md` | 557 líneas |
-| En qué orden se despliega en AWS, restricciones del Learner Lab | `docs/DESPLIEGUE.md` | 212 líneas |
-| Cómo funciona el login, qué valida el BFF, cómo se replica la identidad | `docs/IDENTIDAD.md` | 226 líneas |
-| Qué evalúa el ramo, equivalencias de vocabulario, guion de la demo | `docs/EVALUACIONES.md` | 188 líneas |
-| **Mensajería del EP3: colas, tópicos, contratos, errores, administración, bandeja y simulador** | `docs/MENSAJERIA.md` | 342 líneas |
-| Qué se hizo cada semana | `docs/BITACORA.md` | 1424 líneas |
-| Una decisión puntual ya tomada | `docs/adr/NNN-*.md` | 1 pág c/u |
-| Presentar el proyecto a alguien de afuera | `README.md` | 218 líneas |
+| **El estado de hoy, las decisiones vigentes y la deuda abierta** | `docs/CONTEXTO.md` | 103 líneas |
+| **Qué falta construir para la EFT, en qué orden y por qué** | `docs/PLAN-EFT.md` | 386 líneas |
+| Las tareas pendientes, el git flow y los acuerdos del equipo | `docs/TAREAS.md` | 120 líneas |
+| La idea, el alcance, las tiendas, el modelo de datos, los roles, lo legal | `docs/EL-PROYECTO.md` | 353 líneas |
+| Servicios y sus límites, persistencia, mensajería, **seguridad e identidad**, despliegue | `docs/ARQUITECTURA.md` | 332 líneas |
+| **Colas, tópicos, sobres, errores, panel de administración y correo** | `docs/MENSAJERIA.md` | 368 líneas |
+| **Montar, prender, apagar y cambiar de cuenta con `tools/tf.sh`** (y mudar el dominio) | `docs/OPERAR-EN-AWS.md` | 527 líneas |
+| **Programar en local, lo que se corre antes de un PR y el `subtree` del front** | `docs/DESARROLLO.md` | 161 líneas |
+| Qué evalúa cada entrega, el vocabulario para el informe y el guion de la demo | `docs/EVALUACIONES.md` | 163 líneas |
+| Una decisión ya tomada, y el índice de todas | `docs/adr/README.md` y `docs/adr/NNN-*.md` | 1 pág c/u |
+| Cómo cambió el proyecto desde agosto y por qué (para la defensa) | `docs/HISTORIA.md` | 134 líneas |
+| Qué se hizo un día concreto | `docs/BITACORA.md` (busca por fecha; no la leas entera) | 1510 líneas |
+| Presentar el proyecto a alguien de afuera | `README.md` | 292 líneas |
 
-Y el README de cada módulo, que es el más corto y el que más rinde cuando la tarea es sobre ese
-módulo en concreto:
+Y el README de cada módulo. Todos siguen la misma forma: qué es, «En 10 segundos», dónde está en el
+sistema (diagrama), cómo funciona por dentro, rutas, carpetas, configuración, cómo probarlo y deuda.
+**Es lo que más rinde cuando la tarea es sobre ese módulo:**
 
 | Si la tarea es sobre… | Lee | Aprox. |
 |---|---|---|
-| Qué valida el BFF en el código, cómo se prueba, y la administración de mensajería | `gateway/README.md` | 124 líneas |
+| El BFF: cómo decide 401/403/200, las rutas públicas y privadas, el panel de mensajería | `gateway/README.md` | 185 líneas |
+| El catálogo: el modelo producto-ofertas, el flujo 1 (consumir) y el flujo 2 (publicar), el armario | `product-service/README.md` | 170 líneas |
+| Los avisos por correo: el consumidor, la idempotencia, los errores y la bandeja | `notification-service/README.md` | 133 líneas |
+| El scraper: capas, un barrido paso a paso, las tiendas y cómo se agrega una | `scraper-service/README.md` | 183 líneas |
 | **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 561 líneas |
-| Las rutas de productos y catálogos, el versionado por header | `product-service/README.md` | 154 líneas |
-| El consumidor de avisos: errores, diagnóstico en la DLQ, la bandeja de correos y sus pruebas | `notification-service/README.md` | 96 líneas |
-| El scraper de Python: cómo se agrega una tienda | `scraper-service/README.md` | 199 líneas |
-| El detalle interno del scraper (dominio, imágenes, repositorios) | `scraper-service/README.arquitectura.md` | 119 líneas |
-| El capturador de Sparta que tiene el historial acumulado | `tools/scraper-rapido/README.md` | 83 líneas |
-| **Terraform: qué reemplaza, `tools/tf.sh`, fases, barreras y reglas del estado** | `infra/terraform/README.md` | 203 líneas |
+| **Terraform: qué reemplazó, `tools/tf.sh`, fases, barreras, `import` y reglas del estado** | `infra/terraform/README.md` | 235 líneas |
+| El capturador viejo de Sparta, que tiene el historial más largo | `tools/scraper-rapido/README.md` | 83 líneas |
 
 **No cargues todos los documentos.** Casi ninguna tarea necesita más de dos.
 
-> 🧹 **Fuera del índice a propósito:** `scraper-service/CONVERS.md` es un diagrama ASCII del
-> flujo del scraper de **Converse** —la marca—, no de una conversación. El nombre confunde y el
-> contenido cabe dentro de `README.arquitectura.md`. Pendiente de absorber o renombrar; es de
-> Panditax, así que se avisa antes de moverlo.
-Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pidan explícitamente.
+`docs/HISTORIA.md` resume cómo cambió el proyecto desde agosto y dice cómo ver con `git show` los
+documentos viejos (`INTEGRACION`, `PLAN`, `REQUISITOS`, `DESPLIEGUE`…). **No describe el sistema de
+hoy**: ábrelo solo si la tarea pide historia. Las rúbricas
+en PDF están en `docs/rubricas/` — no las leas salvo que se pidan explícitamente.
 
 ---
 
@@ -90,37 +82,43 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
 
 ### Secretos y configuración
 
-- **Nunca subir al repo:** `.env`, `.env.local`, `*.pem`, `*.p12`, `credentials`,
-  `application-local.yml`, ni ningún archivo con llaves de AWS, client secrets o claves de BD.
+- **Nunca subir al repo:** `.env`, `.env.local`, `*.pem`, `*.p12`, `credentials`, `*.tfvars`,
+  `*.tfstate`, ni ningún archivo con llaves de AWS, client secrets o claves de BD. El hook de
+  `tools/hooks` lo frena (`git config core.hooksPath tools/hooks`).
 - La configuración va en **variables de entorno**; el repo lleva `.env.example` con las llaves
-  vacías. En AWS, en **Secrets Manager**.
+  vacías. Los `.env` reales los escribe `tools/tf.sh` fuera de git. (No hay gestor de secretos en
+  AWS todavía: es deuda conocida, en `docs/CONTEXTO.md`.)
 - Si un secreto llegó a subirse: **rotarlo**, no basta con borrarlo en el commit siguiente.
 - **Nada hardcodeado**: IDs y URLs de Cognito, endpoints de tiendas, URLs de API y strings de
   conexión salen de configuración.
 
+### Infraestructura
+
+- **Nada se crea a mano en la consola de AWS.** Todo va en `infra/terraform/` y se aplica con
+  `tools/tf.sh`. Colas, tópicos y reglas se declaran en `infra/mensajeria/topologia.json`.
+- Un `tf.sh` que pide escribir `BORRAR` no se acepta sin leer qué borra.
+
 ### Código
 
-- Todo cambio del esquema de Product Service va por una **migración de EF Core**. Nunca un
-  `ALTER` a mano. El esquema PostgreSQL del scraper se mantiene en
+- Todo cambio del esquema de Product Service o Notification Service va por una **migración de EF
+  Core**. Nunca un `ALTER` a mano. El esquema PostgreSQL del scraper se mantiene en
   `infra/postgres/init/01-scraper-schema.sql` hasta introducir una herramienta de migraciones.
 - **Agregar una tienda = un paquete nuevo en `scraper-service/src/scraper/scrapers/`**, con su
   `scraper.py` y su `parser.py`, más un fixture HTML real en `tests/fixtures/`. No se tocan
-  `product-service`, el BFF ni el frontend, salvo que cambie el contrato compartido.
-  (La regla decía "implementar `AdaptadorTienda`", de cuando el scraper era Java. Cambió el
-  lenguaje, no la idea: **una tienda nueva no debe obligar a tocar el resto**.)
+  `product-service`, el BFF ni el frontend, salvo que cambie el contrato compartido: **una tienda
+  nueva no debe obligar a tocar el resto**.
 - El scraper respeta **1 request cada 1–2 segundos**, User-Agent identificable y `robots.txt`.
 - Los tests que necesitan PostgreSQL usan **Testcontainers o `docker-compose`**,
   nunca una instancia compartida.
 - **Los tests no deben depender de AWS.** El del BFF no verifica firmas de verdad justamente por
   eso: un token que no se presenta se rechaza antes de ir a buscar el JWKS, así que corren con el
-  laboratorio apagado. El que sí usa un token real de Cognito va aparte y se salta si no hay
-  credenciales.
+  laboratorio apagado. Los que usan AWS real van aparte y solo corren con `CEP_AWS_REAL=1`.
 - Dependencias nuevas: preguntar antes de agregarlas.
 
 ### Alcance
 
 - Si la tarea no está en `docs/TAREAS.md`, **pregunta antes de implementarla**.
-- No refactorizar ni reformatear código de otro carril (ver el reparto en `docs/TAREAS.md`)
+- No refactorizar ni reformatear código que otra persona tiene 🟡 en curso en `docs/TAREAS.md`
   sin avisar.
 
 ---
@@ -130,20 +128,29 @@ Las rúbricas en PDF están en `docs/rubricas/` — no las leas salvo que se pid
 - **Al cerrar una sesión de trabajo, anota el avance en `docs/BITACORA.md`**: qué se hizo, qué
   costó, qué queda pendiente. También cuando una decisión cambia respecto del plan. Si el usuario
   no lo pide, recuérdaselo.
-- Los documentos de `docs/` **no se duplican entre sí**. Cada tema vive en un solo lugar:
-  el *qué* en `PLAN.md`, el *por qué* en `ARQUITECTURA.md`, el *quién y cuándo* en `TAREAS.md`,
-  el *qué se evalúa* en `EVALUACIONES.md`. Si algo calza en dos, va en uno y el otro lo enlaza.
-- **Una decisión técnica nueva es un ADR**, no un párrafo suelto. Formato en el registro de
-  decisiones de `docs/ARQUITECTURA.md`: contexto → alternativas → decisión → **consecuencias,
-  incluidas las malas**.
-- Al modificar un documento, **actualiza su índice** y la fecha de "última revisión" del encabezado.
-- Si un documento pasa de ~600 líneas, pártelo y actualiza la tabla de arriba.
-- **Los conteos de la tabla se sacan del archivo, no de memoria.** Estaban todos desfasados
-  hasta el 07-09 y faltaba `docs/REQUISITOS.md` entero. Un índice que miente hace perder más
-  tiempo que no tener índice.
-- `README.md` es la cara pública: se mantiene corto y sin detalle interno del ramo. Su tabla de
-  **Estado** dice lo que corre de verdad, no lo planificado — si cambia el sistema, cambia esa
-  tabla en el mismo PR.
+- **Cada tema vive en un solo documento**, y los demás lo enlazan: el *estado de hoy* en
+  `CONTEXTO.md`, el *qué* en `EL-PROYECTO.md`, el *cómo y por qué* en `ARQUITECTURA.md`, el *qué
+  falta y en qué orden* en `PLAN-EFT.md`, las *tareas* en `TAREAS.md`, el *qué se evalúa* en
+  `EVALUACIONES.md`, y el *cómo operar* en `OPERAR-EN-AWS.md`.
+- **Todos los documentos y READMEs siguen la misma forma:** un encabezado con qué es, para quién y
+  la fecha de última revisión; «📍 En 10 segundos»; la leyenda de estados (✅ 🟡 ⬜ ⛔ 🔎 ⏸️ 🚫);
+  tablas y diagramas Mermaid antes que párrafos largos; lo vigente arriba y la historia abajo; y
+  «Ver también» al final.
+- **No crees documentos nuevos en `docs/` sin necesidad.** Antes de crear uno, busca dónde cabe lo
+  que quieres escribir. Un tema nuevo grande puede justificar uno; una nota, no.
+- **Una decisión técnica nueva es un ADR**, no un párrafo suelto. Formato y numeración en
+  `docs/adr/README.md`: contexto → alternativas → decisión → **consecuencias, incluidas las malas**.
+- Al modificar un documento, **actualiza su índice** y la fecha de «última revisión».
+- **Un documento que pasa de ~600 líneas se resume o se parte**, porque se lee entero. **Excepción:
+  `docs/BITACORA.md`**, que solo se agrega por fecha y se busca, no se lee entera; y `docs/HISTORIA.md`,
+  que no se mantiene.
+- **Los conteos de las tablas de arriba se sacan del archivo (`wc -l`), no de memoria.** Un índice
+  que miente hace perder más tiempo que no tener índice.
+- `README.md` es la cara pública: corto, **sin comandos** y sin detalle interno del ramo. Su tabla de
+  **Estado** dice lo que corre de verdad, no lo planificado: si cambia el sistema, cambia esa tabla
+  en el mismo PR.
 - **Cuando el código contradiga un documento, no lo arregles en silencio ni lo dejes pasar:**
-  anótalo en `docs/INTEGRACION.md` con dueño, o escribe el ADR que falta. Un documento que miente
-  es peor que uno que falta, porque en la defensa oral la contradicción la encuentra cualquiera.
+  anótalo en la deuda abierta de `docs/CONTEXTO.md`, o escribe el ADR que falta. Un documento que
+  miente es peor que uno que falta, porque en la defensa oral la contradicción la encuentra cualquiera.
+- **La evidencia nueva (logs de pruebas, capturas) no va al repo.** Se guarda fuera, con el
+  material de los informes. La de `docs/evidencia/` es la que citan los informes ya entregados.

@@ -1,42 +1,50 @@
 # Terraform · la infraestructura de AWS como código
 
-> **Estado (14-11-2026): fases 0 a 5.** `cuenta/` maneja **toda la infraestructura de la cuenta**
-> (mensajería, base, identidad y borde) y `tools/tf.sh` la sube y la apaga, probado en `731705830984`.
-> Los scripts siguen en `tools/` hasta la fase 7 (montar en una segunda cuenta), como
-> explica [`docs/MONTAR-EN-TU-CUENTA.md`](../../docs/MONTAR-EN-TU-CUENTA.md). La decisión y sus
-> costos están en el [ADR-033](../../docs/adr/033-terraform-para-la-infraestructura.md).
+> **Estado (17-11-2026): fases 0 a 7, terminado.** `cuenta/` maneja **toda la infraestructura de
+> la cuenta** (mensajería, base, identidad y borde), `dominio/` el registro `api` en Cloudflare, y
+> `tools/tf.sh` la sube y la apaga. Probado a diario en `731705830984` desde el 14-11 y **desde
+> cero en una cuenta vacía** (`081199126041`) el 17-11. Los cuatro scripts `crear-*` se retiraron.
+> El paso a paso para el equipo está en
+> [`docs/OPERAR-EN-AWS.md`](../../docs/OPERAR-EN-AWS.md); la decisión y sus costos, en
+> el [ADR-033](../../docs/adr/033-terraform-para-la-infraestructura.md).
 
-## Qué va a reemplazar
+## Qué reemplazó
 
-Terraform reemplaza lo que **crea** cosas en AWS. Lo que **opera** el sistema se queda.
+Terraform reemplazó lo que **crea** cosas en AWS. Lo que **opera** el sistema se quedó.
 
 | Script | Destino |
 |---|---|
-| `tools/crear-infra.sh` | lo reemplaza `cuenta/` (EC2, IP, grupo de seguridad, buckets) |
-| `tools/crear-cognito.sh` | lo reemplaza `cuenta/` (user pool, clientes, scope, grupos, Google) |
-| `tools/crear-api-gateway.sh` | lo reemplaza `cuenta/` (HTTP API, rutas, autorizador, `/ingesta`, secreto del borde) |
-| `tools/crear-mensajeria.py` | lo reemplaza `cuenta/`, leyendo el mismo `infra/mensajeria/topologia.json` |
-| `tools/desplegar.sh`, `respaldar.sh`, `hacer-admin.sh` y las pruebas | **se quedan** |
+| `tools/crear-infra.sh` | ❌ retirado: `cuenta/base.tf` (EC2, IP, grupo de seguridad, buckets) |
+| `tools/crear-cognito.sh` | ❌ retirado: `cuenta/identidad.tf` (user pool, clientes, scope, grupos, Google) |
+| `tools/crear-api-gateway.sh` | ❌ retirado: `cuenta/api.tf` (HTTP API, rutas, autorizador, `/ingesta`, secreto del borde) |
+| `tools/crear-mensajeria.py` | ❌ retirado: `cuenta/mensajeria.tf`, leyendo el mismo `infra/mensajeria/topologia.json` |
+| `tools/desplegar.sh`, `respaldar.sh`, `hacer-admin.sh` y las pruebas | ✅ **se quedan** |
 
-Al terminar, Terraform escribe los **5 archivos** que hoy dejan los scripts (`infra.env`,
+Al terminar, `tf.sh` escribe los **5 archivos** que dejaban los scripts (`infra.env`,
 `cognito.env`, `api-gateway.env`, `borde.env` y `mensajeria.env`), con los mismos nombres de
-variable. Así `desplegar.sh` funciona sin cambios.
+variable. Así `desplegar.sh` siguió funcionando; lo único que cambió en él es que ya no crea
+colas: si falta `mensajeria.env`, se detiene y pide `tf.sh subir`.
 
-Los scripts no se borran hasta que Terraform monte el sistema completo en dos cuentas. 🚫 **En una
-misma cuenta nunca se mezclan**: si un script crea algo que Terraform no anotó, Terraform intenta
-crearlo de nuevo y choca por el nombre.
+🚫 **Nada de esto se crea por fuera de Terraform**, ni a mano en la consola ni desde el panel de
+mensajería (que desde el 17-11 solo mira): si algo existe en AWS y Terraform no lo anotó, el
+siguiente `apply` intenta crearlo de nuevo y choca por el nombre.
 
 ## Estructura
 
 ```text
 infra/terraform/
-├── cuenta/                       lo corre cada persona en SU cuenta
+├── cuenta/                       lo corre cada persona en SU cuenta (a través de tools/tf.sh)
 │   ├── versions.tf               Terraform 1.x, proveedor aws ~> 6.0, us-east-1, etiquetas
-│   ├── variables.tf              cuenta_esperada, tiene_dominio, encendido, llave, EC2
+│   ├── variables.tf              cuenta_esperada, tiene_dominio, encendido, conservar_ip, EC2…
+│   ├── base.tf                   grupo de seguridad, EC2, IP elástica y los dos buckets
+│   ├── arranque.sh               user_data de la EC2: Docker, compose y buildx
+│   ├── identidad.tf              Cognito: pool, clientes, scope, grupos, usuarios, Google
+│   ├── api.tf                    HTTP API, 24 rutas, autorizador, /ingesta, stages
+│   ├── mensajeria.tf             colas, DLQ, tópico y suscripciones desde topologia.json
 │   └── cuentas/
 │       └── ejemplo.tfvars.example   el único .tfvars que va a git
 ├── sondeo/                       prueba de permisos: crea una pieza de cada tipo y se destruye
-└── dominio/                      (fase 6) el registro A de api en Cloudflare
+└── dominio/                      el registro A de api en Cloudflare (solo quien tiene el token)
 ```
 
 ## Fases
@@ -51,7 +59,7 @@ infra/terraform/
 | 4 | API, rutas, autorizador JWT, `/ingesta` y secreto del borde (`cuenta/api.tf`) | ✅ |
 | 5 | Los 5 `.env`, `tools/tf.sh` (`subir`, `apagar` con respaldo, `estado`) y el hook de secretos | ✅ |
 | 6 | Registro `api` en Cloudflare, adoptado con `import` (`dominio/dns.tf`) | ✅ |
-| 7 | Montar en dos cuentas desde cero y retirar los scripts (en un PR aparte) | ⬜ |
+| 7 | Montar desde cero en una cuenta vacía (`081199126041`, 81 recursos) y retirar los 4 scripts `crear-*` | ✅ |
 
 ## Uso diario: `tools/tf.sh`
 
@@ -131,9 +139,11 @@ terraform apply   -var cuenta_esperada=$(aws sts get-caller-identity --query Acc
 terraform destroy -var cuenta_esperada=$(aws sts get-caller-identity --query Account --output text)
 ```
 
-## Si los scripts ya crearon las cosas en tu cuenta
+## Adoptar lo que ya existe en una cuenta (`import`)
 
-No hace falta borrar nada: se **adoptan** con bloques `import`, sin cortar el servicio. Las URL, los
+Sirve si en tu cuenta hay recursos creados por los scripts viejos o a mano, o si se perdió el
+estado de Terraform. No hace falta borrar nada: se **adoptan** con bloques `import`, sin cortar el
+servicio. Las URL, los
 ARN y los id no cambian, así que los `.env` siguen sirviendo. Así se hizo en `731705830984` el
 14-11-2026 con la mensajería (fase 1) y con la base (fase 2).
 
@@ -191,6 +201,8 @@ asume 256 KiB (el límite antiguo) y sin el ajuste achicaría las colas.
 
 ## Reglas
 
+- **Una carpeta del repo = una cuenta.** `tf.sh` usa un estado y un juego de `.env` por carpeta.
+  Para manejar dos cuentas a la vez, una segunda copia (`git worktree add ../cacha-otra development`).
 - **El estado (`terraform.tfstate`) nunca va a git**: guarda el secreto del borde y el del cliente
   del scraper en texto plano. Es uno por cuenta, vive en el laptop de quien la maneja y se respalda
   en `~/cacha-cuentas/<cuenta>/estado/`.

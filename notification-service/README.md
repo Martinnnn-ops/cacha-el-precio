@@ -1,96 +1,133 @@
-# notification-service
+# Notification Service · los avisos por correo
 
-Avisa por correo a quien sigue una prenda cuando **baja de precio**, se **agota** o se **repone**.
-Es el consumidor del flujo 2 de la mensajería (ver [`docs/MENSAJERIA.md`](../docs/MENSAJERIA.md) y
-[ADR-029](../docs/adr/029-mensajeria-sqs-sns.md) / [ADR-030](../docs/adr/030-notification-service.md)).
+> **Qué es.** El servicio que avisa por correo a quien sigue una prenda cuando **baja de precio**,
+> se **agota** o se **repone**.
+> **Para quién.** El equipo y quien programe con IA en este módulo.
+> **Última revisión:** 18-11-2026.
 
-## Qué hace
+> 📍 **En 10 segundos:** ASP.NET Core 10, consumidor del **flujo 2** de la mensajería. Lee la cola
+> **`cep-notificaciones`** (que se llena desde SNS con un filtro), pregunta a product-service
+> **quién sigue la prenda**, traduce cada usuario a su correo con **Cognito** y manda un correo por
+> persona **sin repetir nunca**. Guarda en su esquema `notification` qué avisos ya mandó y una
+> bandeja con los últimos 50 correos para el panel.
 
+**Leyenda:** ✅ funciona · 🟡 a medias · ⬜ falta · 🔎 por confirmar · 🚫 no se hace
+
+---
+
+## 1 · Dónde está en el sistema
+
+```mermaid
+flowchart LR
+    PS["product-service"] -->|"precio.bajo<br/>agotada · repuesta"| SNS{{"SNS cep-cambios-oferta"}}
+    SNS -->|"filtro: baja ≥ 10%,<br/>agotada, repuesta"| Q[["SQS cep-notificaciones"]]
+    SNS -->|"todo, sin filtro"| QA[["SQS cep-auditoria-precios<br/>⚠️ nadie la lee"]]
+    Q --> NS["notification-service<br/>:8082"]
+    Q -.falla.-> DLQ[["SQS DLQ"]]
+    NS -->|"¿quién la sigue?"| PS
+    NS -->|"sub → correo"| COG["Cognito"]
+    NS -->|SMTP| GM["Gmail"]
+    NS --> PG[("PostgreSQL<br/>esquema notification")]
+    GW["gateway (panel)"] -->|"/internal/correos"| NS
 ```
-SNS cep-cambios-oferta ─(filtro)─▶ SQS cep-notificaciones ─▶ notification-service ─SMTP─▶ Gmail
-                                                                    │
-                                   product-service /internal/… ◀────┤ ¿quién sigue la prenda?
-                                   Cognito ListUsers           ◀────┘ ¿cuál es su correo?
+
+## 2 · Qué hace con cada mensaje
+
+```mermaid
+sequenceDiagram
+    participant Q as cep-notificaciones
+    participant N as notification-service
+    participant P as product-service
+    participant C as Cognito
+    participant G as Gmail
+    Q->>N: cambio de oferta (sobre JSON)
+    N->>N: valida type, version, productId
+    N->>P: GET /internal/personal/seguidores/{id}
+    P-->>N: lista de sub
+    loop por cada seguidor
+        N->>C: sub → correo
+        N->>N: ¿ya mandé (event_id, owner)?
+        N->>G: correo (si no estaba mandado)
+        N->>N: marca enviado + copia a la bandeja
+    end
+    N->>Q: borra el mensaje ✅
 ```
 
-Por cada mensaje: valida el sobre, pregunta a product-service quién sigue la prenda, traduce cada
-`sub` a su correo con Cognito, y manda un correo por persona **sin repetir** (tabla
-`notificaciones_enviadas`). El mensaje se borra de la cola recién cuando todos quedaron enviados o
-saltados.
+El mensaje se borra **recién cuando todos quedaron enviados o saltados**. Si se cae a la mitad, el
+reintento no repite a quien ya recibió: la marca `(event_id, owner)` en `notificaciones_enviadas`
+lo impide. Eso es la **idempotencia** del flujo.
 
-## Estructura
+## 3 · Los errores
+
+| Tipo | Ejemplos | Qué hace |
+|---|---|---|
+| **Recuperable** | base, Cognito o product-service caídos; Gmail no responde; timeout | no borra el mensaje: reaparece a los 60 s |
+| **Recuperable agotado** | el mismo error en el **último** intento (el `maxReceiveCount` de la cola) | lo aparta en la DLQ con `error-type=recuperable-agotado` y la causa, para verlo en el panel |
+| **Definitivo** | JSON roto, `type` o `version` desconocidos, sin `productId` | a la DLQ con atributos de diagnóstico, sin gastar reintentos |
+| **Dirección inválida** | SMTP 550/553 | salta a esa persona y sigue con el resto |
+
+Detalle y ejemplos de sobres en [MENSAJERIA](../docs/MENSAJERIA.md).
+
+## 4 · La bandeja de correos
+
+Cada correo generado se copia en `notification.correos_generados` (los últimos 50), con el
+destinatario enmascarado. Así el panel de mensajería los muestra **aunque el servicio corra con
+`CORREO_MODO=log`**, sin mandar nada de verdad. Si la copia falla, el aviso igual cuenta como
+enviado.
+
+| Ruta (red interna) | Para qué |
+|---|---|
+| `GET /internal/correos` · `/internal/correos/{id}` | la bandeja |
+| `GET /internal/correos/ejemplo/{tipo}` | un correo de muestra con una prenda inventada |
+| `GET /internal/diagnostico/seguidores/{productId}` | probar la cadena prenda → seguidores → correos (solo en Development) |
+| `GET /health` | sonda |
+
+## 5 · Las carpetas
 
 | Carpeta | Qué hay |
 |---|---|
-| `Consumidor/` | `ConsumidorNotificaciones`: el bucle de long polling y el ACK/DLQ |
+| `Consumidor/` | `ConsumidorNotificaciones`: el bucle de long polling, el borrado y la DLQ |
 | `Service/` | `ServicioNotificaciones`: el trabajo de un mensaje (validar → seguidores → correos → enviar) |
-| `Mensajeria/` | `IColaMensajes` y su implementación SQS. El negocio no habla con el SDK |
-| `Correo/` | `IEnviadorCorreo` (`smtp` con MailKit / `log`), las plantillas HTML/texto y las rutas de la bandeja (`EndpointsBandeja`) |
-| `Seguidores/` | cliente HTTP a product-service y `sub → email` por Cognito (o config en local) |
-| `Repository/` | la marca `(event_id, owner)` que evita reenviar, y la bandeja de correos generados (`BandejaCorreos`) |
-| `Data/` + `Migrations/` | esquema propio `notification`, aplicado con `Migrate()` al arrancar |
+| `Mensajeria/` | `IColaMensajes` y su versión SQS: el negocio no habla con el SDK |
+| `Correo/` | `IEnviadorCorreo` (`smtp` con MailKit o `log`), las plantillas y las rutas de la bandeja |
+| `Seguidores/` | el cliente a product-service y `sub → correo` con Cognito (o una lista fija en local) |
+| `Repository/` | la marca de enviados y la bandeja |
+| `Data/` · `Migrations/` | el esquema `notification`, aplicado con `Migrate()` al arrancar |
+| `../tests/notification-service.Tests/` | consumidor y bandeja, todo con dobles en memoria: sin AWS, Gmail ni base |
 
-## Bandeja de correos
-
-Cada correo generado se copia en `notification.correos_generados` (se guardan los últimos 50), para
-verlo en el panel de mensajería aunque el servicio corra con `CORREO_MODO=log`. Se lee por
-`GET /internal/correos`, `/internal/correos/{id}` y `/internal/correos/ejemplo/{tipo}`, este último
-con una prenda inventada y sin enviar nada. El destinatario sale enmascarado. Si la copia falla, el
-aviso igual se da por enviado. Detalle en
-[`docs/MENSAJERIA.md`](../docs/MENSAJERIA.md#bandeja-de-correos).
-
-## Errores (resumen; el detalle está en MENSAJERIA.md)
-
-- **Recuperable** (BD/Cognito/product-service caídos, Gmail no responde, timeout): no se borra el
-  mensaje; reaparece a los 60 s. En el **último** intento (el `maxReceiveCount` de la cola, leído de
-  su `RedrivePolicy`) el consumidor lo aparta en la DLQ con `error-type=recuperable-agotado` y la
-  causa de fondo, para que desde el panel se sepa por qué falló. Si no puede leer el máximo, lo deja
-  como antes: SQS lo mueve solo, sin atributos.
-- **Definitivo** (JSON roto, `type`/`version` desconocido, `productId` ausente): va a la DLQ con
-  atributos de diagnóstico y se borra, sin gastar reintentos.
-- Una **dirección inválida** (SMTP 550/553) se registra y se salta a esa persona; no manda todo el
-  evento a la DLQ.
-
-## Pruebas
-
-```bash
-dotnet test notification-service.Tests
-```
-
-Prueban el consumidor con el `ServicioNotificaciones` real y todo lo demás falso (cola, seguidores,
-directorio, repositorio, bandeja y un enviador de correo en memoria): éxito, definitivo, reintento,
-último intento con `recuperable-agotado`, causa de fondo y apagado. También la bandeja: que guarde
-la copia con su modo, que su falla no reintente el mensaje y que no duplique la copia. En
-`BandejaCorreosTests`, el enmascarado, los ejemplos y que **el snapshot de migraciones calce con el
-modelo**: la migración de la bandeja se escribió a mano, sin `dotnet-ef`. No necesitan AWS, Gmail
-ni base.
-
-## Configuración
-
-Todo por variables de entorno (ver [`.env.example`](../.env.example)):
+## 6 · Configuración
 
 | Variable | Para qué |
 |---|---|
-| `ConnectionStrings__PostgreSql` | Postgres con `Search Path=notification,public` |
-| `PRODUCT_URL` | dónde preguntar por los seguidores (host interno del compose) |
-| `COGNITO_USER_POOL_ID`, `AWS_REGION` | `sub → email` con Cognito; sin pool usa `CorreosPrueba` |
-| `SQS_NOTIFICACIONES_URL`, `SQS_NOTIFICACIONES_DLQ_URL` | la cola y su DLQ; vacías ⇒ el consumidor no arranca |
-| `CORREO_MODO` | `log` (no envía, solo registra) o `smtp` (Gmail real) |
-| `SMTP_USUARIO`, `SMTP_CLAVE` | cuenta de Gmail y contraseña de **aplicación**; con `smtp` son obligatorias |
-| `SITIO_URL` | base de los enlaces «Ver el detalle» del correo |
+| `ConnectionStrings__PostgreSql` | PostgreSQL con `Search Path=notification,public` |
+| `PRODUCT_URL` | dónde preguntar por los seguidores |
+| `COGNITO_USER_POOL_ID` · `AWS_REGION` | `sub → correo`; sin pool usa `CorreosPrueba` de la configuración |
+| `SQS_NOTIFICACIONES_URL` · `SQS_NOTIFICACIONES_DLQ_URL` | la cola y su DLQ; vacías = el consumidor no arranca |
+| `CORREO_MODO` | `log` (solo registra) o `smtp` (Gmail de verdad) |
+| `SMTP_USUARIO` · `SMTP_CLAVE` | cuenta de Gmail y contraseña **de aplicación**; obligatorias con `smtp` |
+| `SITIO_URL` | la base del enlace «Ver el detalle» del correo |
 
-## Correr en local
+## 7 · Correr y probar
 
 ```bash
-# Con la BD del compose arriba:
 docker compose up -d postgres product-service notification-service
-curl -s localhost:8082/health        # -> Healthy
-
-# Sin cola configurada, el consumidor no arranca (es lo normal en local).
-# Para probar la cadena productId -> seguidores -> correos (solo en Development):
-curl -s localhost:8082/internal/diagnostico/seguidores/123
+curl -s localhost:8082/health                     # Healthy
+dotnet test tests/notification-service.Tests
 ```
 
-Para ver un correo de verdad en el log sin AWS: deja `CORREO_MODO=log`, agrega el `sub` de un
-usuario de prueba a `CorreosPrueba` en `appsettings.Development.json`, y manda un mensaje de prueba
-a la cola (o usa las pruebas de la T09 cuando estén).
+Sin cola configurada el consumidor no arranca, y es lo normal en local. Para ver un correo sin AWS:
+`CORREO_MODO=log` y el `sub` de un usuario de prueba en `CorreosPrueba`
+(`appsettings.Development.json`).
+
+## 8 · Deuda conocida
+
+| | Qué | Por qué importa |
+|---|---|---|
+| 🟡 | `tools/respaldar.sh` no vuelca el esquema `notification` | quien sigue una prenda la deja de seguir al migrar de cuenta |
+| ⬜ | Sin `correlationId` | no se puede seguir un aviso desde el scraper hasta el correo ([PLAN-EFT](../docs/PLAN-EFT.md)) |
+
+## Ver también
+
+- [MENSAJERIA](../docs/MENSAJERIA.md): el contrato del flujo 2
+- [ADR-029](../docs/adr/029-mensajeria-sqs-sns.md) y [ADR-030](../docs/adr/030-notification-service.md): por qué existe así
+- [product-service](../product-service/README.md): quién publica los cambios

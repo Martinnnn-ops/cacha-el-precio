@@ -59,7 +59,7 @@ Las razones para elegirlo, ahora que se sabe que es viable:
 ## Consecuencias
 
 - El `audience` de los tokens de Cognito tiene una particularidad que ya está documentada en
-  [`ARQUITECTURA.md`](../ARQUITECTURA.md#seguridad): el
+  [`ARQUITECTURA.md`](../ARQUITECTURA.md#6--seguridad-e-identidad): el
   `access_token` no trae `aud`, así que la validación en el BFF se hace contra `client_id`.
   Hay que tenerlo resuelto antes de la demo, porque es una pregunta típica de defensa.
 - **GitHub no se puede federar** (es OAuth2, no OIDC). Google sí. Ya estaba decidido y esto

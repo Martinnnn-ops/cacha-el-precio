@@ -9,7 +9,7 @@
 #
 #   Y el historial de precios no se recupera hacia atras. Es una serie en el
 #   tiempo, no un calculo: si se pierde el 27-08 al 07-09, esos dias no vuelven
-#   por mucho que se vuelva a correr el scraper. Ver docs/MIGRACION.md.
+#   por mucho que se vuelva a correr el scraper. Ver docs/OPERAR-EN-AWS.md.
 #
 # SE CORRE DONDE ESTA EL docker-compose CORRIENDO, o sea en la EC2.
 #

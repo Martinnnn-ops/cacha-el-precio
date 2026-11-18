@@ -1,6 +1,92 @@
 # Bitácora del proyecto
 
-Última actualización: 10-11-2026.
+Última actualización: 18-11-2026.
+
+## 17-11 · Terraform fases 6 y 7: el dominio, una cuenta desde cero y adiós a los `crear-*` — Martín
+
+Rama `feature/terraform`. Con esto Terraform queda como la única forma de crear la infraestructura
+y el [ADR-033](adr/033-terraform-para-la-infraestructura.md) pasa a **aceptado**.
+
+### Fase 6: el registro `api` en Cloudflare
+
+`infra/terraform/dominio/` (proveedor `cloudflare` 5.29) maneja **un solo registro**, el A de `api`,
+adoptado con `import`: el primer `plan` dio 0 cambios. Mover la API a otra IP es
+`terraform apply -var api_ip=<IP>`, con un token de Cloudflare que solo puede editar el DNS de esa
+zona y vive fuera del repo. `www`, la raíz y el correo siguen a mano: apuntan al bucket de la
+cuenta de Panditax y no cambian al prender o apagar.
+
+### Fase 7: montar desde cero en una cuenta vacía
+
+En `081199126041`, una cuenta del Academy sin nada, en una copia aparte del repo (`git worktree`),
+porque `tf.sh` usa un estado y un juego de `.env` por carpeta.
+
+```text
+tf.sh subir prueba           → 81 creados, desplegar.sh OK, front en el bucket de esa cuenta
+restauración del respaldo    → se cortó («Connection closed by remote host») y tf.sh terminó en 0
+                               con la base vacía; reintentada a mano: 224 productos
+probar-mensajeria.py         → TODO OK
+tf.sh apagar prueba          → respaldo bajado al laptop, 3 destruidos (EC2, IP, asociación)
+```
+
+- **Lo que costó:** el corte de la restauración. No se encontró la causa (sin reinicio ni errores
+  de `sshd`), así que se ataca el síntoma: `tf.sh` reintenta tres veces y, si no puede, **termina
+  con error** e imprime cómo hacerlo a mano. `respaldar.sh --restaurar` también sale con error si
+  falla. Un «listo» con la base vacía era el peor resultado posible (`3d40a10`).
+- **Se retiraron los 4 `crear-*`** (`9e97759`). `desplegar.sh` ya no crea colas: si falta
+  `mensajeria.env`, se detiene y pide `tf.sh subir`. `hacer-admin.sh`, `probar-mensajeria.py` y los
+  comentarios del compose, el `Caddyfile` y el gateway ya no los nombran.
+- **El panel de mensajería solo mira** (`99aba95`). Crear o borrar colas desde el panel chocaba
+  con Terraform. Se quitaron las 8 rutas de escritura y la sección «Administrar» del frontend; se
+  quedan la consulta, la revisión de DLQ, el redrive, la bandeja y el simulador. Decisión en la
+  [actualización del ADR-032](adr/032-administracion-de-mensajeria.md#actualización-del-17-11-2026-el-panel-solo-mira).
+- Re-prueba en la misma cuenta con la rama desplegada: `desplegar.sh` se detuvo sin
+  `mensajeria.env` (0 colas creadas), y con él `probar-mensajeria.py` dio TODO OK en 29 chequeos,
+  con las rutas de escritura en 404/405. Un error del propio script (`sufijo`) se arregló en
+  `670d37e`. La cuenta de prueba quedó apagada.
+
+### 18-11 · Los documentos, al día y ordenados
+
+Primero, revisión de todos los documentos contra la rama: el `README` rehecho como presentación
+del proyecto, con diagramas y sin comandos; los comandos de desarrollo pasan a
+`docs/DESARROLLO.md` (nuevo), y van notas en los ADR 015, 019, 024, 026, 029, 032 y 033.
+
+Después, **`docs/` se ordenó: de 15 documentos a 10**, todos con la misma forma (qué es, para
+quién, «📍 En 10 segundos», la leyenda, diagramas y «Ver también»):
+
+| Nuevo | Sale de |
+|---|---|
+| `CONTEXTO.md` | lo vigente de `INTEGRACION` y `DESPLIEGUE`: el estado de hoy en una página |
+| `PLAN-EFT.md` | el plan de implementación de la EFT, versión para el equipo |
+| `EL-PROYECTO.md` | `PLAN` + `REQUISITOS` + `CATALOGO-PERSONAL` |
+| `ARQUITECTURA.md` | absorbe `IDENTIDAD` y lo vigente de `DESPLIEGUE` |
+| `OPERAR-EN-AWS.md` | `MONTAR-EN-TU-CUENTA` + `MIGRACION` |
+| `TAREAS.md` | solo lo vigente y **sin dueños**: el que puede, toma la tarea |
+| `adr/README.md` | el índice de decisiones, que vivía en `ARQUITECTURA` |
+| `HISTORIA.md` | lo que vale la pena de los documentos viejos |
+
+Los diagnósticos viejos (`INTEGRACION`, `INTEGRACION-FRONTEND`, `DESPLIEGUE`, `REQUISITOS`,
+`PLAN`, `CATALOGO-PERSONAL`, `IDENTIDAD` y la historia del EP1 de `TAREAS`) se borran y se
+resumen en un solo `docs/HISTORIA.md`: lo que cambió desde agosto, la auditoría del 07-09 y lo
+aprendido, con el `git show` para leer los originales. Se borraron el `arquitectura.drawio` (dibujaba Micronaut,
+RabbitMQ, Kafka y una VPC privada que nunca existieron) y un `.docx` de otra idea (un cotizador de
+prendas). Los README de los cuatro servicios se rehicieron con el mismo estilo y diagramas; el del
+scraper absorbe `README.arquitectura.md` y `CONVERS.md`. Al rehacer el del gateway apareció que
+decía que el seguimiento vivía en memoria: desde el 23-09 se guarda en product-service.
+
+Y un poco de orden fuera de `docs/`: los tres proyectos de pruebas .NET pasan de la raíz a
+`tests/` (mismo resultado antes y después: 139 pruebas OK y 3 omitidas, las de AWS real), y se
+retira `tools/probar-mensajeria-academy.py`, el sondeo del EP3 que ya cubre
+`infra/terraform/sondeo/`. El `docker-compose.yml` propio del scraper **se queda**: es la base
+desechable de sus pruebas de integración, y el CLI y una prueba lo nombran.
+
+Los logs de Terraform (los 4 del 14-11 y los del 17-11) **salen del repo**: se guardan fuera, junto
+al material para el informe de la EFT, y los del 14-11 siguen en el historial de git. La
+evidencia del EP1 al EP3 que citan los informes entregados se queda en `docs/evidencia/`.
+
+**Pendiente:** el PR de `feature/terraform` (lo revisa y mergea Orion o Panditax); sincronizar el
+frontend con el repo de Panditax, donde sigue «Administrar»; el código de crear/borrar que quedó
+sin rutas; `respaldar.sh` sin el esquema `notification`; y rotar o ponerle fecha al token de
+Cloudflare después de la EFT.
 
 ## 14-11 · Terraform fases 1 a 5: toda la cuenta y `tools/tf.sh` — Martín
 
@@ -44,7 +130,7 @@ plan con import           → 14 to import, 0 to destroy (disco 8 → 20 y etiqu
 plan después del apply    → No changes
 EC2 tras prender          → 20G, 32 % usado, 6 contenedores arriba, datos intactos
 API Gateway               → /health, /productos, /catalogos 200 · /seguimiento, /api/yo, /ingesta 401
-tools/probar-mensajeria.py → TODO OK (docs/evidencia/mensajeria-ec2-20261114-202500.log)
+tools/probar-mensajeria.py → TODO OK (log fuera del repo)
 ```
 
 ### Fase 3: Cognito pasa a `cuenta/identidad.tf`
@@ -112,8 +198,8 @@ tools/probar-mensajeria.py  → TODO OK en la máquina nueva
 
 **Pendiente:** fase 6 (dominio en Cloudflare, de Panditax) y fase 7 (segunda cuenta desde cero y
 retirar los scripts). `respaldar.sh` no vuelca el esquema `notification` (hoy solo tiene los correos
-simulados de las pruebas)., con `tools/tf.sh apagar` respaldando
-antes. Las fases 2 y 3 no se destruyeron a propósito: borrarían la base y los usuarios.
+simulados de las pruebas). Las fases 2 y 3 no se destruyeron a propósito: borrarían la base y los
+usuarios. La EC2 se probó con `tools/tf.sh apagar`, que respalda antes.
 
 ## 10-11 · Terraform: estructura, proveedor y sondeo de permisos — Martín
 
@@ -455,7 +541,7 @@ flujo punta a punta con `docker compose up` (quedó sin correr acá) y confirmar
 ## 14-10 · EP3: sondeo de Academy, puerta /ingesta y cuenta nueva (T02 y T03) — Martín
 
 Learner Lab nuevo: la cuenta pasó a ser **`731705830984`** (la anterior era `116813910999`).
-La receta de cuatro comandos de [MONTAR-EN-TU-CUENTA](MONTAR-EN-TU-CUENTA.md) se corrió entera
+La receta de cuatro comandos de [MONTAR-EN-TU-CUENTA](OPERAR-EN-AWS.md) se corrió entera
 sobre la cuenta vacía y dejó el sistema arriba sin pasos a mano: `/health` y `/productos` 200 y
 `/seguimiento` 401 a través del API Gateway.
 
@@ -486,7 +572,7 @@ rechazan/ocultan prendas infantiles; polerones y chalecos tienen capa intermedia
 
 Deseados y outfits por usuario persisten en PostgreSQL mediante migración, con propietario
 derivado del JWT en el BFF. Se añadieron «Mi armario», guardado desde fichas/tarjetas y armador,
-rutas protegidas de AWS y ruta SPA de S3. Detalle: [operación](CATALOGO-PERSONAL.md) y
+rutas protegidas de AWS y ruta SPA de S3. Detalle: [operación](HISTORIA.md) y
 [ADR-028](adr/028-armario-personal-y-politica-catalogo.md).
 
 Verificación: compilación de frontend y servicios; pruebas de humo sin fallos, 166 pruebas
@@ -570,7 +656,7 @@ de API Gateway apuntando al pool**. También se confirmó permiso para lanzar EC
 que existe `LabRole`. **El plan B de Keycloak queda descartado.** Razonamiento en el
 [ADR-006](adr/006-cognito-como-idaas.md), evidencia cruda en `docs/evidencia/`.
 
-Escribí además [`DESPLIEGUE.md`](DESPLIEGUE.md), que faltaba: los 8 pasos en orden para el
+Escribí además [`DESPLIEGUE.md`](HISTORIA.md), que faltaba: los 8 pasos en orden para el
 6 de septiembre y las restricciones del Learner Lab que muerden en el despliegue (la sesión
 caduca y **apaga las EC2 solas**, la IP pública cambia al reiniciar, no se pueden crear roles
 de IAM). El paso 7 —actualizar las redirect URIs de Cognito al dominio de CloudFront— es el que
@@ -588,7 +674,7 @@ Los identificadores quedan en `cognito.env`, que no se versiona porque cambia co
 De paso quedó **medida** la particularidad del `aud`: el `access_token` de Cognito **no trae ese
 claim**, trae `client_id`. Si el BFF usa la validación de audiencia por defecto de cualquier
 librería, **rechaza todos los tokens buenos** y el mensaje de error manda a buscar al lugar
-equivocado. Está escrito en [`IDENTIDAD.md`](IDENTIDAD.md) §5.
+equivocado. Está escrito en [`IDENTIDAD.md`](HISTORIA.md) §5.
 
 **Hueco de diseño encontrado y cerrado.** El diagrama pone el backend en subred privada, pero
 API Gateway vive *fuera* de la VPC: sin **VPC Link** no llega, y el VPC Link necesita un
@@ -597,7 +683,7 @@ balanceador detrás. No estaba en ningún documento. Se decidió la arquitectura
 health checks dicen qué falla; con NLB es un 503 mudo) y **NAT y ALB se crean y se destruyen por
 script**, porque son las únicas piezas que cobran por hora aunque el laboratorio esté cerrado.
 
-Documentos nuevos: [`IDENTIDAD.md`](IDENTIDAD.md) — cómo funciona el login, qué valida el BFF,
+Documentos nuevos: [`IDENTIDAD.md`](HISTORIA.md) — cómo funciona el login, qué valida el BFF,
 cómo se replica y cómo se defiende en el oral.
 
 ⚠️ **Lo que falta y es todo lo que puntúa:** el frontend **no existe** (0 líneas, y es el 60%) y
@@ -802,7 +888,7 @@ o sea que solo se ejecutaba al crear el usuario. Pero si no se le pasa `CLAVE_PR
 idempotente a propósito y se corrió varias veces, el archivo terminó declarando una clave que
 nunca se le aplicó a nadie.
 
-Es peor de lo que suena: [`IDENTIDAD.md`](IDENTIDAD.md) §6 promete que en una cuenta de AWS
+Es peor de lo que suena: [`IDENTIDAD.md`](HISTORIA.md) §6 promete que en una cuenta de AWS
 nueva basta correr el script y entrar. Eso **no era cierto** desde la segunda corrida, y se
 habría descubierto el día que la cuenta del Learner Lab se resetee — probablemente durante la
 semana de la entrega. Arreglado: la clave y el grupo se aplican siempre, exista o no el usuario.
@@ -952,7 +1038,7 @@ pueda pisar al último bueno.
 no existe y el login con Google no funciona en ninguna cuenta — el script ya sabe crear el
 proveedor.
 
-📄 Guía nueva para el equipo: [`MONTAR-EN-TU-CUENTA.md`](MONTAR-EN-TU-CUENTA.md), que arranca con
+📄 Guía nueva para el equipo: [`MONTAR-EN-TU-CUENTA.md`](OPERAR-EN-AWS.md), que arranca con
 dos recetas copiables — una para la cuenta que administra el dominio y otra para las que no.
 
 (10-09, cierre) 🔒 **El borde pasó de costumbre a garantía.** El API Gateway inyecta
@@ -1016,7 +1102,7 @@ anotación de seguridad, y el `Caddyfile` publica ese servicio en internet. No h
 porque nada está desplegado, pero es el commit que no puede llegar a la EC2 sin arreglarse —y
 arreglarlo es exactamente el 40% del EP1 que me toca.
 
-Todo quedó con dueño y fecha en [`INTEGRACION.md`](INTEGRACION.md).
+Todo quedó con dueño y fecha en [`INTEGRACION.md`](HISTORIA.md).
 
 (07-09 · noche) 🌐 **Descubierto revisando el dominio: el sistema YA está en internet.** No
 estaba anotado en ninguna parte. `www.cacha-el-precio.com` sirve el frontend desde S3 detrás de

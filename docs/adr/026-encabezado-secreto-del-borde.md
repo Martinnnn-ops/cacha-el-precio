@@ -27,8 +27,8 @@ El API Gateway **inyecta un encabezado `X-Borde-Secreto`** en cada una de sus
 integraciones, mediante *parameter mapping*. El bloque `:8080` del `Caddyfile`
 responde **403** a toda petición que no lo traiga con el valor correcto.
 
-El secreto lo genera `tools/crear-api-gateway.sh`, queda en `borde.env` (fuera
-del repositorio) y `tools/desplegar.sh` lo lleva al `.env` del servidor, desde
+El secreto lo genera `tools/tf.sh` (hasta el 17-11-2026, `crear-api-gateway.sh`),
+queda en `borde.env` (fuera del repositorio), Terraform lo pone en las integraciones y `tools/desplegar.sh` lo lleva al `.env` del servidor, desde
 donde llega al contenedor de Caddy como variable de entorno.
 
 Se **reutiliza** entre corridas: si se regenerara cada vez, dejaría de coincidir
@@ -62,8 +62,8 @@ costumbre — que es justo lo que evalúa el EP2.
   así que este cierre solo surte efecto cuando el cambio llega a `development`.
   Verificado el 10-09: un `desplegar.sh` con el `Caddyfile` viejo reabre el
   puerto sin avisar.
-- Si se pierde `borde.env`, se borra, se vuelve a correr `crear-api-gateway.sh`
-  y después `desplegar.sh`. Se genera otro y se sincroniza solo.
+- Si se pierde `borde.env`, se vuelve a correr `tools/tf.sh subir` (genera otro
+  y actualiza las integraciones) y después `desplegar.sh --solo-backend`.
 
 ## Alternativas descartadas
 
