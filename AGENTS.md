@@ -35,7 +35,7 @@ Stack: **.NET 10 / ASP.NET Core** para `gateway` (BFF), `product-service` y `not
 | Una decisión ya tomada, y el índice de todas | `docs/adr/README.md` y `docs/adr/NNN-*.md` | 1 pág c/u |
 | Cómo cambió el proyecto desde agosto y por qué (para la defensa) | `docs/HISTORIA.md` | 134 líneas |
 | Qué se hizo un día concreto | `docs/BITACORA.md` (busca por fecha; no la leas entera) | 1510 líneas |
-| Presentar el proyecto a alguien de afuera | `README.md` | 292 líneas |
+| Presentar el proyecto a alguien de afuera | `README.md` | 247 líneas |
 
 Y el README de cada módulo. Todos siguen la misma forma: qué es, «En 10 segundos», dónde está en el
 sistema (diagrama), cómo funciona por dentro, rutas, carpetas, configuración, cómo probarlo y deuda.
