@@ -16,7 +16,7 @@
 
 :root {
   /* ——— tipografías ——— */
-  --cep-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --cep-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
   --cep-font-sans: 'IBM Plex Sans', system-ui, sans-serif;
   --cep-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
@@ -90,7 +90,9 @@
   --cep-ink: #22271f;
   --cep-on-ink: #eae6d9;
   --cep-on-accent: #ffffff;
-  --cep-accent: #1e4a85;
+  /* Acento terracota de la marca. #a8482e da 5.0:1 con texto blanco encima
+     (botones) y 6.4:1 como texto de enlace sobre la tarjeta blanca. */
+  --cep-accent: #a8482e;
   --cep-exito: #2f6b4f;
   /* El corazón de "Guardar": 5.3:1 sobre la tarjeta blanca (y 5.2:1 el de noche). */
   --cep-deseado: #c2306f;
@@ -145,9 +147,11 @@
 
   --cep-ink: #ede9dd;
   --cep-on-ink: #211f1a;
-  /* En oscuro el acento se aclara: encima va tinta, no blanco. */
+  /* En oscuro el acento se aclara: encima va tinta, no blanco. Terracota
+     #e08a5a: ~5.2:1 como texto de enlace sobre la tarjeta #322e28, y con la
+     tinta #10161d encima (botones) sobra contraste. */
   --cep-on-accent: #10161d;
-  --cep-accent: #6fa8dc;
+  --cep-accent: #e08a5a;
   --cep-exito: #5fbb8d;
   --cep-deseado: #f27aa9;
   /* Estos dos se aclaran un punto respecto de antes. Al subir la tarjeta a

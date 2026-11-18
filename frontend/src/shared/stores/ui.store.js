@@ -4,14 +4,15 @@ import { defineStore } from 'pinia'
 // Preferencias de interfaz. No pertenecen a ningún módulo de negocio, así que
 // viven en shared/.
 //
-// Tres valores posibles y no dos: "claro" es el que viene por defecto, tenga el
-// sistema operativo el modo que tenga; el oscuro es opcional y sólo se activa
-// si la persona lo elige. "sistema" sigue disponible para quien quiera que la
-// web siga la configuración de su dispositivo, pero hay que escogerlo.
+// Tres valores posibles y no dos: por defecto va "sistema", así la web sigue la
+// configuración del dispositivo —de noche, con el sistema en oscuro, el sitio
+// aparece oscuro sin tener que elegirlo— y nadie termina con la pantalla en
+// blanco a oscuras. "claro" y "oscuro" fijan uno u otro aunque el sistema diga
+// otra cosa, para quien lo prefiera.
 
 const CLAVE = 'cep:tema'
 const TEMAS = ['sistema', 'claro', 'oscuro']
-const POR_DEFECTO = 'claro'
+const POR_DEFECTO = 'sistema'
 
 function leerGuardado() {
   try {
