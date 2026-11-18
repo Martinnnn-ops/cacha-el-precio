@@ -2,10 +2,12 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
+  obtenerParaTi,
   obtenerProducto,
   obtenerProductos,
   obtenerTiendas,
 } from '@/modules/comparador/services/comparador.service'
+import { useCuentaStore } from '@/modules/cuenta/store/cuenta.store'
 import { TIENDAS_MOCK } from '@/modules/comparador/data/tiendas'
 import { USAR_MOCK } from '@/core/api/http'
 import { formatearPrecio } from '@/shared/utils/formato'
@@ -62,6 +64,11 @@ export const useComparadorStore = defineStore('comparador', () => {
   // defecto en un comparador: si alguien viene a ver precios, lo primero que
   // quiere arriba es el más bajo.
   const orden = ref('barato')
+  // Feed «Para ti»: id de producto -> posición en el ranking que calcula el
+  // backend para la persona con sesión. Vacío = sin personalización (sin sesión
+  // o con datos de ejemplo), y entonces 'para-ti' ni se ofrece ni se usa.
+  const rangoPersonal = ref(new Map())
+  const hayFeedPersonal = computed(() => rangoPersonal.value.size > 0)
   // Paginación de los resultados filtrados. Todo el catálogo llega de una sola
   // vez (ver `cargarProductos`), así que paginar acá es cortar el arreglo ya
   // filtrado en pedazos — no hay una página que pedirle al backend.
@@ -405,6 +412,16 @@ export const useComparadorStore = defineStore('comparador', () => {
         ),
       }))
       .sort((a, b) => {
+        if (orden.value === 'para-ti') {
+          // Orden que mandó el backend para esta persona. Los que no vienen en
+          // el ranking (no alcanzó el límite) van después, y entre ellos y en
+          // los empates manda el más barato (la cola de abajo).
+          const ra = rangoPersonal.value.get(a.id) ?? Infinity
+          const rb = rangoPersonal.value.get(b.id) ?? Infinity
+
+          if (ra !== rb) return ra - rb
+        }
+
         if (orden.value === 'nuevo') {
           return (a.agregadoHace ?? 999) - (b.agregadoHace ?? 999)
         }
@@ -551,6 +568,37 @@ export const useComparadorStore = defineStore('comparador', () => {
   const destacado = computed(() => ofertasDelDia.value[0]?.producto ?? null)
 
   // ——— acciones ———
+  // Pide al backend el orden personalizado y lo deja listo para el orden
+  // 'para-ti'. Sólo con sesión y backend real; si no, deja el mapa vacío (y el
+  // orden 'para-ti' no se ofrece). Cualquier fallo es silencioso: el feed
+  // personal es un extra, nunca un motivo para quedarse sin catálogo.
+  async function cargarParaTi() {
+    const cuenta = useCuentaStore()
+
+    if (!cuenta.autenticado || USAR_MOCK) {
+      rangoPersonal.value = new Map()
+
+      if (orden.value === 'para-ti') orden.value = 'barato'
+
+      return
+    }
+
+    try {
+      const ids = await obtenerParaTi()
+
+      rangoPersonal.value = new Map(ids.map((id, i) => [id, i]))
+
+      // Con sesión, el feed personal es el orden que tiene sentido por defecto.
+      if (rangoPersonal.value.size > 0 && orden.value === 'barato') {
+        orden.value = 'para-ti'
+      }
+    } catch {
+      rangoPersonal.value = new Map()
+
+      if (orden.value === 'para-ti') orden.value = 'barato'
+    }
+  }
+
   async function cargarProductos({ forzar = false } = {}) {
     if (productos.value.length > 0 && !forzar) return
 
@@ -563,6 +611,9 @@ export const useComparadorStore = defineStore('comparador', () => {
       // pantalla y la recarga no recarga nada.
       productos.value = await obtenerProductos({ forzar })
       actualizadoEn.value = Date.now()
+
+      // Personalización aparte, sin bloquear ni romper el catálogo si falla.
+      cargarParaTi()
     } catch (e) {
       error.value = e.message
 
@@ -714,6 +765,8 @@ export const useComparadorStore = defineStore('comparador', () => {
 
     cargarTiendas,
     cargarProductos,
+    cargarParaTi,
+    hayFeedPersonal,
     cargarProducto,
     alternarTienda,
     soloTienda,

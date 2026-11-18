@@ -57,6 +57,7 @@ const {
   productosPagina,
   totalResultados,
   hayFiltros,
+  hayFeedPersonal,
 } = storeToRefs(store)
 
 // El anuncio entra después de dos filas completas en escritorio (tres
@@ -65,7 +66,12 @@ const {
 // las filas, así que en vista densa la última fila quedaba con huecos.
 const CORTE_ANUNCIO = 6
 
-onMounted(() => store.cargarProductos())
+onMounted(() => {
+  store.cargarProductos()
+  // Por si el catálogo ya estaba en caché (cargarProductos saldría antes de
+  // pedir el feed): el orden personalizado se refresca igual al entrar.
+  store.cargarParaTi()
+})
 
 // El buscador de la cabecera entra con ?q=, la portada con ?categoria= y
 // el pie con ?tienda=.
@@ -173,6 +179,7 @@ watch(
               <span class="orden__etiqueta mono">Ordenar por</span>
               <span class="orden__caja">
                 <select v-model="orden" class="orden__control" aria-label="Ordenar por">
+                  <option v-if="hayFeedPersonal" value="para-ti">Para ti</option>
                   <option value="barato">Menor precio</option>
                   <option value="caro">Mayor precio</option>
                   <option value="nuevo">Lo más reciente</option>

@@ -72,6 +72,22 @@ async function filasProductos({ forzar = false } = {}) {
  * Con datos de ejemplo son las cinco tiendas. Contra la API real se derivan
  * del campo `store` de los productos.
  */
+/**
+ * Feed «Para ti»: el catálogo ya ordenado para la persona con sesión, según lo
+ * que guardó (deseados y outfits). Devuelve los ids en orden de ranking. Sin
+ * backend (datos de ejemplo) no hay personalización: lista vacía y el llamador
+ * cae al orden normal.
+ */
+export async function obtenerParaTi(limite = 80) {
+  if (USAR_MOCK) return []
+
+  const filas = await http.get(`/mi-cuenta/para-ti?limite=${limite}`, {
+    version: VERSION_CATALOGO,
+  })
+
+  return Array.isArray(filas) ? filas.map((fila) => fila.id).filter((id) => id != null) : []
+}
+
 export async function obtenerTiendas() {
   if (USAR_MOCK) return simularRed(TIENDAS_MOCK)
 

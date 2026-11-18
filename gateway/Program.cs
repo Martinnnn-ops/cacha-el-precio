@@ -232,6 +232,9 @@ static void MapPersonalRoutes(WebApplication app)
     var routes = app.MapGroup("/mi-cuenta").RequireAuthorization(policy =>
         policy.RequireAuthenticatedUser().RequireClaim("sub"));
     routes.MapGet("/", PersonalProxy(""));
+    // Feed personalizado: el owner sale del JWT, el límite viaja como query.
+    routes.MapGet("/para-ti", ProxyToDynamic(context =>
+        $"/internal/personal/{Uri.EscapeDataString(context.User.FindFirstValue("sub")!)}/para-ti{context.Request.QueryString}"));
     routes.MapPut("/deseados/{id:int:min(1)}", PersonalProxy("deseados"));
     routes.MapDelete("/deseados/{id:int:min(1)}", PersonalProxy("deseados"));
     routes.MapPut("/outfits/{id:guid}", PersonalProxy("outfits"));
