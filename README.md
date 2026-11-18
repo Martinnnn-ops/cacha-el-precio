@@ -22,16 +22,19 @@ y te manda a la tienda.
 
 ## Qué hace
 
-| | Para quien compra | Por dentro |
-|:---:|---|---|
-| 🔎 | Busca y filtra prendas de 6 tiendas en un solo catálogo | un scraper por tienda captura las ofertas públicas |
-| 📈 | Ve si un descuento es real, con el historial de precio | cada cambio de precio queda guardado en el tiempo |
-| 👕 | Arma outfits y guarda sus prendas en «Mi armario» | lo personal se guarda ligado a su cuenta |
-| 🔔 | Recibe un correo cuando algo que sigue baja, se agota o vuelve | los cambios viajan por un tópico al servicio de avisos |
+Antes del Cyber, el SERNAC ya persiguió a grandes tiendas por inflar el «precio normal»: un
+producto anunciado con 65% de descuento en realidad tenía 30%. Quien compra no tiene cómo darse
+cuenta, porque solo ve el precio de hoy y el que la tienda dice que tenía antes.
 
-> El SERNAC ya persiguió a grandes tiendas por inflar el «precio normal» antes del Cyber: un 65% de
-> descuento que en realidad era 30%. Por eso Cacha el Precio compara contra el precio que **nosotros
-> vimos**, no contra el que dice la tienda.
+**Cacha el Precio** revisa las ofertas de seis tiendas chilenas (Falabella, Paris,
+H&M, Hites, La Polar y Sparta) y guarda cómo cambia el precio de cada prenda. Así, cuando ves un
+descuento, puedes compararlo con el precio que **nosotros vimos**, no con el que dice la tienda.
+Buscas una polera o unas zapatillas, ves en qué tienda está más barata y vas directo a comprarla
+allá: aquí no se vende nada.
+
+Si entras con tu cuenta de Google, puedes guardar las prendas que te gustan, armar outfits de la
+cabeza a los pies y recibir un correo cuando algo que sigues baja de precio, se agota o vuelve a
+estar disponible.
 
 ---
 
