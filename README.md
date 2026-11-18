@@ -130,15 +130,23 @@ El token se valida **dos veces**: en el borde y otra vez en el BFF. El catálogo
 propósito; lo personal y lo administrativo, no.
 
 ```mermaid
-flowchart LR
-    R["Petición"] --> A{"API Gateway<br/>¿JWT válido?"}
-    A -- "ruta pública" --> B
-    A -- "sin token" --> X1["401"]
-    A -- "token válido" --> B{"Caddy<br/>¿viene del borde?"}
-    B -- "no" --> X2["403"]
-    B -- "sí" --> C{"BFF<br/>firma · iss · exp ·<br/>client_id · grupo"}
-    C -- "sin el grupo" --> X3["403"]
-    C -- "ok" --> OK["200"]
+flowchart TD
+    R(["Petición"])
+    A["1 · API Gateway<br/>¿la ruta es pública o el JWT es válido?"]
+    B["2 · Caddy<br/>¿trae el encabezado secreto del borde?"]
+    C["3 · BFF<br/>firma, emisor, vigencia, client_id y grupo"]
+    E401["401<br/>sin token o token inválido"]
+    E403a["403<br/>se saltó el borde"]
+    E403b["403<br/>no tiene el permiso"]
+    OK["200<br/>respuesta"]
+
+    R --> A
+    A -->|no| E401
+    A -->|sí| B
+    B -->|no| E403a
+    B -->|sí| C
+    C -->|no| E403b
+    C -->|sí| OK
 ```
 
 | Quién | Cómo entra | Qué obtiene |
