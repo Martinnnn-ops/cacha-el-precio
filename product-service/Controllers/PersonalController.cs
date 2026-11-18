@@ -3,7 +3,10 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Product_Service.Data;
+using Product_Service.Feed;
 using Product_Service.Models.Domain;
+using Product_Service.Models.DTOs;
+using Product_Service.Models.Mappers;
 
 namespace Product_Service.Controllers;
 
@@ -31,6 +34,48 @@ public sealed class PersonalController(ProductDbContext db) : ControllerBase
                 p.UpdatedAt
             })
         });
+    }
+
+    // Feed «Para ti»: el catálogo ordenado para esta persona según lo que ya
+    // guardó (deseados y las prendas de sus outfits). El algoritmo vive en la
+    // función pura FeedPersonalizado; aquí solo se juntan las señales y el
+    // catálogo. Devuelve la misma forma que GET /productos para que el front
+    // reutilice su adaptador.
+    [HttpGet("para-ti")]
+    public async Task<IActionResult> ParaTi(string owner, [FromQuery] int limite, CancellationToken ct)
+    {
+        int n = limite is >= 1 and <= 120 ? limite : 60;
+
+        var items = await db.PersonalItems.AsNoTracking()
+            .Where(p => p.Owner == owner && (p.Kind == "deseado" || p.Kind == "outfit"))
+            .ToListAsync(ct);
+
+        HashSet<int> guardados = [];
+        foreach (var item in items)
+        {
+            if (item.Kind == "deseado" && int.TryParse(item.Key, out int id) && id > 0)
+                guardados.Add(id);
+            else if (item.Kind == "outfit" && TryOutfit(item.Payload)?.Seleccion is { } seleccion)
+                foreach (int productId in seleccion.Values)
+                    if (productId > 0) guardados.Add(productId);
+        }
+
+        var catalogo = (await db.Products.AsNoTracking()
+                .Include(p => p.Offers)
+                .ToListAsync(ct))
+            .Select(p => p.ToResponse())
+            // Defensa contra datos viejos previos al filtro de edad: el feed
+            // nunca recomienda prendas infantiles aunque sigan en la base.
+            .Where(p => !CatalogPolicy.IsChild(p.Name, $"{p.Category} {p.Gender}"))
+            .ToList();
+
+        return Ok(FeedPersonalizado.Rankear(catalogo, guardados, n));
+    }
+
+    private static OutfitInput? TryOutfit(string payload)
+    {
+        try { return JsonSerializer.Deserialize<OutfitInput>(payload); }
+        catch (JsonException) { return null; }
     }
 
     // Lookup inverso para notification-service: dado un producto, quienes lo
