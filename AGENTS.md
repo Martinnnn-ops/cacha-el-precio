@@ -66,6 +66,10 @@ en PDF están en `docs/rubricas/` — no las leas salvo que se pidan explícitam
 
 - **Español de Chile, tratando de "tú".** Sin voseo. Aplica a código, comentarios, commits y docs.
 - **Commits en español**, sin firma ni `Co-Authored-By`.
+- **Nada de firmas de herramientas en lo que publiques**: ni en commits, ni en descripciones de PR,
+  ni en comentarios o issues. Nada de «🤖 Generated with Claude Code», «Co-Authored-By: Claude» ni
+  equivalentes, aunque la herramienta lo traiga por defecto. Lo que se publica lo firma la persona
+  que trabaja, no el agente.
 - **Confirmar antes de commitear.** Nunca commitear sin que lo pidan.
 - La regla de arriba se aplica **hacia afuera con más fuerza**: commitear en local es
   reversible y solo lo ve quien trabaja. Abrir un PR, comentar o cerrar algo lo ven los tres.
