@@ -1,12 +1,13 @@
 <div align="center">
 
-<h1><img src="frontend/public/favicon.svg" alt="" width="56" align="center">&nbsp; Cacha el Precio</h1>
+<img src="frontend/public/favicon.svg" alt="Logo de Cacha el Precio" width="96">
+
+<h1>Cacha el Precio</h1>
 
 **¿Ese 50% de descuento es de verdad? Cáchalo antes de comprar.**
 
 Comparador de precios de ropa y calzado en Chile. Junta las prendas de varias tiendas, guarda cómo
-cambia su precio y te avisa cuando lo que sigues baja o vuelve. No vende nada: te muestra el precio
-y te manda a la tienda.
+cambia su precio y te avisa cuando lo que sigues baja o vuelve.
 
 [![Sitio](https://img.shields.io/badge/sitio-cacha--el--precio.com-1e3a2f?style=flat-square&logo=googlechrome&logoColor=f0eae0)](https://www.cacha-el-precio.com)
 ![Ramo](https://img.shields.io/badge/DSY1107-Cloud_Native_I-f0eae0?style=flat-square&labelColor=1e3a2f)
@@ -14,27 +15,26 @@ y te manda a la tienda.
 
 <img src="https://skillicons.dev/icons?i=cs,dotnet,py,fastapi,vue,vite,postgres,aws,terraform,docker,cloudflare&perline=11" alt="C#, .NET, Python, FastAPI, Vue, Vite, PostgreSQL, AWS, Terraform, Docker y Cloudflare">
 
-[Qué hace](#qué-hace) · [Cómo funciona](#cómo-funciona) · [Estado](#estado) · [Documentación](#documentación) · [Equipo](#equipo)
+[Cómo funciona](#cómo-funciona) · [Estado](#estado) · [Documentación](#documentación) · [Equipo](#equipo)
 
 </div>
 
 ---
 
-## Qué hace
-
 Antes del Cyber, el SERNAC ya persiguió a grandes tiendas por inflar el «precio normal»: un
 producto anunciado con 65% de descuento en realidad tenía 30%. Quien compra no tiene cómo darse
-cuenta, porque solo ve el precio de hoy y el que la tienda dice que tenía antes.
+cuenta, porque solo ve el precio de hoy y el que la tienda dice que tenía antes. **Cacha el Precio**
+revisa las ofertas de seis tiendas chilenas, guarda cómo cambia el precio de cada prenda y te deja
+comparar contra el precio que **nosotros vimos**, no contra el que dice la tienda.
 
-**Cacha el Precio** revisa las ofertas de seis tiendas chilenas (Falabella, Paris,
-H&M, Hites, La Polar y Sparta) y guarda cómo cambia el precio de cada prenda. Así, cuando ves un
-descuento, puedes compararlo con el precio que **nosotros vimos**, no con el que dice la tienda.
-Buscas una polera o unas zapatillas, ves en qué tienda está más barata y vas directo a comprarla
-allá: aquí no se vende nada.
-
-Si entras con tu cuenta de Google, puedes guardar las prendas que te gustan, armar outfits de la
-cabeza a los pies y recibir un correo cuando algo que sigues baja de precio, se agota o vuelve a
-estar disponible.
+- **Un catálogo, seis tiendas.** Falabella, Paris, H&M, Hites, La Polar y Sparta en un solo lugar,
+  con filtros por talla, tipo de prenda y presupuesto.
+- **El descuento, con historia.** Cada prenda muestra cómo se movió su precio, para saber si la
+  oferta de hoy es de verdad.
+- **Tu armario.** Con tu cuenta de Google guardas las prendas que te gustan y armas outfits de la
+  cabeza a los pies.
+- **Avisos por correo.** Si algo que sigues baja de precio, se agota o vuelve, te llega un correo.
+- **No vendemos nada.** Ves dónde está más barato y vas directo a comprar a la tienda.
 
 ---
 
