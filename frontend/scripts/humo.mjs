@@ -850,7 +850,12 @@ try {
     const { useUiStore } = await load('/src/shared/stores/ui.store.js')
     const ui = useUiStore()
 
-    check('arranca en claro, sin seguir al sistema', ui.tema === 'claro' && ui.esOscuro === false)
+    // Aquí no hay window.matchMedia, así que «sistema» se ve claro.
+    check(
+      'arranca en «sistema» (sigue al dispositivo)',
+      ui.tema === 'sistema' && ui.esOscuro === false,
+      ui.tema,
+    )
     ui.elegirTema('oscuro')
     check('se puede forzar oscuro', ui.tema === 'oscuro' && ui.esOscuro === true)
     ui.elegirTema('claro')
@@ -896,13 +901,17 @@ try {
       claveStore !== undefined && guion.includes(`'${claveStore}'`),
       claveStore,
     )
+    // El guion y el store tienen que partir igual: si no, quien tiene el
+    // dispositivo en oscuro ve un fogonazo claro hasta que arranca Vue.
+    const porDefectoStore = /const POR_DEFECTO = '([^']+)'/.exec(fuenteStore)?.[1]
     check(
-      '  sin preferencia guardada arranca en claro',
-      /else if \(t !== 'claro' && t !== 'oscuro'\) \{\s*t = 'claro'/.test(guion),
+      '  el store y el guion parten igual («sistema»)',
+      porDefectoStore === 'sistema',
+      porDefectoStore,
     )
     check(
-      '  y sólo sigue al sistema si se eligió «sistema» a propósito',
-      /t === 'sistema'[\s\S]*prefers-color-scheme: dark/.test(guion),
+      '  sin preferencia guardada (o con «sistema») sigue al dispositivo',
+      /if \(t !== 'claro' && t !== 'oscuro'\) \{[\s\S]*?prefers-color-scheme: dark/.test(guion),
     )
     check(
       '  con el localStorage capado sigue funcionando',
