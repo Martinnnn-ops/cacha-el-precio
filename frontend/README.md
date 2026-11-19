@@ -559,3 +559,5 @@ El catch-all del 404 va siempre al final.
   en vez de dejar salir un `AxiosError` hasta la vista.
 - **Los tokens de color y espaciado est√°n en `src/assets/base.css`.** Un
   componente que escriba un hex a mano se sale del sistema.
+
+<!-- prueba de sincronizaciÛn -->
