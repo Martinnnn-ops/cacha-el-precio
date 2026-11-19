@@ -1,6 +1,10 @@
-# Qué hace: cuando entra un commit a development que toca frontend/, le avisa
+# Qué hace: cuando entra un commit a main que toca frontend/, le avisa
 # a Panditax727/Cacha-el-Precio-Frontend para que sincronice y despliegue.
 # La copia, el build y el deploy los hace el workflow de ESE repo.
+#
+# Solo main: main es producción. development es la rama de pruebas y lo que
+# entra ahí no debe llegar al sitio publicado (el repo del frontend también
+# tiene que copiar desde main: MONO_BRANCH: main).
 #
 # Secret necesario en ESTE repo (Settings → Secrets and variables → Actions):
 #   FRONTEND_REPO_TOKEN   token fino de Panditax727, solo para el repo del frontend
@@ -9,7 +13,7 @@ name: Avisar al repo del frontend
 
 on:
   push:
-    branches: [development]
+    branches: [main]
     paths:
       - "frontend/**"
   workflow_dispatch:
