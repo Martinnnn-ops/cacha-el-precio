@@ -1,6 +1,87 @@
 # Bitácora del proyecto
 
-Última actualización: 18-11-2026.
+Última actualización: 19-11-2026.
+
+## 18/19-11 · CI/CD con GitHub Actions: CI verde, el backend se despliega solo — Martín
+
+Rama `feature/cicd` (sin PR todavía). Bloques 2 y 3 del [PLAN-EFT](PLAN-EFT.md#2--cicd-con-github-actions).
+La documentación completa (`docs/CICD.md` + ADR-034) va en el PR; esto es lo que **no se puede
+olvidar** hasta entonces.
+
+### Lo que quedó funcionando
+
+| Qué | Estado |
+|---|---|
+| **CI** (`.github/workflows/ci.yml`): .NET (formato, build, 144 pruebas), scraper (195 pruebas + ruff), front (build + humo) y **dependencias vulnerables** (NuGet, `npm audit`, `pip-audit`) | ✅ verde en GitHub |
+| **CD backend** (`cd.yml` + `tools/cd-remoto.sh`): CI → 4 imágenes a **GHCR** con el hash del commit → SSH a la EC2 → `pull` + `up --no-build` → `/health` → **rollback** si no queda sana | ✅ desplegó `499d8ff` solo en `731705830984` |
+| **CD frontend**: build con el Cognito y la API de la cuenta (variables del environment), revisión del bundle y `wrangler deploy` a un Worker | 🟡 escrito y probado en local; sin token se salta con un aviso |
+| `main` sin aprobación obligatoria (sigue exigiendo PR y sin force push) | ✅ |
+| Environment **`produccion`**: secrets `EC2_HOST`, `EC2_SSH_KEY`; variables `CLOUDFLARE_ACCOUNT_ID`, `FRONT_*` | ✅ |
+| `conservar_ip = true` en `martin.tfvars`: la IP `3.227.178.123` no cambia al apagar | ✅ |
+
+El compose mantiene `build:` **y** suma `image:`: `desplegar.sh` y el desarrollo local siguen
+compilando igual. El Dockerfile del scraper ahora instala desde `uv.lock` (antes `pip install .`
+elegía versiones que el CI nunca probó).
+
+### Lo que el CI encontró el primer día (y se arregló en la misma rama)
+
+| Problema | Origen | Arreglo |
+|---|---|---|
+| `dotnet format` fallaba en `FeedPersonalizadoTests.cs` | PR #54 | formato |
+| Terracota `#a8482e` sobre el pie: **4.02:1** (mínimo WCAG 4.5) | PR #53 | `#984028` (4.71:1) |
+| El store seguía al sistema y el guion de `index.html` partía en claro → **fogonazo claro** con el dispositivo en oscuro | PR #53 | los dos siguen al sistema + prueba nueva que exige que partan igual |
+| `follow-redirects` (vía axios) y `source-map-js`: vulnerabilidades *high* | dependencias | `npm audit fix` (solo lockfile) |
+| pillow, urllib3, certifi, soupsieve: **51 avisos** de `pip-audit` | dependencias | `uv lock --upgrade-package` (pillow 13, soupsieve 4) |
+
+📌 Avisarle a Orion lo del terracota y el tema (es su PR #53).
+
+### ⛔ Bloqueado: el token de Cloudflare
+
+La cuenta de Cloudflare es de Panditax y mi rol **no permite Workers** («Failed common permission
+check… Workers Routes Write»). Hay que pedirle que suba el rol a *Administrator* o *Workers Admin*
+(+ DNS de la zona), para crear `github-cd-workers` y cargarlo directo en GitHub sin que el token
+pase por un chat. Decidido: el token **sin vencimiento** (a propósito); revocarlo al cerrar el ramo.
+
+### 🔎 Hallazgo: lo que está en vivo NO es de nuestra cuenta
+
+| Pieza | Apunta a | ¿Nuestra (`731705830984`)? |
+|---|---|---|
+| `www` y la raíz | CNAME a S3 `cacha-el-precio-web-988704560705` | ❌ |
+| Login del sitio publicado | Cognito de `276428661451` | ❌ |
+| `api` | `44.215.16.200` | ❌ (la nuestra es `3.227.178.123`) |
+
+No hay ningún Worker en Cloudflare: `frontend/wrangler.jsonc` existía pero no se usaba.
+
+### Para la defensa (va al ADR-034)
+
+- **Puerto 22 abierto a `0.0.0.0/0`.** Ya estaba (para `ssh`, `desplegar.sh` y los respaldos);
+  con el CD no se puede cerrar a una IP porque los runners de GitHub no tienen IP fija. Entrada
+  **solo con llave**: verificado `passwordauthentication no`. Alternativas descartadas **por el
+  lab**: SSM (las credenciales vencen cada ~4 h y OIDC + rol IAM está bloqueado en Academy) y un
+  runner dentro de la EC2 (repo público: un PR podría correr código en el servidor). **En una
+  cuenta real:** GitHub → OIDC → rol IAM → SSM, puerto 22 cerrado.
+- **IP fija no es más vulnerable:** ya es pública por el DNS y los bots barren todo IPv4. Al
+  revés, una IP que cambia deja el DNS apuntando a una IP que AWS puede darle a otro
+  (*subdomain takeover*).
+- **El CD no usa credenciales de AWS**: entra por SSH. Terraform sigue siendo manual (`tf.sh`)
+  porque el estado vive en el laptop y las credenciales del lab vencen.
+- **Front en Worker y no en S3:** subir a S3 exigiría credenciales de AWS en GitHub (vencen); el
+  Worker solo necesita un token de Cloudflare y el sitio sigue arriba con AWS apagado. Además
+  `not_found_handling: single-page-application` arregla el 404 de `/producto/:slug` que S3 no podía.
+- **Mínimo privilegio:** un token por uso (`terraform-dns-martin` solo DNS; `github-cd-workers`
+  solo Workers de la zona); el CI no usa secrets, por eso corre seguro en PRs de forks.
+- Imágenes en GHCR **públicas** (no llevan secretos); igual la EC2 hace login con el token
+  efímero del job y logout al terminar.
+
+### ⬜ Qué falta (en orden)
+
+- [ ] Panditax sube el rol en Cloudflare → crear token → `gh secret set CLOUDFLARE_API_TOKEN --env produccion`
+- [ ] Push → Worker en `*.workers.dev` (ahí el catálogo y el login fallan por CORS/Cognito: esperado)
+- [ ] Mover el dominio: `tiene_dominio = true` + `tf.sh subir` (Google en Cognito), `www` y raíz → Worker (Custom Domain), `api` → `3.227.178.123` con `infra/terraform/dominio/`. Avisar al grupo antes: el sitio viejo deja de responder
+- [ ] Sacar los disparadores temporales de `feature/cicd` en `ci.yml` y `cd.yml`
+- [ ] Docs: `docs/CICD.md`, ADR-034, CONTEXTO (deuda: puerto 22, token sin vencimiento), PLAN-EFT §2, README (Estado), DESARROLLO (el CI corre lo mismo)
+- [ ] PR `feature/cicd → development` y después `development → main` (primer despliegue real desde `main`)
+- [ ] Al cerrar el ramo: revocar `github-cd-workers`
 
 ## 17-11 · Terraform fases 6 y 7: el dominio, una cuenta desde cero y adiós a los `crear-*` — Martín
 
