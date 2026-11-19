@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# CD · "llévalo a producción" (backend + frontend)
+# CD · "llévalo a producción" (backend)
 #
 # Corre al mergear a main. Si el CI falla, no corre nada más:
 #
@@ -11,9 +11,10 @@
 #                 revisa /health; si falla, vuelve a la versión anterior.
 #                 Si está apagada (fuera de la sesión del lab), se salta SIN
 #                 fallar: AWS apagado es lo normal, no una avería.
-#   ── frontend ── (en paralelo, no depende de que AWS esté prendido)
-#   4. frontend   compila con el Cognito y la API de la cuenta, revisa que el
-#                 bundle los lleve y lo publica como Worker de Cloudflare.
+#
+# El frontend NO se despliega aquí: lo publica el repo
+# Panditax727/Cacha-el-Precio-Frontend como Worker de Cloudflare (la
+# integración Git de Cloudflare despliega cada push a SU main).
 #
 # NO usa credenciales de AWS (las del Learner Lab vencen cada ~4 h): entra por
 # SSH, igual que tools/desplegar.sh. Terraform sigue siendo manual (tf.sh).
@@ -21,11 +22,6 @@
 # Environment "produccion":
 #   secrets    EC2_HOST                IP elástica de la EC2
 #              EC2_SSH_KEY             contenido de labsuser.pem
-#              CLOUDFLARE_API_TOKEN    token "github-cd-workers" (solo Workers)
-#   variables  CLOUDFLARE_ACCOUNT_ID   (no son secretas: igual viajan en el JS)
-#              FRONT_API_URL           API_GATEWAY_URL_PROD de api-gateway.env
-#              FRONT_COGNITO_CLIENT_ID VITE_COGNITO_CLIENT_ID de cognito.env
-#              FRONT_COGNITO_DOMAIN    COGNITO_URL_LOGIN de cognito.env
 # ---------------------------------------------------------------------------
 name: CD
 
@@ -169,77 +165,3 @@ jobs:
           ssh -i ~/llave.pem -o BatchMode=yes "ec2-user@$EC2_HOST" "docker logout ghcr.io" >/dev/null || true
           rm -f ~/llave.pem
 
-  frontend:
-    name: Frontend en Cloudflare
-    needs: ci
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment:
-      name: produccion
-      url: https://www.cacha-el-precio.com
-    defaults:
-      run:
-        working-directory: frontend
-    env:
-      API_URL: ${{ vars.FRONT_API_URL }}
-      CLIENT_ID: ${{ vars.FRONT_COGNITO_CLIENT_ID }}
-      DOMINIO: ${{ vars.FRONT_COGNITO_DOMAIN }}
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: ¿Hay a dónde publicar?
-        id: cf
-        env:
-          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CUENTA: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          if [[ -z "$TOKEN" || -z "$CUENTA" ]]; then
-            echo "::warning::Falta CLOUDFLARE_API_TOKEN o CLOUDFLARE_ACCOUNT_ID: frontend omitido."
-            echo "listo=false" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          # Sin los datos de Cognito, el sitio compilaría "bien" y mandaría a la
-          # gente a un login que no existe. Eso es un error, no un salto.
-          for v in API_URL CLIENT_ID DOMINIO; do
-            [[ -n "${!v}" ]] || { echo "::error::Falta la variable FRONT_${v} del environment"; exit 1; }
-          done
-          echo "listo=true" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-node@v5
-        if: steps.cf.outputs.listo == 'true'
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      # Igual que el paso 4 de tools/desplegar.sh: el modo produccion.local
-      # lleva los datos de ESTA cuenta. frontend/.env.production está vacío a
-      # propósito, y no hay "respaldo" a un build sin ellos.
-      - name: Compilar con el Cognito y la API de la cuenta
-        if: steps.cf.outputs.listo == 'true'
-        run: |
-          npm ci
-          cat > .env.produccion.local <<FRONT
-          VITE_API_BASE_URL=$API_URL
-          VITE_API_VERSION=1.0
-          VITE_COGNITO_CLIENT_ID=$CLIENT_ID
-          VITE_COGNITO_DOMAIN=$DOMINIO
-          FRONT
-          npm run build -- --mode produccion.local
-
-      # Cinturón: mirar DENTRO del bundle antes de publicarlo. Si no lleva el
-      # client id y la API de la cuenta, no se publica.
-      - name: Revisar el bundle
-        if: steps.cf.outputs.listo == 'true'
-        run: |
-          grep -rqF "$CLIENT_ID" dist/assets/*.js || { echo "::error::El bundle no lleva el client id $CLIENT_ID"; exit 1; }
-          grep -rqF "$API_URL"   dist/assets/*.js || { echo "::error::El bundle no lleva la API $API_URL"; exit 1; }
-          echo "  ✅ el bundle apunta a $API_URL y al client $CLIENT_ID"
-
-      # wrangler va con versión fija (con 2 semanas de uso, no la del día) y no
-      # queda en package.json: solo lo usa el CD.
-      - name: Publicar el Worker
-        if: steps.cf.outputs.listo == 'true'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.157.0 deploy
