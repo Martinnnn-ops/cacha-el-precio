@@ -20,15 +20,21 @@ on:
   pull_request:
     branches: [development, main]
   push:
+    # main no está aquí a propósito: un push a main lo corre cd.yml, que llama
+    # a este mismo archivo antes de armar imágenes. Así no corre dos veces.
     # ⚠️ TEMPORAL: feature/cicd está solo para probar el CI antes del PR.
     # Se saca antes de abrir el PR a development.
-    branches: [development, main, feature/cicd]
+    branches: [development, feature/cicd]
   # Botón "Run workflow" en la pestaña Actions, para correrlo a mano.
   workflow_dispatch:
+  # cd.yml lo llama como primer paso: si el CI falla, no se despliega nada.
+  workflow_call:
 
 # Un PR que recibe otro push cancela la corrida vieja: solo importa la última.
+# github.workflow distingue "CI" de "CD" (cuando cd.yml lo llama), para que el
+# CI de uno no cancele al del otro.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 # Mínimo permiso: el CI solo lee el código.
