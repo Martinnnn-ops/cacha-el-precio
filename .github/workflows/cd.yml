@@ -27,8 +27,8 @@ name: CD
 
 on:
   push:
-    # ⚠️ TEMPORAL: feature/cicd solo para la prueba de hoy. Se saca antes del PR.
-    branches: [main, feature/cicd]
+    # Solo main: main es producción. development es la rama de pruebas.
+    branches: [main]
   # Botón "Run workflow" (aparece cuando este archivo ya está en main).
   workflow_dispatch:
 

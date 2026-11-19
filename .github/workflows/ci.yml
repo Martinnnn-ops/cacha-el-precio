@@ -22,9 +22,7 @@ on:
   push:
     # main no está aquí a propósito: un push a main lo corre cd.yml, que llama
     # a este mismo archivo antes de armar imágenes. Así no corre dos veces.
-    # ⚠️ TEMPORAL: feature/cicd está solo para probar el CI antes del PR.
-    # Se saca antes de abrir el PR a development.
-    branches: [development, feature/cicd]
+    branches: [development]
   # Botón "Run workflow" en la pestaña Actions, para correrlo a mano.
   workflow_dispatch:
   # cd.yml lo llama como primer paso: si el CI falla, no se despliega nada.
