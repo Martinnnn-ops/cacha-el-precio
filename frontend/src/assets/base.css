@@ -90,9 +90,11 @@
   --cep-ink: #22271f;
   --cep-on-ink: #eae6d9;
   --cep-on-accent: #ffffff;
-  /* Acento terracota de la marca. #a8482e da 5.0:1 con texto blanco encima
-     (botones) y 6.4:1 como texto de enlace sobre la tarjeta blanca. */
-  --cep-accent: #a8482e;
+  /* Acento terracota de la marca. #984028 da 6.8:1 con texto blanco encima
+     (botones) y sobre la tarjeta blanca, 5.4:1 sobre el fondo y 4.7:1 sobre
+     el pie. El primero del rework (#a8482e) daba 4.0:1 sobre el pie, bajo el
+     mínimo de 4.5:1, y el humo lo frenó. */
+  --cep-accent: #984028;
   --cep-exito: #2f6b4f;
   /* El corazón de "Guardar": 5.3:1 sobre la tarjeta blanca (y 5.2:1 el de noche). */
   --cep-deseado: #c2306f;
