@@ -2,6 +2,50 @@
 
 Última actualización: 19-11-2026.
 
+## 19-11 (tarde) · CI/CD cerrado: solo `main` despliega y `www` usa la cuenta `731705830984` — Martín
+
+Rama `feature/cicd`. Cierra la entrada de abajo: **lo de Cloudflare ya no está bloqueado**, porque
+cambió el camino del frontend. Cómo quedó todo: [CICD](CICD.md) y [ADR-034](adr/034-cicd-con-github-actions.md).
+
+### Lo que cambió
+
+| Qué | Antes (madrugada del 19-11) | Ahora |
+|---|---|---|
+| Publicar el front | job `frontend` en `cd.yml` con `wrangler deploy`, bloqueado por el rol en Cloudflare | **Panditax** armó la sincronización: `avisar-frontend.yml` → su repo copia `frontend/` y compila → Cloudflare publica el Worker con cada push a su `main`. El job propio se sacó (`f0de0b4`) |
+| Desde qué rama | `cd.yml` con `main` + `feature/cicd`; el aviso con `development` | todo **solo desde `main`** (`7cb1f0e`, `a62df6b`) |
+| `www` | S3 de `988704560705` | Worker de Cloudflare (cuenta de Panditax), con las variables de build apuntando al API Gateway y al Cognito de `731705830984` |
+| Encabezados de seguridad | ninguno | `frontend/public/_headers`: HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` y CSP en *Report-Only* |
+
+### Prueba de punta a punta
+
+```text
+tf.sh subir martin      → plan: 2 a crear (EC2 + asociación de la IP), 0 cambios, 0 borrados
+                          respaldo restaurado: 224 productos
+CD (re-run del job)     → desplegó 7cb1f0e desde GHCR, /health 200
+API Gateway             → /health 200 · /productos 200 (224) · CORS desde www: 204
+www                     → el bundle lleva mcxw9tpe13 (API) y el client 15mg17g… (Cognito)
+                          el login y el catálogo funcionan en el dominio (probado por el equipo)
+```
+
+### Hallazgos
+
+- `tiene_dominio = false` en `martin.tfvars`: la cuenta ya es la publicada, pero **sin Google en
+  Cognito** y sin `deletion_protection`. Pasarlo a `true` cambia el destino del API Gateway a
+  `api.cacha-el-precio.com`, que todavía apunta a `44.215.16.200`: **primero el DNS, después el
+  `.tfvars`**. Anotado en la deuda de [CONTEXTO](CONTEXTO.md).
+- El repo del frontend todavía copia desde `development` y no revisa el bundle.
+- El dominio de Cognito quedó en Cloudflare con `/` al final; funciona, Panditax lo corrige.
+- El commit de prueba `7f8c78f` dejó un comentario con la «ó» en Latin-1 en `frontend/README.md`:
+  se pasó a UTF-8.
+
+### ⬜ Qué falta
+
+- [ ] Panditax: `MONO_BRANCH: main` en `sync-y-desplegar.yml` y la revisión del bundle
+- [ ] Mover el registro `api` a `3.227.178.123` y después `tiene_dominio = true` + `tf.sh subir`
+- [ ] Revisar la consola con la CSP en *Report-Only* y pasarla a modo real
+- [ ] Borrar del environment `produccion` las variables `CLOUDFLARE_ACCOUNT_ID` y `FRONT_*`
+- [ ] PR `feature/cicd → development` y después `development → main`
+
 ## 18/19-11 · CI/CD con GitHub Actions: CI verde, el backend se despliega solo — Martín
 
 Rama `feature/cicd` (sin PR todavía). Bloques 2 y 3 del [PLAN-EFT](PLAN-EFT.md#2--cicd-con-github-actions).

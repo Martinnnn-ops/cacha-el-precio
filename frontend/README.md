@@ -170,6 +170,9 @@ puede desplegar sin ellos: la portada se ve limpia, sin cajas vacías.
 
 ## Publicar (AWS S3 + CloudFront)
 
+> ⚠️ **Ya no se publica así.** Desde el 19-11 el sitio es un Worker de Cloudflare que se publica
+> solo desde `main`: ver [`docs/CICD.md`](../docs/CICD.md). Lo de abajo queda como referencia.
+
 ```bash
 BUCKET=mi-bucket DISTRIBUCION=E123ABC npm run desplegar
 ```
@@ -383,9 +386,14 @@ aquí evita que un enlace preparado haga daño desde el propio frontend.
 | **Título de pestaña manipulable** | `afterEach` compone el título sólo con textos del mapa de rutas, nunca con algo de la URL |
 | **Vistas de sesión** | guard `soloInvitados` / `requiereSesion` en `core/router/index.js` |
 
-Lo que **no** cubre y hay que hacer en el servidor: cabeceras de seguridad
-(CSP, `X-Content-Type-Options`, HSTS), CORS, límite de peticiones y la
-autorización real de cada endpoint.
+Las **cabeceras de seguridad** (HSTS, `X-Content-Type-Options`, `X-Frame-Options`,
+`Referrer-Policy`, `Permissions-Policy` y la CSP) van en `public/_headers`, que el
+Worker de Cloudflare aplica a cada respuesta. La CSP está en modo *Report-Only*
+hasta revisar la consola; el archivo explica cada origen y el hash del script
+inline de `index.html`, que hay que recalcular si ese script cambia.
+
+Lo que **no** cubre y hay que hacer en el servidor: CORS, límite de peticiones y
+la autorización real de cada endpoint.
 
 ---
 
@@ -560,4 +568,4 @@ El catch-all del 404 va siempre al final.
 - **Los tokens de color y espaciado están en `src/assets/base.css`.** Un
   componente que escriba un hex a mano se sale del sistema.
 
-<!-- prueba de sincronizaci�n -->
+<!-- prueba de sincronización -->

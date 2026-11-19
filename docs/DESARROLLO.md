@@ -3,12 +3,12 @@
 > **Qué es.** Cómo levantar el proyecto en tu notebook, qué correr antes de pedir revisión y cómo
 > se sincroniza el frontend con el repo de Panditax.
 > **Para quién.** Quien vaya a programar. Para AWS, el documento es [OPERAR-EN-AWS](OPERAR-EN-AWS.md).
-> **Última revisión:** 18-11-2026.
+> **Última revisión:** 19-11-2026.
 
 > 📍 **En 10 segundos:** `docker compose up --build -d` levanta todo sin AWS (la mensajería se
 > simula). Antes de un PR: `dotnet test`, `pytest` y `ruff` del scraper, y `npm run build` +
-> `npm run humo` del front. El frontend entra con **`git subtree`** desde el repo de Panditax, y
-> se trae con `git subtree pull`.
+> `npm run humo` del front; el **CI** corre lo mismo en cada PR. El frontend se edita **aquí**: el
+> repo de Panditax lo copia solo desde el monorepo y Cloudflare lo publica.
 
 ---
 
@@ -127,6 +127,9 @@ terraform fmt -check -recursive infra/terraform
 ./tools/tf.sh plan <tu-nombre>      # con la cuenta prendida: el plan tiene que decir lo esperado
 ```
 
+El [CI](CICD.md#ci-está-bien) corre esta misma lista en cada PR: si algo queda en rojo ahí, pasa
+lo mismo en tu PC.
+
 Y antes de dar el PR por listo, la lista de [`AGENTS.md`](../AGENTS.md#cómo-mantener-el-orden):
 documentos al día con el cambio, `README.md` con su tabla de **Estado**, entrada en la
 [bitácora](BITACORA.md) y la tarea marcada en [TAREAS](TAREAS.md).
@@ -137,6 +140,11 @@ El frontend nació en el [repositorio de Panditax](https://github.com/Panditax72
 y entró al monorepo el 09-09 con `git subtree`, **sin `--squash`**, para conservar los commits y su
 autoría (en un trabajo con nota individual, `git log` es la evidencia de quién hizo qué). Ese repo
 sigue existiendo y de ahí sale el sitio publicado en `www`.
+
+**Desde el 19-11 la dirección es una sola: monorepo → repo de Panditax.** Su workflow copia
+`frontend/` con `rsync --delete`, así que un cambio hecho allá a mano **se pierde** en la siguiente
+copia. El detalle está en [CICD](CICD.md#cd-del-frontend-el-repo-de-panditax-y-cloudflare); lo
+de abajo queda para traer historia vieja de su repo, no para el trabajo de todos los días.
 
 ```mermaid
 flowchart LR

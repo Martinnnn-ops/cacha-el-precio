@@ -1,7 +1,8 @@
 # ---------------------------------------------------------------------------
 # CI · "¿está bien?"
 #
-# Corre en cada PR a development o main, y en cada push a esas ramas.
+# Corre en cada PR a development o main y en cada push a development (un push
+# a main lo corre cd.yml, que llama a este archivo).
 # Hace lo mismo que la lista "Comprobaciones antes de un PR" de
 # docs/DESARROLLO.md: si pasa en tu PC, tiene que pasar aquí, y al revés.
 #
