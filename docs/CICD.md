@@ -122,8 +122,7 @@ por el `.env` de la EC2.
 | 🟡 | `sync-y-desplegar.yml` copia desde **`development`** (`MONO_BRANCH`). Hasta que pase a `main`, lo que entra a `development` sale a `www` en ≤ 15 min | Panditax |
 | 🟡 | El build de su repo **no revisa el bundle**: si faltan las variables de Cognito, publica igual un sitio sin login | Panditax |
 | 🟡 | La CSP está en *Report-Only*: navegar el sitio, revisar la consola y pasarla a `Content-Security-Policy` | equipo |
-| ⬜ | El registro DNS `api` apunta todavía a la IP vieja (`44.215.16.200`). El sitio no lo usa (llama directo al API Gateway), pero sí la URL del environment y `tiene_dominio = true` | Martín |
-| ⬜ | Borrar del environment `produccion` las variables que ya no se usan: `CLOUDFLARE_ACCOUNT_ID` y `FRONT_*` | Martín |
+| 🟡 | **Login con Google**: Cognito ya tiene Google (`tiene_dominio = true`, 23-11). Falta que la variable de build `VITE_COGNITO_DOMAIN` de Cloudflare apunte a `https://cacha-el-precio-731705830984.auth.us-east-1.amazoncognito.com` (hoy al Cognito de `276428661451`) | Panditax |
 
 ## Ver también
 

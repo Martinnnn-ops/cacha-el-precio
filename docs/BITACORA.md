@@ -1,6 +1,45 @@
 # Bitácora del proyecto
 
-Última actualización: 19-11-2026.
+Última actualización: 23-11-2026.
+
+## 23-11 · Google en Cognito: `tiene_dominio = true` aplicado — Martín
+
+Rama `feature/cicd`. Cierra la deuda de `tiene_dominio` de la entrada del 19-11.
+
+```text
+tf.sh plan (a mano)     → 3 a crear (Google en Cognito, EC2, asociación de la IP),
+                          16 cambios, 0 borrados
+                          14 integraciones: http://3.227.178.123:8080 → https://api.cacha-el-precio.com
+                          pool us-east-1_UQacrbVDn: deletion_protection INACTIVE → ACTIVE
+                          client 15mg17g…: se le suma «Google», SIN reemplazo (mismo id)
+tf.sh subir martin      → apply OK; el despliegue se cortó (ver hallazgos)
+desplegar.sh --solo-backend (RAMA=development)
+                        → 6 contenedores arriba, /health 200 dentro de la máquina
+                          respaldo de S3 20261119-210012 restaurado: 325 productos
+API Gateway             → /health 200 · /productos 200
+api.cacha-el-precio.com → /health 200 (https, Caddy)
+```
+
+### Hallazgos
+
+- **La primera conexión SSH a la máquina nueva se cortó** («Connection timed out during banner
+  exchange») justo después de copiar el `.env`. `desplegar.sh` no se detuvo: siguió al paso 3, que
+  esperó un `/health` imposible, y `tf.sh` intentó restaurar el respaldo sin código en la máquina
+  (`./tools/respaldar.sh: command not found`). Volver a correr `desplegar.sh --solo-backend` con la
+  máquina ya arriba lo resolvió. Pendiente: que el paso 2 corte el script si el SSH falla.
+- **`www` manda el login al Cognito equivocado.** El bundle publicado lleva la API y el client id
+  de `731705830984`, pero `VITE_COGNITO_DOMAIN` sigue en `cacha-el-precio-276428661451` (el
+  Cognito viejo de Panditax): Cognito responde `invalid_request`. Del lado de AWS está todo listo
+  (dominio `cacha-el-precio-731705830984` activo, Google habilitado en el cliente, retorno
+  `https://www.cacha-el-precio.com/auth/google` registrado). Se le avisó a Panditax para cambiar la
+  variable de build en Cloudflare y volver a publicar.
+
+### ⬜ Qué falta
+
+- [ ] Panditax: `VITE_COGNITO_DOMAIN=https://cacha-el-precio-731705830984.auth.us-east-1.amazoncognito.com`
+  en Cloudflare y volver a publicar
+- [ ] Probar «Entrar con Google» en `www` y `tools/hacer-admin.sh`
+- [ ] PR `feature/cicd → development` y después `development → main`
 
 ## 19-11 (tarde) · CI/CD cerrado: solo `main` despliega y `www` usa la cuenta `731705830984` — Martín
 
@@ -41,10 +80,13 @@ www                     → el bundle lleva mcxw9tpe13 (API) y el client 15mg17g
 ### ⬜ Qué falta
 
 - [ ] Panditax: `MONO_BRANCH: main` en `sync-y-desplegar.yml` y la revisión del bundle
-- [ ] Mover el registro `api` a `3.227.178.123` y después `tiene_dominio = true` + `tf.sh subir`
+- [x] Mover el registro `api` a `3.227.178.123` (19-11, `infra/terraform/dominio`; Caddy sacó el certificado)
+- [x] `google.env` + `tiene_dominio = true` + `tf.sh subir` (23-11, ver la entrada de arriba)
 - [ ] Revisar la consola con la CSP en *Report-Only* y pasarla a modo real
-- [ ] Borrar del environment `produccion` las variables `CLOUDFLARE_ACCOUNT_ID` y `FRONT_*`
+- [x] Borrar del environment `produccion` las variables `CLOUDFLARE_ACCOUNT_ID` y `FRONT_*` (19-11)
 - [ ] PR `feature/cicd → development` y después `development → main`
+
+AWS apagado al cierre con `tf.sh apagar` (respaldo `respaldos/20261119-211348`); la IP queda reservada.
 
 ## 18/19-11 · CI/CD con GitHub Actions: CI verde, el backend se despliega solo — Martín
 

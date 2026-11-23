@@ -80,7 +80,7 @@ cerrarlo, se borra de aquí y se anota en la [bitácora](BITACORA.md).
 | 🟡 | El scraper **no corre solo** y guarda **un precio**, no tres | el historial se llena poco y la ficha no muestra el tachado |
 | 🟡 | Secretos en `.env` en la EC2, sin gestor de secretos | calidad; no entra en la EFT |
 | 🟠 | **Puerto 22 abierto a todo internet** para el CD (solo con llave) | en una cuenta real sería OIDC + SSM; hay que saber defenderlo ([ADR-034](adr/034-cicd-con-github-actions.md)) |
-| 🟠 | `martin.tfvars` dice `tiene_dominio = false` y la cuenta ya es la publicada: **sin login con Google** y el user pool sin `deletion_protection`. Antes de cambiarlo, mover el registro `api` (apunta a `44.215.16.200`): con `true`, el API Gateway llama a `api.cacha-el-precio.com` | se ve en la demo; el orden importa o se corta la API |
+| 🟡 | El login con Google ya está en Cognito (`tiene_dominio = true`, 23-11), pero `www` se compila con `VITE_COGNITO_DOMAIN` del Cognito viejo de Panditax (`276428661451`) | el botón de Google da `invalid_request` hasta que Panditax corrija la variable en Cloudflare ([bitácora 23-11](BITACORA.md)) |
 | 🟡 | El repo del frontend copia desde `development` y no revisa el bundle | lo de `development` sale a `www`; un build sin Cognito se publica igual ([CICD](CICD.md#pendiente)) |
 | 🟡 | La CSP de `_headers` está en *Report-Only* | falta revisar la consola y pasarla a modo real |
 | 🟢 | El token de Cloudflare no tiene vencimiento | rotarlo después del 2-dic |
