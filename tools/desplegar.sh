@@ -157,8 +157,10 @@ scp -i "$LLAVE" -o StrictHostKeyChecking=accept-new -q "$ENVTMP" "ec2-user@$INFR
   && verde "  .env copiado" || { rojo "  no se pudo copiar el .env"; rm -f "$ENVTMP"; exit 1; }
 rm -f "$ENVTMP"
 
-$SSH "bash -s" <<REMOTO
-set -e
+# Si algo falla alla (git, compose, el swap...) el script se detiene aca: antes
+# seguia de largo y "comprobaba" un backend que no se habia desplegado.
+$SSH "bash -s" <<REMOTO || { rojo "  el despliegue en la maquina fallo (ver arriba)"; exit 1; }
+set -eo pipefail
 
 # Sin swap, compilar las imagenes de .NET se queda sin memoria en una maquina
 # chica. Desde el 10-09 la instancia es t3.small (2 GB) y en marcha no lo toca,
@@ -171,12 +173,12 @@ set -e
 #      swap desaparece al reiniciar y NADIE se entera, porque el script ya
 #      dijo "activado" en su momento. Pasa justo cuando cambias el tipo de
 #      instancia, que obliga a apagar y encender.
-if ! sudo swapon --show | grep -q .; then
+if ! sudo swapon --show | grep . >/dev/null; then
   sudo dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
   sudo chmod 600 /swapfile
   sudo mkswap /swapfile >/dev/null
   sudo swapon /swapfile
-  sudo swapon --show | grep -q . && echo "  swap de 2 GB activado" || { echo "  ERROR: el swap no se activo"; exit 1; }
+  sudo swapon --show | grep . >/dev/null && echo "  swap de 2 GB activado" || { echo "  ERROR: el swap no se activo"; exit 1; }
 else
   echo "  swap ya activo"
 fi
@@ -190,7 +192,7 @@ fi
 # El plugin de compose nuevo exige buildx >= 0.17 y la AMI trae 0.12.1 en
 # /usr/libexec, asi que no basta con comprobar que exista: hay que mirar la
 # version. La nueva va a /usr/local/lib, que tiene precedencia.
-BUILDX_VER="\$(docker buildx version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+' | head -1 | cut -d. -f2)"
+BUILDX_VER="\$(docker buildx version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+' | head -1 | cut -d. -f2 || true)"
 if [ -z "\$BUILDX_VER" ] || [ "\$BUILDX_VER" -lt 17 ]; then
   echo "  buildx viejo o ausente, instalando v0.17.1..."
   sudo mkdir -p /usr/local/lib/docker/cli-plugins
@@ -306,14 +308,14 @@ fi
 fi
 
 # ---------------------------------------------------------------------------
-# 3.5 Respaldo automatico diario
+# 3.5 Respaldo automatico cada hora
 #
 #    POR QUE. El 10-09 se perdieron 221 productos con su historial al terminar
 #    la instancia. tools/tf.sh apagar ya respalda antes de destruir, pero
 #    eso solo cubre el borrado DELIBERADO. No cubre que el laboratorio caduque,
 #    que la maquina se caiga, ni que alguien la termine desde la consola.
 #
-#    Esta es la segunda capa: un volcado diario al bucket de respaldos, que es
+#    Esta es la segunda capa: un volcado periodico al bucket de respaldos, que es
 #    privado y SOBREVIVE a la instancia. El catalogo lo repone el scraper; el
 #    historial de precios no vuelve, y por eso se protege aparte.
 #
@@ -331,7 +333,7 @@ fi
 #    la ventana de perdida de un dia entero a sesenta minutos.
 # ---------------------------------------------------------------------------
 if [[ "$SOLO" != "--solo-front" ]]; then
-titulo "3.5 Respaldo automatico diario"
+titulo "3.5 Respaldo automatico cada hora"
 
 if [[ -z "${INFRA_BUCKET_RESPALDOS:-}" ]]; then
   gris "  no hay INFRA_BUCKET_RESPALDOS en infra.env; vuelve a correr ./tools/tf.sh subir <tu-nombre>"
