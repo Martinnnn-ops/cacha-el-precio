@@ -2,6 +2,41 @@
 
 Última actualización: 23-11-2026.
 
+## 23-11 (noche) · Google funcionando en `www` y `tf.sh` más resistente — Martín
+
+Rama `feature/cicd`.
+
+```text
+www (bundle publicado)  → VITE_COGNITO_DOMAIN = cacha-el-precio-731705830984 (Panditax lo cambió)
+login con Google en www → ✅ entra (2 cuentas de Martín)
+hacer-admin.sh          → una de ellas al grupo admin
+tf.sh subir martin      → 1ª pasada: apply OK, el despliegue NO partió (llave SSH vieja)
+                          2ª pasada: 0 cambios y tampoco desplegó (la EC2 "ya existía")
+desplegar.sh + restaurar a mano → respaldo 20261123-191814: 325 del scraper, 224 en el catálogo, /health 200
+```
+
+### Hallazgos y arreglos
+
+- **Llave SSH vieja.** Con `conservar_ip = true` la EC2 nueva hereda la IP de la anterior y
+  `known_hosts` guarda la llave de aquella: ssh corta con «REMOTE HOST IDENTIFICATION HAS CHANGED».
+  → `tf.sh` borra esa llave (`ssh-keygen -R`) cuando la máquina es nueva.
+- **Una pasada cortada no se retomaba.** La segunda vez el id de la EC2 no cambió, así que `tf.sh`
+  la daba por desplegada y la dejaba vacía. → Si la EC2 existe pero no tiene el `.env` de la app,
+  `tf.sh` retoma el despliegue y la restauración.
+- **`tf.sh subir` salía con código 1 aunque todo saliera bien** (la última línea era un
+  `[[ ]] && {...}` falso). → `if`.
+- **`desplegar.sh` seguía de largo si fallaba el paso 2** (pendiente del 23-11). → Se detiene, y el
+  script remoto corre con `pipefail` para que un `compose up` fallido no pase por bueno.
+- **Google en Cognito salía como «1 to change» en cada plan:** Cognito agrega 6 valores fijos de
+  Google que el código no declaraba. → Declarados en `identidad.tf`; el plan queda en 0 cambios.
+
+### Pendiente
+
+- [ ] CSP: revisar la consola cuando `_headers` esté publicado (después del merge) y recién ahí
+  pasarla a modo real. Cloudflare inyecta un `<script>` inline propio que hoy quedaría bloqueado.
+- [ ] Panditax: `MONO_BRANCH: main` y revisar el bundle antes de publicar ([CICD](CICD.md#pendiente)).
+- [ ] PR `feature/cicd → development` y después `development → main`.
+
 ## 23-11 · Google en Cognito: `tiene_dominio = true` aplicado — Martín
 
 Rama `feature/cicd`. Cierra la deuda de `tiene_dominio` de la entrada del 19-11.

@@ -4,7 +4,7 @@
 > corre cada uno, qué hace, qué secretos usa y qué hacer cuando algo queda en rojo.
 > **Para quién.** Quien abre un PR o mergea a `main`, y la defensa («¿cómo llega un cambio a
 > producción?»). La decisión y sus alternativas están en el [ADR-034](adr/034-cicd-con-github-actions.md).
-> **Última revisión:** 19-11-2026.
+> **Última revisión:** 23-11-2026.
 
 > 📍 **En 10 segundos:** cada PR pasa por el **CI** (.NET, scraper, front y dependencias
 > vulnerables). **Solo `main` es producción:** un merge a `main` arma las imágenes, las sube a
@@ -121,8 +121,7 @@ por el `.env` de la EC2.
 |---|---|---|
 | 🟡 | `sync-y-desplegar.yml` copia desde **`development`** (`MONO_BRANCH`). Hasta que pase a `main`, lo que entra a `development` sale a `www` en ≤ 15 min | Panditax |
 | 🟡 | El build de su repo **no revisa el bundle**: si faltan las variables de Cognito, publica igual un sitio sin login | Panditax |
-| 🟡 | La CSP está en *Report-Only*: navegar el sitio, revisar la consola y pasarla a `Content-Security-Policy` | equipo |
-| 🟡 | **Login con Google**: Cognito ya tiene Google (`tiene_dominio = true`, 23-11). Falta que la variable de build `VITE_COGNITO_DOMAIN` de Cloudflare apunte a `https://cacha-el-precio-731705830984.auth.us-east-1.amazoncognito.com` (hoy al Cognito de `276428661451`) | Panditax |
+| 🟡 | La CSP está en *Report-Only*: navegar el sitio, revisar la consola y pasarla a `Content-Security-Policy`. Se revisa **después del merge** (hoy `www` no trae ningún encabezado: `_headers` solo está en esta rama). Ojo: Cloudflare inyecta su propio `<script>` inline en `www`, y la CSP actual lo bloquearía | equipo |
 
 ## Ver también
 
