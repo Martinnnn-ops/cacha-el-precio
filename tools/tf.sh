@@ -242,8 +242,24 @@ subir)
   ID_AHORA="$(leer "$RAIZ/infra.env" INFRA_INSTANCIA)"
   IP="$(leer "$RAIZ/infra.env" INFRA_IP)"
 
+  # ¿Hay que desplegar? Si la maquina es nueva, si. Y tambien si una pasada
+  # anterior se corto a medias (23-11): la EC2 ya existia, asi que el id no
+  # cambio, pero nunca recibio la app y quedo vacia. Se reconoce porque falta
+  # el .env que deja desplegar.sh.
+  DESPLEGAR=0
   if [[ -n "$ID_AHORA" && "$ID_AHORA" != "$ID_ANTES" ]]; then
-    # Maquina nueva: esperar al cloud-init (Docker y compose) y desplegar.
+    DESPLEGAR=1
+    # Con conservar_ip = true la maquina nueva hereda la IP de la anterior, y
+    # known_hosts todavia guarda la llave de aquella: ssh la rechaza ("REMOTE
+    # HOST IDENTIFICATION HAS CHANGED") y el despliegue no parte (23-11).
+    [[ -n "$IP" ]] && ssh-keygen -R "$IP" >/dev/null 2>&1
+  elif [[ -n "$ID_AHORA" ]] && ! ssh_ec2 "$IP" 'test -f /opt/cacha-el-precio/.env' 2>/dev/null; then
+    amar "  la maquina existe pero no tiene la app (una pasada anterior se corto): retomo el despliegue"
+    DESPLEGAR=1
+  fi
+
+  if (( DESPLEGAR )); then
+    # Esperar al cloud-init (Docker y compose) y desplegar.
     titulo "Maquina nueva: despliegue"
     gris "  esperando a que termine el arranque (Docker y compose)..."
     for _ in $(seq 1 60); do
@@ -298,7 +314,9 @@ subir)
   [[ -n "$IP" ]] && echo "  EC2   $IP"
   gris "  comprobar: curl -s -o /dev/null -w '%{http_code}\\n' $API/health   # 200"
   # Todo lo demas quedo arriba, pero sin los datos no es un "listo": se sale con error.
-  [[ "${FALLO_RESTAURAR:-0}" == "1" ]] && { rojo "  OJO: la base quedo vacia (ver arriba)."; exit 1; }
+  # Con if y no con [[ ]] && {...}: como ultima linea, el && falso dejaba el
+  # script con codigo 1 aunque todo saliera bien.
+  if [[ "${FALLO_RESTAURAR:-0}" == "1" ]]; then rojo "  OJO: la base quedo vacia (ver arriba)."; exit 1; fi
   ;;
 
 # ---------------------------------------------------------------------------

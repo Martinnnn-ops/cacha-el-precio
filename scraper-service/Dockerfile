@@ -18,11 +18,23 @@ WORKDIR /app
 # Se copian primero los metadatos para que la capa de dependencias se
 # reutilice mientras no cambien: sin esto, cada cambio en el codigo
 # reinstalaria todo.
-COPY pyproject.toml README.md ./
-COPY src/ ./src/
+#
+# Las dependencias salen de uv.lock, no de pyproject: son exactamente las
+# versiones que el CI probo y que pip-audit reviso. Con "pip install ." a
+# secas, pip elegia lo mas nuevo que permitiera pyproject, y la imagen
+# terminaba corriendo versiones que nadie habia probado.
+# uv se copia de su imagen oficial (version fija) solo para exportar el lock.
+COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /usr/local/bin/uv
+COPY pyproject.toml uv.lock README.md ./
+RUN uv export --locked --no-hashes --no-emit-project \
+      --extra api --extra db --extra s3 --extra imagen > /tmp/requisitos.txt \
+ && pip install --no-cache-dir -r /tmp/requisitos.txt \
+ && rm /tmp/requisitos.txt
 
+# El codigo va despues de las dependencias: cambiar un .py no reinstala nada.
 # La misma imagen sirve para API, job, PostgreSQL y procesamiento/subida de imagenes.
-RUN pip install --no-cache-dir -e ".[api,db,s3,imagen]"
+COPY src/ ./src/
+RUN pip install --no-cache-dir --no-deps -e .
 
 # Usuario sin privilegios: un scraper procesa HTML de terceros y no
 # tiene ningun motivo para correr como root.

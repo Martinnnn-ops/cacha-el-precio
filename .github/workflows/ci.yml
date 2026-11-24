@@ -1,0 +1,162 @@
+# ---------------------------------------------------------------------------
+# CI · "¿está bien?"
+#
+# Corre en cada PR a development o main y en cada push a development (un push
+# a main lo corre cd.yml, que llama a este archivo).
+# Hace lo mismo que la lista "Comprobaciones antes de un PR" de
+# docs/DESARROLLO.md: si pasa en tu PC, tiene que pasar aquí, y al revés.
+#
+# NO toca AWS ni Cloudflare y NO usa secrets: por eso también corre en PRs
+# que vienen de un fork (alguien de afuera), sin riesgo.
+#
+# 4 trabajos en paralelo. Si uno queda en rojo, el PR muestra cuál:
+#   backend    .NET: formato, compilación y pruebas (gateway, product, notification)
+#   scraper    Python: pruebas sin internet y ruff
+#   frontend   Vue: build y pruebas de humo
+#   seguridad  dependencias con vulnerabilidades conocidas (.NET, npm y Python)
+# ---------------------------------------------------------------------------
+name: CI
+
+on:
+  pull_request:
+    branches: [development, main]
+  push:
+    # main no está aquí a propósito: un push a main lo corre cd.yml, que llama
+    # a este mismo archivo antes de armar imágenes. Así no corre dos veces.
+    branches: [development]
+  # Botón "Run workflow" en la pestaña Actions, para correrlo a mano.
+  workflow_dispatch:
+  # cd.yml lo llama como primer paso: si el CI falla, no se despliega nada.
+  workflow_call:
+
+# Un PR que recibe otro push cancela la corrida vieja: solo importa la última.
+# github.workflow distingue "CI" de "CD" (cuando cd.yml lo llama), para que el
+# CI de uno no cancele al del otro.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Mínimo permiso: el CI solo lee el código.
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend .NET
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restaurar paquetes
+        run: dotnet restore CachaElPrecio.slnx
+
+      - name: Formato (dotnet format)
+        run: dotnet format CachaElPrecio.slnx --verify-no-changes --no-restore
+
+      - name: Compilar
+        run: dotnet build CachaElPrecio.slnx --no-restore --configuration Release
+
+      # Las pruebas contra AWS real se omiten solas: solo corren con
+      # CEP_AWS_REAL=1, y aquí nunca se define.
+      - name: Pruebas
+        run: dotnet test CachaElPrecio.slnx --no-build --configuration Release
+
+  scraper:
+    name: Scraper Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: scraper-service
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      # --all-extras: las pruebas de imagen necesitan pillow, que es un extra.
+      # --locked: usa exactamente uv.lock; si el lock no calza con pyproject, falla.
+      - name: Instalar dependencias
+        run: uv sync --all-extras --locked
+
+      # "not red" deja fuera las pruebas que salen a internet (a las tiendas).
+      - name: Pruebas
+        run: uv run pytest -m "not red"
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+  frontend:
+    name: Frontend Vue
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # El build de CI no lleva los datos de Cognito de nadie: solo comprueba
+      # que compila. El build que se publica lo arma el CD con los de la cuenta.
+      - name: Build
+        run: npm run build
+
+      # Sin BACKEND_URL, la parte que habla con el gateway se salta sola.
+      - name: Pruebas de humo
+        run: npm run humo
+
+  seguridad:
+    name: Dependencias vulnerables
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - uses: astral-sh/setup-uv@v7
+
+      # dotnet no falla solo si encuentra algo: hay que leer lo que imprime.
+      - name: .NET (NuGet)
+        run: |
+          dotnet restore CachaElPrecio.slnx
+          dotnet list CachaElPrecio.slnx package --vulnerable --include-transitive | tee nuget.txt
+          if grep -qiE 'has the following vulnerable packages' nuget.txt; then
+            echo "::error::Hay paquetes NuGet con vulnerabilidades conocidas"
+            exit 1
+          fi
+
+      # --omit=dev: solo lo que termina en el sitio publicado.
+      # high: lo "moderate" se revisa a mano, no frena el PR.
+      - name: Frontend (npm)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+      # pip-audit revisa exactamente las versiones de uv.lock.
+      - name: Scraper (Python)
+        working-directory: scraper-service
+        run: |
+          uv export --all-extras --locked --no-hashes --no-emit-project > requisitos.txt
+          uvx pip-audit --strict -r requisitos.txt

@@ -1,6 +1,208 @@
 # Bitácora del proyecto
 
-Última actualización: 18-11-2026.
+Última actualización: 23-11-2026.
+
+## 23-11 (noche) · Google funcionando en `www` y `tf.sh` más resistente — Martín
+
+Rama `feature/cicd`.
+
+```text
+www (bundle publicado)  → VITE_COGNITO_DOMAIN = cacha-el-precio-731705830984 (Panditax lo cambió)
+login con Google en www → ✅ entra (2 cuentas de Martín)
+hacer-admin.sh          → una de ellas al grupo admin
+tf.sh subir martin      → 1ª pasada: apply OK, el despliegue NO partió (llave SSH vieja)
+                          2ª pasada: 0 cambios y tampoco desplegó (la EC2 "ya existía")
+desplegar.sh + restaurar a mano → respaldo 20261123-191814: 325 del scraper, 224 en el catálogo, /health 200
+```
+
+### Hallazgos y arreglos
+
+- **Llave SSH vieja.** Con `conservar_ip = true` la EC2 nueva hereda la IP de la anterior y
+  `known_hosts` guarda la llave de aquella: ssh corta con «REMOTE HOST IDENTIFICATION HAS CHANGED».
+  → `tf.sh` borra esa llave (`ssh-keygen -R`) cuando la máquina es nueva.
+- **Una pasada cortada no se retomaba.** La segunda vez el id de la EC2 no cambió, así que `tf.sh`
+  la daba por desplegada y la dejaba vacía. → Si la EC2 existe pero no tiene el `.env` de la app,
+  `tf.sh` retoma el despliegue y la restauración.
+- **`tf.sh subir` salía con código 1 aunque todo saliera bien** (la última línea era un
+  `[[ ]] && {...}` falso). → `if`.
+- **`desplegar.sh` seguía de largo si fallaba el paso 2** (pendiente del 23-11). → Se detiene, y el
+  script remoto corre con `pipefail` para que un `compose up` fallido no pase por bueno.
+- **Google en Cognito salía como «1 to change» en cada plan:** Cognito agrega 6 valores fijos de
+  Google que el código no declaraba. → Declarados en `identidad.tf`; el plan queda en 0 cambios.
+
+### Pendiente
+
+- [ ] CSP: revisar la consola cuando `_headers` esté publicado (después del merge) y recién ahí
+  pasarla a modo real. Cloudflare inyecta un `<script>` inline propio que hoy quedaría bloqueado.
+- [ ] Panditax: `MONO_BRANCH: main` y revisar el bundle antes de publicar ([CICD](CICD.md#pendiente)).
+- [ ] PR `feature/cicd → development` y después `development → main`.
+
+## 23-11 · Google en Cognito: `tiene_dominio = true` aplicado — Martín
+
+Rama `feature/cicd`. Cierra la deuda de `tiene_dominio` de la entrada del 19-11.
+
+```text
+tf.sh plan (a mano)     → 3 a crear (Google en Cognito, EC2, asociación de la IP),
+                          16 cambios, 0 borrados
+                          14 integraciones: http://3.227.178.123:8080 → https://api.cacha-el-precio.com
+                          pool us-east-1_UQacrbVDn: deletion_protection INACTIVE → ACTIVE
+                          client 15mg17g…: se le suma «Google», SIN reemplazo (mismo id)
+tf.sh subir martin      → apply OK; el despliegue se cortó (ver hallazgos)
+desplegar.sh --solo-backend (RAMA=development)
+                        → 6 contenedores arriba, /health 200 dentro de la máquina
+                          respaldo de S3 20261119-210012 restaurado: 325 productos
+API Gateway             → /health 200 · /productos 200
+api.cacha-el-precio.com → /health 200 (https, Caddy)
+```
+
+### Hallazgos
+
+- **La primera conexión SSH a la máquina nueva se cortó** («Connection timed out during banner
+  exchange») justo después de copiar el `.env`. `desplegar.sh` no se detuvo: siguió al paso 3, que
+  esperó un `/health` imposible, y `tf.sh` intentó restaurar el respaldo sin código en la máquina
+  (`./tools/respaldar.sh: command not found`). Volver a correr `desplegar.sh --solo-backend` con la
+  máquina ya arriba lo resolvió. Pendiente: que el paso 2 corte el script si el SSH falla.
+- **`www` manda el login al Cognito equivocado.** El bundle publicado lleva la API y el client id
+  de `731705830984`, pero `VITE_COGNITO_DOMAIN` sigue en `cacha-el-precio-276428661451` (el
+  Cognito viejo de Panditax): Cognito responde `invalid_request`. Del lado de AWS está todo listo
+  (dominio `cacha-el-precio-731705830984` activo, Google habilitado en el cliente, retorno
+  `https://www.cacha-el-precio.com/auth/google` registrado). Se le avisó a Panditax para cambiar la
+  variable de build en Cloudflare y volver a publicar.
+
+### ⬜ Qué falta
+
+- [ ] Panditax: `VITE_COGNITO_DOMAIN=https://cacha-el-precio-731705830984.auth.us-east-1.amazoncognito.com`
+  en Cloudflare y volver a publicar
+- [ ] Probar «Entrar con Google» en `www` y `tools/hacer-admin.sh`
+- [ ] PR `feature/cicd → development` y después `development → main`
+
+## 19-11 (tarde) · CI/CD cerrado: solo `main` despliega y `www` usa la cuenta `731705830984` — Martín
+
+Rama `feature/cicd`. Cierra la entrada de abajo: **lo de Cloudflare ya no está bloqueado**, porque
+cambió el camino del frontend. Cómo quedó todo: [CICD](CICD.md) y [ADR-034](adr/034-cicd-con-github-actions.md).
+
+### Lo que cambió
+
+| Qué | Antes (madrugada del 19-11) | Ahora |
+|---|---|---|
+| Publicar el front | job `frontend` en `cd.yml` con `wrangler deploy`, bloqueado por el rol en Cloudflare | **Panditax** armó la sincronización: `avisar-frontend.yml` → su repo copia `frontend/` y compila → Cloudflare publica el Worker con cada push a su `main`. El job propio se sacó (`f0de0b4`) |
+| Desde qué rama | `cd.yml` con `main` + `feature/cicd`; el aviso con `development` | todo **solo desde `main`** (`7cb1f0e`, `a62df6b`) |
+| `www` | S3 de `988704560705` | Worker de Cloudflare (cuenta de Panditax), con las variables de build apuntando al API Gateway y al Cognito de `731705830984` |
+| Encabezados de seguridad | ninguno | `frontend/public/_headers`: HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` y CSP en *Report-Only* |
+
+### Prueba de punta a punta
+
+```text
+tf.sh subir martin      → plan: 2 a crear (EC2 + asociación de la IP), 0 cambios, 0 borrados
+                          respaldo restaurado: 224 productos
+CD (re-run del job)     → desplegó 7cb1f0e desde GHCR, /health 200
+API Gateway             → /health 200 · /productos 200 (224) · CORS desde www: 204
+www                     → el bundle lleva mcxw9tpe13 (API) y el client 15mg17g… (Cognito)
+                          el login y el catálogo funcionan en el dominio (probado por el equipo)
+```
+
+### Hallazgos
+
+- `tiene_dominio = false` en `martin.tfvars`: la cuenta ya es la publicada, pero **sin Google en
+  Cognito** y sin `deletion_protection`. Pasarlo a `true` cambia el destino del API Gateway a
+  `api.cacha-el-precio.com`, que todavía apunta a `44.215.16.200`: **primero el DNS, después el
+  `.tfvars`**. Anotado en la deuda de [CONTEXTO](CONTEXTO.md).
+- El repo del frontend todavía copia desde `development` y no revisa el bundle.
+- El dominio de Cognito quedó en Cloudflare con `/` al final; funciona, Panditax lo corrige.
+- El commit de prueba `7f8c78f` dejó un comentario con la «ó» en Latin-1 en `frontend/README.md`:
+  se pasó a UTF-8.
+
+### ⬜ Qué falta
+
+- [ ] Panditax: `MONO_BRANCH: main` en `sync-y-desplegar.yml` y la revisión del bundle
+- [x] Mover el registro `api` a `3.227.178.123` (19-11, `infra/terraform/dominio`; Caddy sacó el certificado)
+- [x] `google.env` + `tiene_dominio = true` + `tf.sh subir` (23-11, ver la entrada de arriba)
+- [ ] Revisar la consola con la CSP en *Report-Only* y pasarla a modo real
+- [x] Borrar del environment `produccion` las variables `CLOUDFLARE_ACCOUNT_ID` y `FRONT_*` (19-11)
+- [ ] PR `feature/cicd → development` y después `development → main`
+
+AWS apagado al cierre con `tf.sh apagar` (respaldo `respaldos/20261119-211348`); la IP queda reservada.
+
+## 18/19-11 · CI/CD con GitHub Actions: CI verde, el backend se despliega solo — Martín
+
+Rama `feature/cicd` (sin PR todavía). Bloques 2 y 3 del [PLAN-EFT](PLAN-EFT.md#2--cicd-con-github-actions).
+La documentación completa (`docs/CICD.md` + ADR-034) va en el PR; esto es lo que **no se puede
+olvidar** hasta entonces.
+
+### Lo que quedó funcionando
+
+| Qué | Estado |
+|---|---|
+| **CI** (`.github/workflows/ci.yml`): .NET (formato, build, 144 pruebas), scraper (195 pruebas + ruff), front (build + humo) y **dependencias vulnerables** (NuGet, `npm audit`, `pip-audit`) | ✅ verde en GitHub |
+| **CD backend** (`cd.yml` + `tools/cd-remoto.sh`): CI → 4 imágenes a **GHCR** con el hash del commit → SSH a la EC2 → `pull` + `up --no-build` → `/health` → **rollback** si no queda sana | ✅ desplegó `499d8ff` solo en `731705830984` |
+| **CD frontend**: build con el Cognito y la API de la cuenta (variables del environment), revisión del bundle y `wrangler deploy` a un Worker | 🟡 escrito y probado en local; sin token se salta con un aviso |
+| `main` sin aprobación obligatoria (sigue exigiendo PR y sin force push) | ✅ |
+| Environment **`produccion`**: secrets `EC2_HOST`, `EC2_SSH_KEY`; variables `CLOUDFLARE_ACCOUNT_ID`, `FRONT_*` | ✅ |
+| `conservar_ip = true` en `martin.tfvars`: la IP `3.227.178.123` no cambia al apagar | ✅ |
+
+El compose mantiene `build:` **y** suma `image:`: `desplegar.sh` y el desarrollo local siguen
+compilando igual. El Dockerfile del scraper ahora instala desde `uv.lock` (antes `pip install .`
+elegía versiones que el CI nunca probó).
+
+### Lo que el CI encontró el primer día (y se arregló en la misma rama)
+
+| Problema | Origen | Arreglo |
+|---|---|---|
+| `dotnet format` fallaba en `FeedPersonalizadoTests.cs` | PR #54 | formato |
+| Terracota `#a8482e` sobre el pie: **4.02:1** (mínimo WCAG 4.5) | PR #53 | `#984028` (4.71:1) |
+| El store seguía al sistema y el guion de `index.html` partía en claro → **fogonazo claro** con el dispositivo en oscuro | PR #53 | los dos siguen al sistema + prueba nueva que exige que partan igual |
+| `follow-redirects` (vía axios) y `source-map-js`: vulnerabilidades *high* | dependencias | `npm audit fix` (solo lockfile) |
+| pillow, urllib3, certifi, soupsieve: **51 avisos** de `pip-audit` | dependencias | `uv lock --upgrade-package` (pillow 13, soupsieve 4) |
+
+📌 Avisarle a Orion lo del terracota y el tema (es su PR #53).
+
+### ⛔ Bloqueado: el token de Cloudflare
+
+La cuenta de Cloudflare es de Panditax y mi rol **no permite Workers** («Failed common permission
+check… Workers Routes Write»). Hay que pedirle que suba el rol a *Administrator* o *Workers Admin*
+(+ DNS de la zona), para crear `github-cd-workers` y cargarlo directo en GitHub sin que el token
+pase por un chat. Decidido: el token **sin vencimiento** (a propósito); revocarlo al cerrar el ramo.
+
+### 🔎 Hallazgo: lo que está en vivo NO es de nuestra cuenta
+
+| Pieza | Apunta a | ¿Nuestra (`731705830984`)? |
+|---|---|---|
+| `www` y la raíz | CNAME a S3 `cacha-el-precio-web-988704560705` | ❌ |
+| Login del sitio publicado | Cognito de `276428661451` | ❌ |
+| `api` | `44.215.16.200` | ❌ (la nuestra es `3.227.178.123`) |
+
+No hay ningún Worker en Cloudflare: `frontend/wrangler.jsonc` existía pero no se usaba.
+
+### Para la defensa (va al ADR-034)
+
+- **Puerto 22 abierto a `0.0.0.0/0`.** Ya estaba (para `ssh`, `desplegar.sh` y los respaldos);
+  con el CD no se puede cerrar a una IP porque los runners de GitHub no tienen IP fija. Entrada
+  **solo con llave**: verificado `passwordauthentication no`. Alternativas descartadas **por el
+  lab**: SSM (las credenciales vencen cada ~4 h y OIDC + rol IAM está bloqueado en Academy) y un
+  runner dentro de la EC2 (repo público: un PR podría correr código en el servidor). **En una
+  cuenta real:** GitHub → OIDC → rol IAM → SSM, puerto 22 cerrado.
+- **IP fija no es más vulnerable:** ya es pública por el DNS y los bots barren todo IPv4. Al
+  revés, una IP que cambia deja el DNS apuntando a una IP que AWS puede darle a otro
+  (*subdomain takeover*).
+- **El CD no usa credenciales de AWS**: entra por SSH. Terraform sigue siendo manual (`tf.sh`)
+  porque el estado vive en el laptop y las credenciales del lab vencen.
+- **Front en Worker y no en S3:** subir a S3 exigiría credenciales de AWS en GitHub (vencen); el
+  Worker solo necesita un token de Cloudflare y el sitio sigue arriba con AWS apagado. Además
+  `not_found_handling: single-page-application` arregla el 404 de `/producto/:slug` que S3 no podía.
+- **Mínimo privilegio:** un token por uso (`terraform-dns-martin` solo DNS; `github-cd-workers`
+  solo Workers de la zona); el CI no usa secrets, por eso corre seguro en PRs de forks.
+- Imágenes en GHCR **públicas** (no llevan secretos); igual la EC2 hace login con el token
+  efímero del job y logout al terminar.
+
+### ⬜ Qué falta (en orden)
+
+- [ ] Panditax sube el rol en Cloudflare → crear token → `gh secret set CLOUDFLARE_API_TOKEN --env produccion`
+- [ ] Push → Worker en `*.workers.dev` (ahí el catálogo y el login fallan por CORS/Cognito: esperado)
+- [ ] Mover el dominio: `tiene_dominio = true` + `tf.sh subir` (Google en Cognito), `www` y raíz → Worker (Custom Domain), `api` → `3.227.178.123` con `infra/terraform/dominio/`. Avisar al grupo antes: el sitio viejo deja de responder
+- [ ] Sacar los disparadores temporales de `feature/cicd` en `ci.yml` y `cd.yml`
+- [ ] Docs: `docs/CICD.md`, ADR-034, CONTEXTO (deuda: puerto 22, token sin vencimiento), PLAN-EFT §2, README (Estado), DESARROLLO (el CI corre lo mismo)
+- [ ] PR `feature/cicd → development` y después `development → main` (primer despliegue real desde `main`)
+- [ ] Al cerrar el ramo: revocar `github-cd-workers`
 
 ## 17-11 · Terraform fases 6 y 7: el dominio, una cuenta desde cero y adiós a los `crear-*` — Martín
 

@@ -1,0 +1,31 @@
+# Encabezados de seguridad del sitio publicado.
+#
+# El Worker de Cloudflare (repo Panditax727/Cacha-el-Precio-Frontend) lee este
+# archivo solo: Vite lo copia de public/ a dist/ y Cloudflare lo aplica a cada
+# respuesta. No hace falta tocar nada en Cloudflare.
+#
+# La CSP va en modo Report-Only: el navegador avisa en la consola lo que
+# BLOQUEARÍA, sin bloquearlo. Cuando la consola salga limpia navegando el sitio
+# (catálogo, login, ficha, anuncios), se cambia el nombre a
+# Content-Security-Policy y pasa a bloquear de verdad.
+#
+# El hash 'sha256-...' es el del <script> inline de index.html (el que pone el
+# tema claro/oscuro antes de que arranque Vue). Si se edita ese script, hay que
+# recalcularlo o la CSP lo marcará.
+#
+# Orígenes de la CSP:
+#   *.execute-api...      el API Gateway de cada cuenta (cambia por cuenta)
+#   *.amazoncognito.com   el login de Cognito (token y logout)
+#   fonts.*               Google Fonts, de index.html
+#   googlesyndication,    AdSense: el script, sus iframes y sus llamadas
+#   doubleclick, google
+#   img-src https:        las fotos de los productos vienen del CDN de cada
+#                         tienda (Ripley, Paris, Zara, H&M, Mango...)
+
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'sha256-PZspZoFt60dLQhhDNjUDisIP29bhnloMxtZP5lc2Xco=' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.gstatic.com https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.execute-api.us-east-1.amazonaws.com https://*.amazoncognito.com https://api.cacha-el-precio.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com; object-src 'none'; base-uri 'self'; form-action 'self' https://*.amazoncognito.com; frame-ancestors 'none'; upgrade-insecure-requests

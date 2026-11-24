@@ -193,7 +193,7 @@ Lo que corre hoy, no lo planificado.
 | 🟢 | Mensajería | los dos flujos probados en AWS, con DLQ y panel |
 | 🟢 | Infraestructura | toda la cuenta en Terraform, probada en una cuenta vacía |
 | 🟢 | Respaldos | cada hora a S3, y al laptop antes de cada apagado |
-| ⬜ | CI/CD | todavía no; las pruebas se corren a mano antes de cada PR |
+| 🟢 | CI/CD | GitHub Actions: pruebas en cada PR y despliegue automático desde `main` |
 | ⬜ | Red privada | la EC2 usa la red por defecto; la protege el encabezado del borde ([ADR-015](docs/adr/015-red-privada-con-vpc-link.md)) |
 
 ---

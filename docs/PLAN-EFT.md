@@ -4,7 +4,7 @@
 > funciona y qué puede salir mal. Es la versión para el equipo del plan acordado el 16 y 17-11 (plan
 > del 15-11 + issue [#49](https://github.com/Martinnnn-ops/cacha-el-precio/issues/49)).
 > **Para quién.** Los tres. Las tareas sueltas, para tomarlas, están en [TAREAS](TAREAS.md).
-> **Última revisión:** 18-11-2026.
+> **Última revisión:** 19-11-2026.
 
 > 📍 **En 10 segundos:** entrega el **miércoles 2-dic-2026 a las 17:00**. Primero se mergea
 > **Terraform** y se arma el **CI/CD**. Después, cada pedido lleva un **correlationId** en logs
@@ -67,8 +67,8 @@ se atrasa, se atrasa todo.
 | # | Qué | Qué trae | Estado |
 |---|---|---|---|
 | 1 | **PR de Terraform** (`feature/terraform` → `development`) | toda la infra se prende y apaga con un comando, en cualquier cuenta | 🟡 fases 0 a 7 hechas y probadas (17-11); falta revisar y mergear · ⛔ **bloquea casi todo**: Kinesis y los grupos de logs se escriben en Terraform |
-| 2 | **CI** | pruebas automáticas en cada PR | ⬜ · ⛔ conviene antes de los PRs grandes |
-| 3 | **CD** solo desde `main` | desplegar sin hacerlo a mano; la EC2 deja de compilar | ⬜ |
+| 2 | **CI** | pruebas automáticas en cada PR | ✅ 19-11 (`feature/cicd`) |
+| 3 | **CD** solo desde `main` | desplegar sin hacerlo a mano; la EC2 deja de compilar | ✅ 19-11, probado en `731705830984` |
 | 4 | **correlationId + logs JSON** | seguir un pedido de punta a punta | ⬜ · antes del 5 y el 6, para no chocar en todos los `Program.cs` |
 | 5 | **Lector de `cep-auditoria-precios`** | trazabilidad + idempotencia | 🟡 la cola existe, falta el lector |
 | 6a | Probar permisos de Kinesis en el Academy | saber si se puede antes de programar | 🔎 ⛔ bloquea el 6 |
@@ -91,6 +91,10 @@ se atrasa, se atrasa todo.
 ---
 
 ## 2 · CI/CD con GitHub Actions
+
+> ✅ **Hecho el 19-11.** Cómo quedó y cómo se usa: [CICD](CICD.md) y [ADR-034](adr/034-cicd-con-github-actions.md).
+> Lo que cambió respecto de este plan: el frontend no lo publica `cd.yml`, sino Cloudflare desde el
+> repo de Panditax; y el compose mantiene `build:` y suma `image:`, así `desplegar.sh` sigue igual.
 
 **Para qué.** Van a entrar muchos PRs de tres personas. El **CI** compila y prueba cada PR solo: si
 algo se rompe, queda en rojo **antes** de mergear. El **CD** lleva lo mergeado a la EC2 sin hacerlo
@@ -115,7 +119,7 @@ flowchart LR
 
 | ⚠️ Riesgo | Cómo se evita |
 |---|---|
-| Los *secrets* del repo solo los cambia su dueña | `tf.sh` los sube si lo corre quien tiene acceso; si no, se despliega a mano como hoy |
+| Los *secrets* del repo solo los cambia su dueño | `tf.sh` los sube si lo corre quien tiene acceso; si no, se despliega a mano como hoy |
 | La EC2 no puede bajar imágenes privadas | un token de solo lectura en su `.env`, o paquetes públicos (no llevan secretos) |
 | Minutos de Actions | 🔎 revisar la cuota de la cuenta |
 | La llave SSH | un *secret* aparte; es del lab y muere con él |

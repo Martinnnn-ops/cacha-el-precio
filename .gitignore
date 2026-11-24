@@ -125,3 +125,6 @@ mensajeria.env
 # Cache de Python (scripts de tools/ y el scraper)
 __pycache__/
 *.pyc
+
+# Lo escribe tools/cd-remoto.sh en la EC2: la etiqueta de las imagenes que corren.
+.imagen-tag

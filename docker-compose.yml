@@ -17,6 +17,12 @@
 #  cambiar de entorno es cambiar ese archivo, no este.
 #
 #  Antes de la primera vez:   cp .env.example .env   y rellena las contraseñas.
+#
+#  Imágenes: los 4 servicios propios tienen `build:` Y `image:`.
+#    · En tu PC (y con tools/desplegar.sh):  docker compose up -d --build
+#      compila aquí y etiqueta la imagen como ...:local. Igual que siempre.
+#    · El CD (.github/workflows/cd.yml):  IMAGEN_TAG=<commit> docker compose pull
+#      baja de GHCR la imagen que armó y probó GitHub, y la EC2 no compila nada.
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: cachaelprecio
@@ -96,6 +102,7 @@ services:
   #  NO publica puertos al host a propósito: solo Caddy debería poder hablarle.
   #  Si se expusiera, existiría una puerta que esquiva a Caddy y al API Gateway.
   gateway:
+    image: ${IMAGEN_REGISTRO:-ghcr.io/martinnnn-ops/cacha-el-precio}/gateway:${IMAGEN_TAG:-local}
     build:
       context: .
       dockerfile: gateway/Dockerfile
@@ -138,6 +145,7 @@ services:
   #      GET /api/products     listar productos
   #      GET /health           verificar estado
   product-service:
+    image: ${IMAGEN_REGISTRO:-ghcr.io/martinnnn-ops/cacha-el-precio}/product-service:${IMAGEN_TAG:-local}
     build:
       context: .
       dockerfile: product-service/Dockerfile
@@ -177,6 +185,7 @@ services:
   #  los seguidores por HTTP a product-service y el correo por Cognito.
   #  Ver docs/MENSAJERIA.md y docs/adr/030-notification-service.md.
   notification-service:
+    image: ${IMAGEN_REGISTRO:-ghcr.io/martinnnn-ops/cacha-el-precio}/notification-service:${IMAGEN_TAG:-local}
     build:
       context: .
       dockerfile: notification-service/Dockerfile
@@ -221,6 +230,7 @@ services:
   #      GET  /productos         listar productos
   #      GET  /health            verificar estado
   scraper-api:
+    image: ${IMAGEN_REGISTRO:-ghcr.io/martinnnn-ops/cacha-el-precio}/scraper:${IMAGEN_TAG:-local}
     build:
       context: ./scraper-service
       dockerfile: Dockerfile

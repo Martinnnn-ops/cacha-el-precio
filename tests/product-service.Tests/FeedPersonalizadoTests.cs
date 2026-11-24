@@ -82,27 +82,27 @@ public class FeedPersonalizadoTests
         int id, string genero = "Unisex", string categoria = "Poleras",
         string marca = "Marca", int precio = 20000, int tiendas = 1,
         int visitas = 0, bool activo = true) => new()
-    {
-        Id = id,
-        Slug = $"p{id}",
-        CanonicalKey = $"k{id}",
-        Name = $"Producto {id}",
-        Brand = marca,
-        Category = categoria,
-        BodyArea = "Torso",
-        Gender = genero,
-        Layer = "Base",
-        Visits = visitas,
-        CreatedAt = DateTimeOffset.UtcNow,
-        Offers = Enumerable.Range(0, tiendas).Select(i => new ProductOfferResponse
         {
-            Id = id * 10 + i,
-            ExternalId = $"SKU{id}-{i}",
-            Store = $"tienda{i}",
-            Price = precio + i * 1000,
-            Url = "https://tienda.cl/p",
-            Active = activo,
-            UpdatedAt = DateTimeOffset.UtcNow,
-        }).ToList(),
-    };
+            Id = id,
+            Slug = $"p{id}",
+            CanonicalKey = $"k{id}",
+            Name = $"Producto {id}",
+            Brand = marca,
+            Category = categoria,
+            BodyArea = "Torso",
+            Gender = genero,
+            Layer = "Base",
+            Visits = visitas,
+            CreatedAt = DateTimeOffset.UtcNow,
+            Offers = Enumerable.Range(0, tiendas).Select(i => new ProductOfferResponse
+            {
+                Id = id * 10 + i,
+                ExternalId = $"SKU{id}-{i}",
+                Store = $"tienda{i}",
+                Price = precio + i * 1000,
+                Url = "https://tienda.cl/p",
+                Active = activo,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            }).ToList(),
+        };
 }

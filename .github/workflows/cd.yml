@@ -1,0 +1,167 @@
+# ---------------------------------------------------------------------------
+# CD · "llévalo a producción" (backend)
+#
+# Corre al mergear a main. Si el CI falla, no corre nada más:
+#
+#   1. ci         el mismo ci.yml de los PR. Sin CI verde no se despliega.
+#   ── backend ──
+#   2. imagenes   arma las 4 imágenes en GitHub (no en la EC2, que tiene 2 GB)
+#                 y las sube a GHCR con el hash del commit como etiqueta.
+#   3. desplegar  ¿la EC2 está prendida? → SSH, baja las imágenes, levanta y
+#                 revisa /health; si falla, vuelve a la versión anterior.
+#                 Si está apagada (fuera de la sesión del lab), se salta SIN
+#                 fallar: AWS apagado es lo normal, no una avería.
+#
+# El frontend NO se despliega aquí: lo publica el repo
+# Panditax727/Cacha-el-Precio-Frontend como Worker de Cloudflare (la
+# integración Git de Cloudflare despliega cada push a SU main).
+#
+# NO usa credenciales de AWS (las del Learner Lab vencen cada ~4 h): entra por
+# SSH, igual que tools/desplegar.sh. Terraform sigue siendo manual (tf.sh).
+#
+# Environment "produccion":
+#   secrets    EC2_HOST                IP elástica de la EC2
+#              EC2_SSH_KEY             contenido de labsuser.pem
+# ---------------------------------------------------------------------------
+name: CD
+
+on:
+  push:
+    # Solo main: main es producción. development es la rama de pruebas.
+    branches: [main]
+  # Botón "Run workflow" (aparece cuando este archivo ya está en main).
+  workflow_dispatch:
+
+# Dos despliegues a la vez pisarían la misma máquina: el segundo espera.
+concurrency:
+  group: cd-produccion
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRO: ghcr.io/martinnnn-ops/cacha-el-precio
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  imagenes:
+    name: Imagen ${{ matrix.nombre }}
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write          # subir a GHCR
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - nombre: gateway
+            contexto: .
+            dockerfile: gateway/Dockerfile
+          - nombre: product-service
+            contexto: .
+            dockerfile: product-service/Dockerfile
+          - nombre: notification-service
+            contexto: .
+            dockerfile: notification-service/Dockerfile
+          - nombre: scraper
+            contexto: scraper-service
+            dockerfile: scraper-service/Dockerfile
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Etiqueta = hash completo del commit: así se sabe exactamente qué corre
+      # en la EC2. "latest" es solo una comodidad para mirar.
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.contexto }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRO }}/${{ matrix.nombre }}:${{ github.sha }}
+            ${{ env.REGISTRO }}/${{ matrix.nombre }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          # Caché de capas en GitHub: si solo cambia el código, no reinstala todo.
+          cache-from: type=gha,scope=${{ matrix.nombre }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.nombre }}
+
+  desplegar:
+    name: Desplegar en la EC2
+    needs: imagenes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: produccion
+      url: https://api.cacha-el-precio.com/health
+    permissions:
+      contents: read
+      packages: read           # el token que usa la EC2 para bajar de GHCR
+    steps:
+      - uses: actions/checkout@v5
+
+      # ¿Hay a dónde desplegar? Sin secrets o con la EC2 apagada, se avisa y
+      # se termina en verde: no es un error, es que el lab no está corriendo.
+      - name: ¿AWS prendido?
+        id: aws
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          if [[ -z "$EC2_HOST" || -z "$EC2_SSH_KEY" ]]; then
+            echo "::warning::Faltan los secrets EC2_HOST / EC2_SSH_KEY: despliegue omitido."
+            echo "prendido=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          install -m 600 /dev/null ~/llave.pem
+          printf '%s\n' "$EC2_SSH_KEY" > ~/llave.pem
+          if timeout 20 ssh -i ~/llave.pem -o StrictHostKeyChecking=accept-new \
+               -o ConnectTimeout=10 -o BatchMode=yes "ec2-user@$EC2_HOST" true 2>/dev/null; then
+            echo "prendido=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::AWS apagado (la EC2 no responde por SSH): despliegue omitido."
+            echo "prendido=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Login a GHCR en la EC2, en una llamada aparte para que el token no viaje
+      # dentro del script. El token de GitHub vence al terminar este job.
+      - name: Login de la EC2 a GHCR
+        if: steps.aws.outputs.prendido == 'true'
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$TOKEN" | ssh -i ~/llave.pem -o BatchMode=yes "ec2-user@$EC2_HOST" \
+            "docker login ghcr.io -u ${{ github.actor }} --password-stdin" >/dev/null
+          echo "  login a GHCR hecho"
+
+      - name: Desplegar ${{ github.sha }}
+        if: steps.aws.outputs.prendido == 'true'
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh -i ~/llave.pem -o BatchMode=yes "ec2-user@$EC2_HOST" \
+            "bash -s -- ${{ github.sha }}" < tools/cd-remoto.sh
+
+      # Siempre: que no quede ni la llave en el runner ni el token en la EC2.
+      - name: Limpiar
+        if: always() && steps.aws.outputs.prendido == 'true'
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh -i ~/llave.pem -o BatchMode=yes "ec2-user@$EC2_HOST" "docker logout ghcr.io" >/dev/null || true
+          rm -f ~/llave.pem
+
