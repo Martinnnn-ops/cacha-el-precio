@@ -12,6 +12,11 @@
       "name": "notificaciones-dlq",
       "description": "Avisos de cambios de oferta que notification-service no pudo enviar.",
       "messageRetentionSeconds": 1209600
+    },
+    {
+      "name": "precios-dlq",
+      "description": "Registros de Kinesis cep-precios que el lector de precios no pudo procesar (JSON roto o precio invalido). Kinesis no trae DLQ propia: el lector de product-service copia aqui el registro con el motivo. Ver docs/PLAN-EFT.md seccion 6 y ADR-035.",
+      "messageRetentionSeconds": 1209600
     }
   ],
   "queues": [

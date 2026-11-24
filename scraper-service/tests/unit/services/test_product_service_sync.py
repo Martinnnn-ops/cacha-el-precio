@@ -17,6 +17,16 @@ class ClienteProductServiceFalso:
         return payload
 
 
+class StreamFalso:
+    """Emula el productor de Kinesis: anota cada precio publicado."""
+
+    def __init__(self):
+        self.publicados = []
+
+    def publicar(self, producto):
+        self.publicados.append(producto)
+
+
 def producto(
     nombre="Poleron",
     precio=79990,
@@ -152,6 +162,35 @@ def test_no_sincroniza_prendas_infantiles():
     sync = ProductServiceSync(cliente)
     assert sync.sincronizar(producto(nombre="Polera niño")) is False
     assert cliente.sincronizados == 0
+
+
+def test_manda_el_precio_al_stream_cuando_acepta_la_prenda():
+    cliente = ClienteProductServiceFalso()
+    stream = StreamFalso()
+    sync = ProductServiceSync(cliente, stream=stream)
+
+    sync.sincronizar(producto(nombre="Poleron CK", precio=79990))
+
+    assert cliente.sincronizados == 1
+    assert len(stream.publicados) == 1
+    assert stream.publicados[0].price == 79990
+
+
+def test_no_manda_al_stream_las_prendas_filtradas():
+    cliente = ClienteProductServiceFalso()
+    stream = StreamFalso()
+    sync = ProductServiceSync(cliente, stream=stream)
+
+    assert sync.sincronizar(producto(nombre="Polera niño")) is False
+    assert stream.publicados == []
+
+
+def test_sin_stream_sincroniza_igual():
+    cliente = ClienteProductServiceFalso()
+    sync = ProductServiceSync(cliente)  # sin stream
+
+    assert sync.sincronizar(producto()) is True
+    assert cliente.sincronizados == 1
 
 
 def test_genericas_agrupa_marca_sin_fusionar_productos_distintos():

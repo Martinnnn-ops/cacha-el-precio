@@ -130,14 +130,42 @@ def construir_servicio(cfg: Settings, repo) -> ScraperService:
     )
 
 
+def construir_stream_precios(cfg: Settings):
+    """
+    Productor del stream de precios (Kinesis), o None si no esta configurado.
+    Mismo patron que el S3 de imagenes: solo se arma si hace falta, y necesita
+    boto3 (el extra `streaming`, que trae el mismo boto3 que `s3`).
+    """
+    if not cfg.kinesis_precios_stream:
+        return None
+    try:
+        import boto3  # noqa: F401  (solo para avisar si falta antes de barrer)
+    except ModuleNotFoundError:
+        log.error(
+            'KINESIS_PRECIOS_STREAM esta definido pero falta boto3. Instala el extra: '
+            'pip install -e ".[streaming]"'
+        )
+        raise SystemExit(2) from None
+
+    from scraper.infrastructure.streaming.kinesis_precios import PrecioStreamKinesis
+
+    log.info("Stream de precios: %s", cfg.kinesis_precios_stream)
+    return PrecioStreamKinesis(cfg.kinesis_precios_stream, region=cfg.region_kinesis())
+
+
 def construir_sync(cfg: Settings):
     """
     Donde se publican las prendas. El barrido no lo sabe: ProductServiceSync
     recibe un cliente con sincronizar_producto() y no le importa cual es.
       · MODO_PUBLICACION=cola -> POST /ingesta -> SQS (EP3, flujo 1)
       · MODO_PUBLICACION=http -> POST /api/products (lo de siempre)
+
+    Si hay stream de precios configurado, se le pasa para que ademas mande cada
+    precio a Kinesis (EA3/EFT), sin que el modo de publicacion cambie.
     """
     from scraper.services.product_service_sync import ProductServiceSync
+
+    stream = construir_stream_precios(cfg)
 
     if cfg.modo_publicacion == "cola":
         faltan = cfg.faltantes_para_cola()
@@ -163,14 +191,16 @@ def construir_sync(cfg: Settings):
         )
         log.info("Publicacion por la cola: %s", url_ingesta)
         return ProductServiceSync(
-            IngestaColaClient(url_ingesta, token, http, reintentos=cfg.http_max_retries)
+            IngestaColaClient(url_ingesta, token, http, reintentos=cfg.http_max_retries),
+            stream=stream,
         )
 
     if cfg.product_service_url:
         from scraper.infrastructure.http.product_service_client import ProductServiceClient
 
         return ProductServiceSync(
-            ProductServiceClient(cfg.product_service_url, timeout=cfg.http_timeout)
+            ProductServiceClient(cfg.product_service_url, timeout=cfg.http_timeout),
+            stream=stream,
         )
     return None
 

@@ -12,6 +12,12 @@ public class ProductDbContext : DbContext
     public DbSet<ProductOfferEntity> ProductOffers { get; set; }
     public DbSet<PersonalItem> PersonalItems { get; set; }
 
+    // Stream de precios (EA3/EFT): el precio habitual, el checkpoint del lector de
+    // Kinesis y los eventId ya sumados (idempotencia). Ver docs/PLAN-EFT.md §5.
+    public DbSet<EstadisticaPrecio> EstadisticasPrecio { get; set; }
+    public DbSet<CheckpointStream> CheckpointsStream { get; set; }
+    public DbSet<EventoPrecioProcesado> EventosPrecioProcesados { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -59,5 +65,23 @@ public class ProductDbContext : DbContext
         offer.Property(o => o.ProductImage).HasMaxLength(1000);
         offer.Property(o => o.Active).IsRequired().HasDefaultValue(true);
         offer.Property(o => o.UpdatedAt).IsRequired();
+
+        var estadistica = modelBuilder.Entity<EstadisticaPrecio>();
+        estadistica.HasKey(e => new { e.Store, e.ExternalId });
+        estadistica.Property(e => e.Store).HasMaxLength(60);
+        estadistica.Property(e => e.ExternalId).HasMaxLength(120);
+        // Precios en pesos (enteros): la suma de cuadrados no lleva decimales.
+        estadistica.Property(e => e.SumaCuadrados).HasPrecision(29, 0);
+
+        var checkpoint = modelBuilder.Entity<CheckpointStream>();
+        checkpoint.HasKey(c => c.StreamShard);
+        checkpoint.Property(c => c.StreamShard).HasMaxLength(128);
+        checkpoint.Property(c => c.NumeroSecuencia).IsRequired().HasMaxLength(128);
+
+        var procesado = modelBuilder.Entity<EventoPrecioProcesado>();
+        procesado.HasKey(e => e.EventId);
+        procesado.Property(e => e.EventId).HasMaxLength(64);
+        // Se consulta por fecha para podar los viejos.
+        procesado.HasIndex(e => e.ProcesadoEn);
     }
 }

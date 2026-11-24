@@ -93,6 +93,17 @@ class Settings(BaseSettings):
         }
         return [nombre for nombre, valor in requeridas.items() if not valor]
 
+    # --- Stream de precios (EA3/EFT, Kinesis) ---
+    # Con el nombre del stream definido, cada precio capturado se manda tambien a
+    # Kinesis (cep-precios) para que product-service calcule el precio habitual.
+    # Sin el, el barrido corre igual y no manda nada. Ver docs/PLAN-EFT.md §5.
+    kinesis_precios_stream: str | None = None
+    kinesis_region: str | None = None
+
+    def region_kinesis(self) -> str:
+        """La de KINESIS_REGION, o la de S3/AWS si no se fija aparte."""
+        return self.kinesis_region or self.aws_region
+
     # --- almacenamiento S3 ---
     aws_region: str = "us-east-1"
     aws_s3_bucket: str | None = None

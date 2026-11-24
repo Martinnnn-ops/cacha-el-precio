@@ -8,7 +8,14 @@
     <Version>0.1.0</Version>
   </PropertyGroup>
 
+  <!-- Deja que las pruebas vean los seams internos de LectorPrecios (Dormir,
+       EsperasReintento), para no inflar la API pública solo para probar. -->
   <ItemGroup>
+    <InternalsVisibleTo Include="Product-Service.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.Kinesis" Version="4.1.1" />
     <PackageReference Include="AWSSDK.SimpleNotificationService" Version="4.0.100.19" />
     <PackageReference Include="AWSSDK.SQS" Version="4.0.100.18" />
     <PackageReference Include="Asp.Versioning.Mvc" Version="10.2.1" />
