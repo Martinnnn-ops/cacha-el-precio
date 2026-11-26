@@ -2,6 +2,21 @@
 
 Última actualización: 26-11-2026.
 
+## 26-11 (noche) · La portada dice «catálogo en pausa» con la API apagada — Panditax
+
+Rama `feature/portada-catalogo-en-pausa`. Con la EC2 apagada, que es casi siempre, la portada
+mostraba una franja roja «Estamos con problemas» que empujaba la página (CLS 0.14 en `www`),
+«0 prendas seguidas hoy» y tres secciones vacías: parecía un sitio abandonado, y así lo ven el
+evaluador y AdSense. Ahora, si la API falla y no hay **ninguna** prenda, `InicioView` muestra
+«Catálogo en pausa · Los precios vuelven pronto» en el hueco de «Lo más reciente», con botón de
+reintentar, y oculta «Lo más visto» y «Categorías». Si hay prendas de antes, sigue el aviso de
+siempre. El aviso mide 358 px, lo mismo que las siluetas (medido a 375 y 1024 de ancho): al
+pasar de una a otro, lo de abajo se movió 0 px. CLS 0.002 con `--mode fallo`.
+
+El humo tenía comprobaciones del diseño anterior («Lo más visto sigue ahí»); se cambiaron por
+las del nuevo, conservando la idea: la página no se reemplaza por un error y siempre se puede
+reintentar. Queda: el catálogo (`/comparador`) y la ficha siguen con su aviso de error normal.
+
 ## 26-11 (noche) · El front sale desde `development` al tiro — Panditax
 
 Rama `feature/aviso-frontend-development`. El PR #57 se mergeó a las 06:49 UTC y `www` no
