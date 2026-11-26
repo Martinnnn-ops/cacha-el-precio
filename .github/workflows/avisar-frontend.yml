@@ -1,10 +1,13 @@
-# Qué hace: cuando entra un commit a main que toca frontend/, le avisa
-# a Panditax727/Cacha-el-Precio-Frontend para que sincronice y despliegue.
-# La copia, el build y el deploy los hace el workflow de ESE repo.
+# Qué hace: cuando entra un commit a development o a main que toca frontend/,
+# le avisa a Panditax727/Cacha-el-Precio-Frontend para que sincronice y
+# despliegue. La copia, el build y el deploy los hace el workflow de ESE repo.
 #
-# Solo main: main es producción. development es la rama de pruebas y lo que
-# entra ahí no debe llegar al sitio publicado (el repo del frontend también
-# tiene que copiar desde main: MONO_BRANCH: main).
+# Por qué también development (26-11): el repo del frontend copia desde
+# development (MONO_BRANCH: development), así que avisar solo desde main dejaba
+# cada merge esperando la copia programada «cada 15 min», que GitHub en la
+# práctica corría cada varias horas. Hasta la EFT, lo que entra a development
+# llega a www en 1–2 minutos. Cuando el repo del frontend pase a copiar desde
+# main (MONO_BRANCH: main), se saca development de aquí: ver docs/CICD.md.
 #
 # Secret necesario en ESTE repo (Settings → Secrets and variables → Actions):
 #   FRONTEND_REPO_TOKEN   token fino de Panditax727, solo para el repo del frontend
@@ -13,7 +16,7 @@ name: Avisar al repo del frontend
 
 on:
   push:
-    branches: [main]
+    branches: [development, main]
     paths:
       - "frontend/**"
   workflow_dispatch:
