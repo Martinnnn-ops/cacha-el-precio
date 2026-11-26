@@ -8,5 +8,6 @@ Disallow: /entrar
 Disallow: /registro
 Disallow: /auth/
 Disallow: /mi-armario
+Disallow: /admin/
 
-Sitemap: https://cacha-el-precio.com/sitemap.xml
+Sitemap: https://www.cacha-el-precio.com/sitemap.xml

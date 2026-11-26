@@ -84,6 +84,27 @@ router.afterEach((to) => {
   document.title = to.meta.titulo
     ? `${to.meta.titulo} · ${BASE_TITULO}`
     : BASE_TITULO
+
+  actualizarCanonica(to.path)
 })
+
+// Dirección buena del sitio: con www, que es adonde redirige la raíz. Un
+// canonical que apunta a una URL que redirige le da a Google dos señales
+// contradictorias.
+const SITIO = (import.meta.env.VITE_SITE_URL ?? 'https://www.cacha-el-precio.com').replace(/\/+$/, '')
+
+// index.html trae un canonical fijo a la portada. Sin esto, TODAS las páginas
+// (catálogo, fichas, preguntas) le decían a Google que eran la portada, y un
+// buscador puede dejar de indexarlas por duplicadas.
+//
+// Va solo el path, sin la query: /comparador?categoria=poleras es la misma
+// página que /comparador para un buscador. Se escribe con setAttribute, así que
+// lo que venga en la URL no puede inyectar nada.
+function actualizarCanonica(path) {
+  const url = `${SITIO}${path}`
+
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', url)
+  document.querySelector('meta[property="og:url"]')?.setAttribute('content', url)
+}
 
 export default router
