@@ -219,7 +219,7 @@ viendo el sitio entero.
 | Situación | Qué se ve |
 |---|---|
 | Cargando | Siluetas con la forma real de las tarjetas (`ProductoCardSkeleton`), así el contenido cae en el mismo sitio y no hay salto |
-| Falla y no hay datos | Titular, títulos de sección, categorías, pie… y la franja de aviso |
+| Falla y no hay datos | En la portada, **«Catálogo en pausa»** en el hueco de «Lo más reciente», con el mismo alto que sus siluetas (nada salta), y botón de reintentar. Se ocultan «Lo más visto» y «Categorías», y no se dice «0 prendas». Siguen el titular, los outfits y el pie. Es lo que se ve con la EC2 apagada, o sea casi siempre |
 | Falla y **sí** hay datos | Los precios siguen visibles, con «no pudimos actualizar, son de hace 10 minutos» |
 | Sin conexión | Aviso propio: reintentar no sirve de nada hasta que vuelva la red |
 
