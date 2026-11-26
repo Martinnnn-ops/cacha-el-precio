@@ -29,3 +29,12 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'sha256-PZspZoFt60dLQhhDNjUDisIP29bhnloMxtZP5lc2Xco=' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.gstatic.com https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.execute-api.us-east-1.amazonaws.com https://*.amazoncognito.com https://api.cacha-el-precio.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com; object-src 'none'; base-uri 'self'; form-action 'self' https://*.amazoncognito.com; frame-ancestors 'none'; upgrade-insecure-requests
+
+# Lo de /assets/ lleva un hash en el nombre (index-B5E3DSgU.js): si cambia el
+# contenido, cambia el nombre. Por eso se puede guardar un año sin preguntar.
+# Sin esta regla Cloudflare manda max-age=0, must-revalidate, y cada visita
+# vuelve a preguntar por los ~25 archivos de la portada aunque no hayan cambiado.
+# index.html NO entra aquí: es el que apunta a los nombres nuevos y tiene que
+# revalidarse siempre. Las dos reglas se suman: /assets/* también lleva las de /*.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
