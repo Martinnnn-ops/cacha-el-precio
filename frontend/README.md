@@ -390,7 +390,8 @@ Las **cabeceras de seguridad** (HSTS, `X-Content-Type-Options`, `X-Frame-Options
 `Referrer-Policy`, `Permissions-Policy` y la CSP) van en `public/_headers`, que el
 Worker de Cloudflare aplica a cada respuesta. La CSP está en modo *Report-Only*
 hasta revisar la consola; el archivo explica cada origen y el hash del script
-inline de `index.html`, que hay que recalcular si ese script cambia.
+inline de `index.html`, que hay que recalcular si ese script cambia. El mismo
+archivo le da a `/assets/*` caché de un año (`immutable`): esos nombres llevan hash.
 
 Lo que **no** cubre y hay que hacer en el servidor: CORS, límite de peticiones y
 la autorización real de cada endpoint.

@@ -35,7 +35,7 @@ Stack: **.NET 10 / ASP.NET Core** para `gateway` (BFF), `product-service` y `not
 | Qué evalúa cada entrega, el vocabulario para el informe y el guion de la demo | `docs/EVALUACIONES.md` | 163 líneas |
 | Una decisión ya tomada, y el índice de todas | `docs/adr/README.md` y `docs/adr/NNN-*.md` | 1 pág c/u |
 | Cómo cambió el proyecto desde agosto y por qué (para la defensa) | `docs/HISTORIA.md` | 134 líneas |
-| Qué se hizo un día concreto | `docs/BITACORA.md` (busca por fecha; no la leas entera) | 1712 líneas |
+| Qué se hizo un día concreto | `docs/BITACORA.md` (busca por fecha; no la leas entera) | 1763 líneas |
 | Presentar el proyecto a alguien de afuera | `README.md` | 250 líneas |
 
 Y el README de cada módulo. Todos siguen la misma forma: qué es, «En 10 segundos», dónde está en el
@@ -48,7 +48,7 @@ sistema (diagrama), cómo funciona por dentro, rutas, carpetas, configuración, 
 | El catálogo: el modelo producto-ofertas, el flujo 1 (consumir) y el flujo 2 (publicar), el armario | `product-service/README.md` | 170 líneas |
 | Los avisos por correo: el consumidor, la idempotencia, los errores y la bandeja | `notification-service/README.md` | 133 líneas |
 | El scraper: capas, un barrido paso a paso, las tiendas y cómo se agrega una | `scraper-service/README.md` | 183 líneas |
-| **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 571 líneas |
+| **El frontend Vue: estructura por módulos, seguridad, pruebas de humo, AdSense** | `frontend/README.md` | 572 líneas |
 | **Terraform: qué reemplazó, `tools/tf.sh`, fases, barreras, `import` y reglas del estado** | `infra/terraform/README.md` | 235 líneas |
 | El capturador viejo de Sparta, que tiene el historial más largo | `tools/scraper-rapido/README.md` | 83 líneas |
 

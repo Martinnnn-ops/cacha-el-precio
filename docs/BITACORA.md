@@ -48,6 +48,11 @@ script inline de `index.html` y sus comprobaciones en `humo.mjs`. Como el script
 recalculó su hash en la CSP de `_headers` (si no, la CSP lo marcaría al pasar a modo bloqueo).
 Probado con el navegador en modo oscuro: sin preferencia sale claro, y con «sistema» sale oscuro.
 
+Al revisar antes del PR: `router.isReady()` se rechaza si la primera navegación falla (se corta
+la red bajando la vista), y la app no se montaba nunca: página en blanco en vez de la pantalla de
+error. Ahora monta igual. Se confirmó que ningún guard espera a la API, así que montar después de
+`isReady()` solo espera el trozo de la vista.
+
 ## 23-11 (noche) · Google funcionando en `www` y `tf.sh` más resistente — Martín
 
 Rama `feature/cicd`.
