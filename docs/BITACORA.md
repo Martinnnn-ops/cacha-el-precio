@@ -1,6 +1,52 @@
 # Bitácora del proyecto
 
-Última actualización: 23-11-2026.
+Última actualización: 26-11-2026.
+
+## 26-11 · Rendimiento del front: menos fuentes y la foto de la ficha primero — Panditax
+
+Rama `feature/rendimiento-front`. Antes se revisó una lista genérica de rendimiento contra el
+código. Casi todo ya estaba: esqueletos, `encode zstd gzip` en Caddy, caché del catálogo en el
+store, rutas con `import()`, `loading="lazy"`, `AsNoTracking`, índices y timeouts. Lo demás no
+aplica (no hay IA, las imágenes son de las tiendas, una sola EC2). Quedaron dos cambios chicos:
+
+- **Google Fonts pasa de 11 archivos a 7.** Se contó qué familia, peso y estilo usa el CSS.
+  Fraunces en cursiva no lo usa nadie (el «°» del logo va con `font-style: normal`), y Plex Mono
+  500 y Plex Sans 500 tampoco. Se comprobó en el navegador que todo lo que se pinta queda cargado.
+  Fraunces 400 y Plex Mono 700 se usan y **nunca se cargaron** (tampoco antes): el navegador los
+  simula. Queda anotado por si alguien nota un negrito raro.
+- **La foto de la ficha lleva `fetchpriority="high"`**: es lo más grande arriba de la página.
+
+La rama sale del `development` del 26-11 (con el CI/CD del PR #55). `npm run build` pasa y
+`npm run humo` da 0 fallas. Falta pasarlo al repo de Panditax con el `subtree` y probarlo en
+Slow 4G desde las DevTools.
+
+### Auditoría de `www` y tres arreglos
+
+Se auditó el sitio publicado (con el backend apagado: la API da 503, lo normal fuera de las
+sesiones del Academy). Bien: HTTP/3, Brotli, ~100 KB propios, encabezados de seguridad, móvil
+sin desbordes. Se arregló en la misma rama:
+
+| Qué | Medido en `www` | Arreglo |
+|---|---|---|
+| La portada **saltaba al cargar** | CLS 0.84 (0.70 de un solo golpe). Vue montaba antes de que llegara la vista, que se carga aparte: el pie y el anuncio se pintaban arriba y bajaban | `main.js` monta tras `router.isReady()`. En local, CLS 0.011 |
+| `/assets/*` **sin caché** | `max-age=0, must-revalidate` en archivos con hash | regla `/assets/*` con `max-age=31536000, immutable` en `_headers` |
+| **Canonical** a la raíz, que redirige a `www`, y **el mismo para todas las páginas** | todas decían ser la portada | `www` en `index.html`, sitemap y `robots.txt`; el router actualiza canonical y `og:url` por ruta |
+| El sitemap listaba **`/admin/mensajeria`** | — | fuera las rutas con `requiereSesion` o `soloAdmin`; `robots.txt` bloquea `/admin/` |
+
+Quedan abiertos (en el estado «API caída», que es el que más se ve): el aviso de error empuja
+la página hacia abajo (CLS 0.14) y la portada dice «Todavía no hay prendas nuevas» y «0 prendas
+seguidas hoy» como si estuviera vacía. También: rutas inexistentes con 307 a `/` en vez de la
+página 404, sin `og:image`, y la CSP report-only con avisos de Cloudflare Insights y AdSense.
+La regla de caché hay que confirmarla con `curl -I` después de desplegar.
+
+### El tema vuelve a arrancar en claro
+
+Decisión de Panditax: el sitio sale **claro siempre**, aunque el dispositivo esté en oscuro.
+Revierte el «tema por sistema» del rework visual (`9c12d2c`). «Oscuro» y «Sistema» siguen en el
+botón para quien los elija, y se guardan. Cambian `ui.store.js` (`POR_DEFECTO = 'claro'`), el
+script inline de `index.html` y sus comprobaciones en `humo.mjs`. Como el script cambió, se
+recalculó su hash en la CSP de `_headers` (si no, la CSP lo marcaría al pasar a modo bloqueo).
+Probado con el navegador en modo oscuro: sin preferencia sale claro, y con «sistema» sale oscuro.
 
 ## 23-11 (noche) · Google funcionando en `www` y `tf.sh` más resistente — Martín
 
