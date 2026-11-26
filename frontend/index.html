@@ -23,8 +23,10 @@
          cada carga, y encima con la transición de `body` lo ve desvanecerse
          despacio. Va aquí, en línea y sin depender de nada, porque tiene que
          ejecutarse antes de que el navegador pinte.
-         El tema por defecto es «sistema»: sin preferencia guardada, la página
-         sigue el modo del dispositivo. «claro» y «oscuro» fijan uno u otro.
+         El tema por defecto es «claro»: sin preferencia guardada, la página
+         sale clara aunque el dispositivo esté en oscuro. «oscuro» lo fija y
+         «sistema» sigue al dispositivo, solo si se eligieron a propósito.
+         ⚠️ Si editas este script, recalcula su hash en public/_headers (CSP).
          Duplica a propósito la lógica de shared/stores/ui.store.js; el humo
          comprueba que las dos no se separen. -->
     <script>
@@ -35,13 +37,16 @@
         } catch (e) {
           /* modo privado o cookies bloqueadas */
         }
-        if (t !== 'claro' && t !== 'oscuro') {
-          // Sin preferencia, con «sistema» o con un valor raro: manda el dispositivo.
+        if (t === 'sistema') {
+          // Solo si la persona eligió «sistema»: manda el dispositivo.
           t =
             window.matchMedia &&
             window.matchMedia('(prefers-color-scheme: dark)').matches
               ? 'oscuro'
               : 'claro'
+        } else if (t !== 'oscuro') {
+          // Sin preferencia o con un valor raro: claro.
+          t = 'claro'
         }
         document.documentElement.dataset.tema = t
         var barra = document.querySelector('meta[name="theme-color"]')
