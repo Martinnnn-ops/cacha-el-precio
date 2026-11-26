@@ -74,10 +74,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Va aquí y no como @import en base.css: así la descarga arranca en
-         paralelo con el resto de la página en vez de esperar al CSS. -->
+         paralelo con el resto de la página en vez de esperar al CSS.
+         Solo los pesos que el CSS usa de verdad (7 en vez de 11): Fraunces
+         500/600/700 sin cursiva (el «°» del logo va en `font-style: normal`),
+         Plex Mono 400/600 y Plex Sans 400/600. Si agregas un peso o una
+         cursiva en el CSS, agrégalo también aquí o el navegador lo simula. -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap"
     />
   </head>
 

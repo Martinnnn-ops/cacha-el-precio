@@ -241,6 +241,8 @@ const subtitulo = computed(() =>
               :src="producto.imagen"
               :alt="producto.nombre"
               class="detalle__foto"
+              fetchpriority="high"
+              decoding="async"
             />
             <PrendaArt v-else :alto="220" :fondo="false" />
           </div>
