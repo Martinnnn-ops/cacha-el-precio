@@ -2,6 +2,21 @@
 
 Última actualización: 26-11-2026.
 
+## 26-11 (noche) · El front sale desde `development` al tiro — Panditax
+
+Rama `feature/aviso-frontend-development`. El PR #57 se mergeó a las 06:49 UTC y `www` no
+cambió: el repo del frontend copia desde `development`, pero el monorepo le avisaba solo desde
+`main`, así que quedaba esperando la copia programada «cada 15 min», que GitHub corría cada
+varias horas (13:28, 22:38, 04:21…). Se lanzó a mano (`gh workflow run`) y quedó publicado a las
+08:57. Verificado en `www`: tema claro con el dispositivo en oscuro, CLS 0, `/assets` con
+`immutable`, el hash de la CSP calza, canonical y sitemap en `www` y sin `/admin`.
+
+Arreglo: `avisar-frontend.yml` avisa también desde `development`. Cambia una decisión del
+ADR-034 (el aviso era «solo desde `main`»), anotada como actualización del 26-11 en el mismo ADR.
+Se eligió esto y no pasar el repo del frontend a copiar desde `main` porque `main` va más de 300
+commits atrás: publicaría un front viejo, sin el login con Google. Queda: llevar `development` a
+`main` antes de la EFT y, después, volver al diseño original (las dos puntas a `main` a la vez).
+
 ## 26-11 · Rendimiento del front: menos fuentes y la foto de la ficha primero — Panditax
 
 Rama `feature/rendimiento-front`. Antes se revisó una lista genérica de rendimiento contra el

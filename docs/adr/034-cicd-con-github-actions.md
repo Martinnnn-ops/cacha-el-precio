@@ -2,7 +2,9 @@
 
 Fecha: 19-11-2026 · Estado: **aceptado**. Probado el 19-11 en la cuenta `731705830984`: el CD
 desplegó `7cb1f0e` y `www` quedó llamando al API Gateway y al Cognito de esa cuenta. Cómo se usa
-día a día: [CICD](../CICD.md).
+día a día: [CICD](../CICD.md). **Modificado el 26-11-2026**: el aviso al front sale también desde
+`development` ([ver al final](#actualización-del-26-11-2026-el-front-sale-desde-development)).
+
 
 ## Contexto
 
@@ -72,6 +74,26 @@ despliega **por SSH** con *rollback*; y un **aviso** al repo del frontend, tambi
   exista da acceso a la EC2.
 - Las imágenes de GHCR son públicas. No llevan secretos, y así la EC2 las podría bajar sin token.
 - Terraform sigue siendo manual (`tools/tf.sh`), porque el estado vive en el laptop.
+
+## Actualización del 26-11-2026: el front sale desde `development`
+
+**Contexto.** El repo de Panditax copia desde `development` (`MONO_BRANCH`), pero el aviso salía
+solo desde `main`. Cada merge a `development` quedaba esperando la copia programada «cada 15 min»,
+que GitHub corría cada varias horas: el PR #57 esperó más de dos horas y hubo que lanzar la copia a
+mano. Pasar a `main` como estaba previsto no era opción todavía: `main` va más de 300 commits
+atrás, y copiar desde ahí publicaría un front viejo, sin el login con Google.
+
+**Decisión.** Hasta la EFT, `avisar-frontend.yml` avisa también con cada push a `development` que
+toca `frontend/`. El backend no cambia: el CD sigue saliendo solo de `main`.
+
+**Consecuencias.**
+- Lo que entra a `development` llega a `www` en 1–2 minutos, sin esperar el cron.
+- 🔴 **Para el front, `development` es producción.** Un PR mergeado sin revisar sale al sitio al
+  tiro. Por eso importa más que nunca que nadie mergee su propio PR.
+- Front y backend salen de ramas distintas: `www` puede llevar un front que espera algo que el
+  backend de `main` todavía no tiene. Se corrige al llevar `development` a `main` antes de la EFT.
+- **Para volver al diseño original:** `MONO_BRANCH: main` en el repo del frontend **y** sacar
+  `development` de `avisar-frontend.yml`, en el mismo momento.
 
 ## Ver también
 
