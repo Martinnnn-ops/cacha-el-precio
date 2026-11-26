@@ -13,4 +13,11 @@ const app = createApp(App).use(pinia).use(router)
 // golpe al llegar la vista. En www eso daba un CLS de 0.7 en la portada (lo
 // recomendable es menos de 0.1). Esperar cuesta lo que tarda el trozo de la
 // vista, que igual había que bajar antes de mostrar algo útil.
-router.isReady().then(() => app.mount('#app'))
+//
+// Se monta también si la primera navegación falla (se corta la red mientras
+// baja la vista, por ejemplo): isReady() se rechaza, y sin el catch la app no
+// se montaría nunca y quedaría la página en blanco, sin la pantalla de error.
+router
+  .isReady()
+  .catch(() => {})
+  .then(() => app.mount('#app'))
