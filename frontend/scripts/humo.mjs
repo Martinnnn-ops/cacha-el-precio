@@ -1448,13 +1448,27 @@ try {
     })
 
     check('el titular sigue en pie sin datos', rota.includes('hero__titulo'))
-    for (const seccion of ['Lo más reciente', 'Lo más visto', 'Categorías populares']) {
+    // Lo que no vive de datos sigue; lo que sí, se oculta tras el aviso de
+    // pausa (26-11): tres «aún no hay nada» seguidos parecían un sitio vacío.
+    for (const seccion of ['Lo más reciente', 'Vístete completo por menos']) {
       check(`  la sección "${seccion}" sigue ahí`, rota.includes(seccion))
     }
     check('  el pie sigue ahí', rota.includes('pie__interior'))
     check(
-      '  y se avisa con salida para reintentar',
-      rota.includes('role="status"') && rota.includes('Reintentar'),
+      '  dice que el catálogo está en pausa, con salida para reintentar',
+      rota.includes('Catálogo en pausa') &&
+        rota.includes('role="status"') &&
+        rota.includes('Volver a intentar'),
+    )
+    // Sin los comentarios HTML: el render de desarrollo los conserva, y uno
+    // que cite el texto viejo haría fallar esto sin que se vea en pantalla.
+    const visible = rota.replace(/<!--[\s\S]*?-->/g, '')
+    check(
+      '  y no lo cuenta como vacío («0 prendas», secciones vacías)',
+      !visible.includes('0 prendas seguidas') &&
+        !visible.includes('Todavía no hay prendas nuevas') &&
+        !visible.includes('Lo más visto') &&
+        !visible.includes('Categorías populares'),
     )
     check('  sin tapar la página con un error a pantalla completa', !rota.includes('aviso__titulo'))
 
