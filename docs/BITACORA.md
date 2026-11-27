@@ -1,6 +1,15 @@
 # Bitácora del proyecto
 
-Última actualización: 26-11-2026.
+Última actualización: 27-11-2026.
+
+## 27-11 · El front vuelve a salir solo desde `main` — Martín
+
+Rama `chore/front-desde-main`. Se deshace el atajo del 26-11 (PR #58): `avisar-frontend.yml`
+avisa solo desde `main`, y el repo del frontend pasa a copiar desde `main` (`MONO_BRANCH: main`).
+Así `main` vuelve a ser producción para todo y `development` vuelve a ser la rama de pruebas: un
+PR mergeado sin revisar ya no llega a `www`. Antes se lleva `development` a `main`, que iba 334
+commits atrás, para no publicar un front de agosto. Anotado como actualización del 27-11 en el
+ADR-034.
 
 ## 26-11 (noche) · La portada dice «catálogo en pausa» con la API apagada — Panditax
 

@@ -4,16 +4,15 @@
 > corre cada uno, qué hace, qué secretos usa y qué hacer cuando algo queda en rojo.
 > **Para quién.** Quien abre un PR o mergea a `main`, y la defensa («¿cómo llega un cambio a
 > producción?»). La decisión y sus alternativas están en el [ADR-034](adr/034-cicd-con-github-actions.md).
-> **Última revisión:** 26-11-2026.
+> **Última revisión:** 27-11-2026.
 
 > 📍 **En 10 segundos:** cada PR pasa por el **CI** (.NET, scraper, front y dependencias
 > vulnerables). **Solo `main` es producción:** un merge a `main` arma las imágenes, las sube a
 > **GHCR** y las despliega por SSH en la EC2, con *rollback* si `/health` no responde. El frontend
-> no lo publica este repo: un merge a **`development`** (o a `main`) que toca `frontend/` le
-> **avisa** al repo de Panditax, que copia `frontend/` de `development`, compila y hace push a su
-> `main`, y **Cloudflare** publica el Worker solo, en 1–2 minutos. Hasta la EFT, **el front sale
-> desde `development`** (abajo). Con AWS apagado, el backend se salta sin fallar y el sitio sigue
-> arriba.
+> no lo publica este repo: un merge a **`main`** que toca `frontend/` le **avisa** al repo de
+> Panditax, que copia `frontend/` de `main`, compila y hace push a su `main`, y **Cloudflare**
+> publica el Worker solo, en 1–2 minutos. Lo que entra a `development` **no** llega a `www`. Con
+> AWS apagado, el backend se salta sin fallar y el sitio sigue arriba.
 
 **Leyenda:** ✅ funciona · 🟡 a medias · ⬜ falta · ⛔ bloqueado · 🔎 por confirmar
 
@@ -26,8 +25,7 @@ flowchart LR
     PR["PR a development<br/>o a main"] --> CI["CI<br/>4 trabajos"]
     D["push a development"] --> CI
     M["merge a main"] --> CD["CD"]
-    D -->|"si cambió frontend/"| AV["avisar-frontend"]
-    M -->|"si cambió frontend/"| AV
+    M -->|"si cambió frontend/"| AV["avisar-frontend"]
 
     CD --> CI2["CI"] --> IMG["4 imágenes<br/>→ GHCR"] --> Q{"¿EC2<br/>responde?"}
     Q -- sí --> DEP["SSH: pull + up<br/>/health · rollback"]
@@ -41,8 +39,8 @@ flowchart LR
 |---|---|---|---|---|
 | `ci.yml` | monorepo | PR a `development` o `main`, push a `development`, a mano, y lo llama `cd.yml` | 4 trabajos en paralelo (abajo) | ✅ |
 | `cd.yml` | monorepo | **push a `main`** y a mano | CI → imágenes → despliegue en la EC2 | ✅ probado el 19-11 |
-| `avisar-frontend.yml` | monorepo | **push a `development` o `main` que toca `frontend/`**, y a mano | le avisa al repo del frontend | ✅ desde el 26-11 también `development` |
-| `sync-y-desplegar.yml` | [Panditax727/Cacha-el-Precio-Frontend](https://github.com/Panditax727/Cacha-el-Precio-Frontend) | el aviso, la copia programada y a mano | copia `frontend/`, compila y hace push a su `main` | 🟡 todavía copia desde `development` (abajo) |
+| `avisar-frontend.yml` | monorepo | **push a `main` que toca `frontend/`**, y a mano | le avisa al repo del frontend | ✅ solo `main` (del 26 al 27-11 también `development`) |
+| `sync-y-desplegar.yml` | [Panditax727/Cacha-el-Precio-Frontend](https://github.com/Panditax727/Cacha-el-Precio-Frontend) | el aviso, la copia programada y a mano | copia `frontend/` de `main` (`MONO_BRANCH: main`), compila y hace push a su `main` | ✅ desde el 27-11 |
 
 ---
 
@@ -122,7 +120,6 @@ por el `.env` de la EC2.
 
 | | Qué | Quién |
 |---|---|---|
-| 🟡 | `sync-y-desplegar.yml` copia desde **`development`** (`MONO_BRANCH`), y desde el 26-11 el monorepo también le avisa desde `development`: lo que entra ahí sale a `www` en 1–2 minutos. Es a propósito hasta la EFT, porque `main` va muy atrás. Después: `MONO_BRANCH: main` en el repo del frontend **y** sacar `development` de `avisar-frontend.yml`, en el mismo momento | Panditax |
 | 🟡 | El build de su repo **no revisa el bundle**: si faltan las variables de Cognito, publica igual un sitio sin login | Panditax |
 | 🟡 | La CSP está en *Report-Only*: navegar el sitio, revisar la consola y pasarla a `Content-Security-Policy`. Se revisa **después del merge** (hoy `www` no trae ningún encabezado: `_headers` solo está en esta rama). Ojo: Cloudflare inyecta su propio `<script>` inline en `www`, y la CSP actual lo bloquearía | equipo |
 
