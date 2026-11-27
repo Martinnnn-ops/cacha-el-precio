@@ -55,7 +55,7 @@
 |---|---|---|
 | **Kafka descartado**: la EFT va solo con **Kinesis** | 17-11 | [PLAN-EFT](PLAN-EFT.md) |
 | La EC2 se queda en **`t3.small`** | 17-11 | [PLAN-EFT §8](PLAN-EFT.md#8--la-ram-y-el-monitoreo) |
-| El CD del backend despliega **solo desde `main`**; el front sale desde **`development`** hasta la EFT | 26-11 | [ADR-034](adr/034-cicd-con-github-actions.md#actualización-del-26-11-2026-el-front-sale-desde-development) |
+| Front y backend salen **solo desde `main`** (el 26-11 el front salía desde `development`) | 27-11 | [ADR-034](adr/034-cicd-con-github-actions.md#actualización-del-27-11-2026-el-front-vuelve-a-salir-desde-main) |
 | Colas, tópicos y reglas: **solo Terraform**; el panel solo mira | 17-11 | [ADR-032](adr/032-administracion-de-mensajeria.md) |
 | 🅐 o 🅑 lo decide **`tiene_dominio`** en el `.tfvars`, no el DNS | 17-11 | [OPERAR-EN-AWS §0](OPERAR-EN-AWS.md#0--lo-primero-el-dominio) |
 | Los admins se dan con **`tools/hacer-admin.sh`**; `ADMINS=` ya no hace nada | 17-11 | [OPERAR-EN-AWS §4](OPERAR-EN-AWS.md#el-panel-de-mensajería) |
@@ -80,7 +80,7 @@ cerrarlo, se borra de aquí y se anota en la [bitácora](BITACORA.md).
 | 🟡 | El scraper **no corre solo** y guarda **un precio**, no tres | el historial se llena poco y la ficha no muestra el tachado |
 | 🟡 | Secretos en `.env` en la EC2, sin gestor de secretos | calidad; no entra en la EFT |
 | 🟠 | **Puerto 22 abierto a todo internet** para el CD (solo con llave) | en una cuenta real sería OIDC + SSM; hay que saber defenderlo ([ADR-034](adr/034-cicd-con-github-actions.md)) |
-| 🟡 | El front sale desde `development` en 1–2 min y el repo del frontend no revisa el bundle | un PR sin revisar o un build sin Cognito llega a `www` igual ([ADR-034](adr/034-cicd-con-github-actions.md#actualización-del-26-11-2026-el-front-sale-desde-development)) |
+| 🟡 | El repo del frontend no revisa el bundle | un build sin las variables de Cognito llega a `www` igual ([ADR-034](adr/034-cicd-con-github-actions.md)) |
 | 🟡 | La CSP de `_headers` está en *Report-Only* | falta revisar la consola y pasarla a modo real |
 | 🟢 | El token de Cloudflare no tiene vencimiento | rotarlo después del 2-dic |
 

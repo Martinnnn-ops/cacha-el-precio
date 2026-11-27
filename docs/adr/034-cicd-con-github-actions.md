@@ -2,8 +2,9 @@
 
 Fecha: 19-11-2026 · Estado: **aceptado**. Probado el 19-11 en la cuenta `731705830984`: el CD
 desplegó `7cb1f0e` y `www` quedó llamando al API Gateway y al Cognito de esa cuenta. Cómo se usa
-día a día: [CICD](../CICD.md). **Modificado el 26-11-2026**: el aviso al front sale también desde
-`development` ([ver al final](#actualización-del-26-11-2026-el-front-sale-desde-development)).
+día a día: [CICD](../CICD.md). **Modificado el 26-11-2026** (el aviso al front salía también desde `development`) y
+**vuelto al diseño original el 27-11-2026**: el front sale solo desde `main`
+([ver al final](#actualización-del-27-11-2026-el-front-vuelve-a-salir-desde-main)).
 
 
 ## Contexto
@@ -94,6 +95,23 @@ toca `frontend/`. El backend no cambia: el CD sigue saliendo solo de `main`.
   backend de `main` todavía no tiene. Se corrige al llevar `development` a `main` antes de la EFT.
 - **Para volver al diseño original:** `MONO_BRANCH: main` en el repo del frontend **y** sacar
   `development` de `avisar-frontend.yml`, en el mismo momento.
+
+## Actualización del 27-11-2026: el front vuelve a salir desde `main`
+
+**Contexto.** La actualización del 26-11 dejaba `development` como producción del front: un PR
+mergeado sin revisar llegaba a `www` en un minuto, y front y backend salían de ramas distintas.
+
+**Decisión.** Se vuelve al diseño original: `avisar-frontend.yml` avisa **solo desde `main`** y el
+repo del frontend copia desde `main` (`MONO_BRANCH: main`). Antes se lleva `development` a `main`,
+para que `main` no publique un front de agosto.
+
+**Consecuencias.**
+- ✅ **`main` es producción para todo**, front y backend. `development` vuelve a ser la rama de
+  pruebas: lo que entra ahí no llega a `www`.
+- Para publicar un cambio del front hay que llevarlo a `main` (PR `development` → `main`). Hasta la
+  EFT eso pasa seguido, y cada merge a `main` también arma las imágenes del backend.
+- Las dos puntas cambian juntas: si el repo del frontend sigue en `development` y aquí ya no se
+  avisa desde ahí, el sitio solo se actualiza con la copia programada.
 
 ## Ver también
 
