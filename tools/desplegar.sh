@@ -415,6 +415,9 @@ fi
 #    Persistent=true: si la maquina estaba apagada a la hora, barre al prender.
 #    RandomizedDelaySec evita caer siempre al segundo exacto sobre la tienda.
 #
+#    Sparta NO va (27-11): su firewall responde 403 a las IP de AWS y su
+#    robots.txt prohibe los bots en /graphql/ desde el 10-09. Se respeta.
+#
 #    Las tiendas se pueden cambiar sin redesplegar en
 #    /etc/default/cep-barrido (CEP_BARRIDO_TIENDAS y CEP_BARRIDO_LIMITE).
 # ---------------------------------------------------------------------------
@@ -426,7 +429,7 @@ set -e
 # Valores por defecto: no se pisan si alguien ya los ajusto en la maquina.
 if [ ! -f /etc/default/cep-barrido ]; then
   cat > /etc/default/cep-barrido <<'VALORES'
-CEP_BARRIDO_TIENDAS="paris hites sparta"
+CEP_BARRIDO_TIENDAS="paris hites"
 CEP_BARRIDO_LIMITE=250
 VALORES
 fi
@@ -434,7 +437,7 @@ fi
 cat > /usr/local/bin/cep-barrido <<'GUION'
 #!/usr/bin/env bash
 set -uo pipefail
-TIENDAS="${CEP_BARRIDO_TIENDAS:-paris hites sparta}"
+TIENDAS="${CEP_BARRIDO_TIENDAS:-paris hites}"
 LIMITE="${CEP_BARRIDO_LIMITE:-250}"
 FALLOS=0
 for T in $TIENDAS; do
@@ -452,7 +455,7 @@ chmod +x /usr/local/bin/cep-barrido
 
 cat > /etc/systemd/system/cep-barrido.service <<'UNIDAD'
 [Unit]
-Description=Barrido de precios de Cacha el Precio (paris, hites, sparta)
+Description=Barrido de precios de Cacha el Precio (paris, hites)
 After=docker.service
 [Service]
 Type=oneshot
