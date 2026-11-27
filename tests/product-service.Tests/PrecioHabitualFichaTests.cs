@@ -100,12 +100,20 @@ public class HistorialFichaTests
 {
     private static ObservacionPrecio Obs(string store, string id, string cuando, int precio) => new()
     {
-        Store = store, ExternalId = id, CapturadoEn = DateTimeOffset.Parse(cuando), Precio = precio
+        Store = store,
+        ExternalId = id,
+        CapturadoEn = DateTimeOffset.Parse(cuando),
+        Precio = precio
     };
 
     private static ProductEntity Producto() => new()
     {
-        ProductId = 1, Slug = "p", CanonicalKey = "p", ProductName = "P", ProductBrand = "M", ProductCategory = "C",
+        ProductId = 1,
+        Slug = "p",
+        CanonicalKey = "p",
+        ProductName = "P",
+        ProductBrand = "M",
+        ProductCategory = "C",
         Offers =
         [
             new ProductOfferEntity { ExternalId = "A1", Store = "paris", Price = 1, ProductUrl = "u" },
