@@ -136,6 +136,7 @@ escribir_todos() {
   titulo "Archivos .env"
   local pool_antes; pool_antes="$(leer "$RAIZ/cognito.env" COGNITO_USER_POOL_ID)"
   escribir_env mensajeria_env mensajeria.env
+  escribir_env streaming_env  streaming.env
   escribir_env infra_env      infra.env
   escribir_env cognito_env    cognito.env
   escribir_env api_gateway_env api-gateway.env

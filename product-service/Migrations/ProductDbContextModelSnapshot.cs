@@ -23,6 +23,78 @@ namespace Product_Service.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Product_Service.Models.Entities.CheckpointStream", b =>
+                {
+                    b.Property<string>("StreamShard")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset>("ActualizadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NumeroSecuencia")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("StreamShard");
+
+                    b.ToTable("CheckpointsStream", "product");
+                });
+
+            modelBuilder.Entity("Product_Service.Models.Entities.EstadisticaPrecio", b =>
+                {
+                    b.Property<string>("Store")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("Maximo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Minimo")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Muestras")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Suma")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("SumaCuadrados")
+                        .HasPrecision(29)
+                        .HasColumnType("numeric(29,0)");
+
+                    b.Property<DateTimeOffset>("UltimaCaptura")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UltimoPrecio")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Store", "ExternalId");
+
+                    b.ToTable("EstadisticasPrecio", "product");
+                });
+
+            modelBuilder.Entity("Product_Service.Models.Entities.EventoPrecioProcesado", b =>
+                {
+                    b.Property<string>("EventId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("ProcesadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("EventId");
+
+                    b.HasIndex("ProcesadoEn");
+
+                    b.ToTable("EventosPrecioProcesados", "product");
+                });
+
             modelBuilder.Entity("Product_Service.Models.Entities.PersonalItem", b =>
                 {
                     b.Property<string>("Owner")

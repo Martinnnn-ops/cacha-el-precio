@@ -16,6 +16,9 @@ dependencies = [
 api = ["fastapi>=0.115", "uvicorn[standard]>=0.32"]
 db = ["psycopg[binary,pool]>=3.2"]
 s3 = ["boto3>=1.35"]
+# Stream de precios a Kinesis (EA3/EFT). Es el mismo boto3 que `s3`: en la EC2,
+# que ya lo instala para las imagenes, no agrega nada.
+streaming = ["boto3>=1.35"]
 imagen = ["pillow>=11.0"]
 dev = ["pytest>=8.0", "ruff>=0.12", "mypy>=1.15"]
 

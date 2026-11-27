@@ -1,13 +1,16 @@
 using Scalar.AspNetCore;
 using Asp.Versioning;
 using Amazon;
+using Amazon.Kinesis;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using Product_Service.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Product_Service.Mensajeria;
 using Product_Service.Repository;
 using Product_Service.Service;
+using Product_Service.Streaming;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
@@ -47,9 +50,28 @@ builder.Services.AddScoped<ProcesadorOfertaCapturada>();
 if (!string.IsNullOrWhiteSpace(config["SQS_OFERTAS_CRUDAS_URL"]))
 {
     string region = config["AWS_REGION"] ?? config["MENSAJERIA_REGION"] ?? "us-east-1";
-    builder.Services.AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(RegionEndpoint.GetBySystemName(region)));
+    builder.Services.TryAddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(RegionEndpoint.GetBySystemName(region)));
     builder.Services.AddSingleton<IColaMensajes, ColaMensajesSqs>();
     builder.Services.AddHostedService<ConsumidorOfertas>();
+}
+
+// ─── Stream de precios: lee cep-precios de Kinesis y calcula el precio habitual ──
+// (EA3/EFT). Sin nombre de stream (local, sin AWS) el lector no se registra y el
+// resto del servicio sigue igual. La DLQ cep-precios-dlq usa el mismo SQS; el
+// cliente se comparte con el consumidor de ofertas si ambos están activos.
+// Ver docs/PLAN-EFT.md §5-6 y ADR-035.
+builder.Services.AddScoped<IProcesadorPrecio, ProcesadorPrecioCapturado>();
+if (!string.IsNullOrWhiteSpace(config["KINESIS_PRECIOS_STREAM"]))
+{
+    string region = config["AWS_REGION"] ?? config["KINESIS_REGION"]
+        ?? config["MENSAJERIA_REGION"] ?? "us-east-1";
+    builder.Services.AddSingleton<IAmazonKinesis>(
+        _ => new AmazonKinesisClient(RegionEndpoint.GetBySystemName(region)));
+    builder.Services.TryAddSingleton<IAmazonSQS>(
+        _ => new AmazonSQSClient(RegionEndpoint.GetBySystemName(region)));
+    builder.Services.AddSingleton<ILectorStream, LectorStreamKinesis>();
+    builder.Services.AddSingleton<IBuzonErrores, BuzonErroresSqs>();
+    builder.Services.AddHostedService<LectorPrecios>();
 }
 
 builder.Services.AddApiVersioning(options =>

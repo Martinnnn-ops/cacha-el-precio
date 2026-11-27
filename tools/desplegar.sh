@@ -54,6 +54,8 @@ set -a; . "$RAIZ/infra.env"; . "$RAIZ/cognito.env"
 [ -f "$RAIZ/borde.env" ] && . "$RAIZ/borde.env"
 # Las colas y el topico del EP3. Los escribe tools/tf.sh desde Terraform.
 [ -f "$RAIZ/mensajeria.env" ] && . "$RAIZ/mensajeria.env"
+# El stream de Kinesis de la EFT (ADR-035). Vacio = el productor y el lector no arrancan.
+[ -f "$RAIZ/streaming.env" ] && . "$RAIZ/streaming.env"
 set +a
 verde "  infra.env y cognito.env leidos"
 # Sin mensajeria.env el sistema arrancaria igual, pero con TODA la mensajeria
@@ -129,6 +131,10 @@ SQS_OFERTAS_CRUDAS_DLQ_URL=${SQS_OFERTAS_CRUDAS_DLQ_URL:-}
 SQS_NOTIFICACIONES_URL=${SQS_NOTIFICACIONES_URL:-}
 SQS_NOTIFICACIONES_DLQ_URL=${SQS_NOTIFICACIONES_DLQ_URL:-}
 SNS_CAMBIOS_OFERTA_ARN=${SNS_CAMBIOS_OFERTA_ARN:-}
+# Kinesis cep-precios (de streaming.env) y la DLQ de su lector (de mensajeria.env).
+KINESIS_PRECIOS_STREAM=${KINESIS_PRECIOS_STREAM:-}
+KINESIS_REGION=${KINESIS_REGION:-$INFRA_REGION}
+SQS_PRECIOS_DLQ_URL=${SQS_PRECIOS_DLQ_URL:-}
 # Flujo 1: el scraper publica por POST /ingesta (API Gateway -> SQS) con su
 # client de Cognito. Sin api-gateway.env queda en http (directo a Product Service).
 MODO_PUBLICACION=${MODO_PUBLICACION:-$([[ -n "${API_GATEWAY_URL_INGESTA:-}" ]] && echo cola || echo http)}

@@ -5,7 +5,7 @@
 > **Para quién.** El equipo y la defensa: cuando preguntan «¿por qué así?», la respuesta está aquí.
 > **Última revisión:** 26-11-2026.
 
-> 📍 **En 10 segundos:** 23 decisiones vigentes o reemplazadas. Las que más se preguntan:
+> 📍 **En 10 segundos:** 24 decisiones vigentes o reemplazadas. Las que más se preguntan:
 > **006** (Cognito), **019** (API Gateway), **026** (encabezado del borde), **029** (SQS y SNS) y
 > **033** (Terraform) y **034** (CI/CD). Una decisión que cambia **no se borra**: se marca como reemplazada y se
 > escribe la nueva.
@@ -37,6 +37,7 @@
 | [032](032-administracion-de-mensajeria.md) | Administración de mensajería en el gateway | 🟡 desde el 17-11 el panel solo mira |
 | [033](033-terraform-para-la-infraestructura.md) | Terraform para la infraestructura de AWS | ✅ aceptado el 17-11, fases 0 a 7 |
 | [034](034-cicd-con-github-actions.md) | CI/CD con GitHub Actions; el front lo publica Cloudflare desde el repo de Panditax | 🟡 desde el 26-11 el front sale desde `development` |
+| [035](035-kinesis-precios-capturados.md) | Kinesis `cep-precios`: el scraper escribe y product-service calcula el precio habitual | ✅ aceptado el 24-11 (EFT) |
 
 Los números que faltan (001–005, 009–012, 017, 027) nunca tuvieron archivo en este repo. Algunos
 se citan en la bitácora o en el archivo (por ejemplo el 010, los esquemas `catalog` y `price` que

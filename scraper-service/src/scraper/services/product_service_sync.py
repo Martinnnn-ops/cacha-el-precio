@@ -36,16 +36,33 @@ class ClientePublicacion(Protocol):
     def sincronizar_producto(self, payload: dict) -> dict: ...
 
 
+class PublicadorPrecios(Protocol):
+    """
+    Donde se manda el precio capturado para el stream de analisis (Kinesis).
+    Opcional: sin stream configurado, el sincronizador no lo llama.
+    """
+
+    def publicar(self, producto: Product) -> None: ...
+
+
 class ProductServiceSync:
     """
     Sincronizador hacia el Product Service. No sabe de HTML ni de SQL:
     solo recibe un Product del dominio y publica una oferta idempotente.
 
     Adapta el producto del scraper al contrato ingles de Product Service.
+
+    Si se le da un `stream`, despues de publicar la prenda manda tambien su
+    precio al stream de Kinesis (EA3/EFT). Es un efecto de lado de mejor
+    esfuerzo: el propio productor se traga los fallos, asi que nunca corta la
+    sincronizacion de la prenda.
     """
 
-    def __init__(self, cliente: ClientePublicacion) -> None:
+    def __init__(
+        self, cliente: ClientePublicacion, stream: PublicadorPrecios | None = None
+    ) -> None:
         self._cliente = cliente
+        self._stream = stream
 
     def sincronizar(self, producto: Product) -> bool:
         """Crea o actualiza la oferta en Product Service."""
@@ -80,4 +97,6 @@ class ProductServiceSync:
         }
 
         self._cliente.sincronizar_producto(payload)
+        if self._stream is not None:
+            self._stream.publicar(producto)
         return True

@@ -53,11 +53,11 @@
 
 | | Tarea | Toca | Límite |
 |---|---|---|---|
-| 🟢 | Probar permisos del Academy: crear un stream y un `put-record` | `infra/terraform/sondeo/` | 20-nov |
-| 🔴 | **Kinesis con los precios capturados**: stream en Terraform, envío desde el scraper y lector del precio habitual | `infra/terraform/cuenta/`, `scraper-service/`, `product-service/` | 28-nov |
-| 🔴 | DLQ del lector de Kinesis | `infra/terraform/cuenta/`, `product-service/` | 28-nov |
+| ✅ | ~~Probar permisos del Academy~~ — 27-nov: crear stream, `put-record`, `get-records`, alarma y borrar pasan; el `LabRole` de la EC2 tiene `kinesis:*` de lectura/escritura y `sqs:SendMessage` (simulado). `terraform plan` limpio: solo agrega | — | 20-nov |
+| 🟡 | **Kinesis con los precios capturados**: stream en Terraform, envío desde el scraper y lector del precio habitual — `feature/ea3-kinesis-trazabilidad`. Código y pruebas listos (`streaming.tf`, productor del scraper, `LectorPrecios`, estadísticas + migración, 16 pruebas). Sondeo ✅ (27-nov) y variables conectadas en `tf.sh`, `desplegar.sh` y el compose. **Falta mergear y desplegar con AWS prendido.** | `infra/terraform/cuenta/`, `scraper-service/`, `product-service/` | 28-nov |
+| 🟡 | DLQ del lector de Kinesis — incluida en la rama de arriba: `cep-precios-dlq` en `topologia.json` y el envío desde `LectorPrecios` (definitivo + recuperable-agotado) | `infra/mensajeria/`, `product-service/` | 28-nov |
 
-> 🔴 = espera la prueba de permisos de arriba.
+> La prueba de permisos del Academy (6a) pasó el 27-nov: lo que queda es desplegar.
 
 ### Historial, ficha y monitoreo
 

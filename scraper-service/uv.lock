@@ -172,11 +172,15 @@ imagen = [
 s3 = [
     { name = "boto3" },
 ]
+streaming = [
+    { name = "boto3" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "boto3", marker = "extra == 's3'", specifier = ">=1.35" },
+    { name = "boto3", marker = "extra == 'streaming'", specifier = ">=1.35" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15" },
@@ -188,7 +192,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'", specifier = ">=0.32" },
 ]
-provides-extras = ["api", "db", "s3", "imagen", "dev"]
+provides-extras = ["api", "db", "s3", "streaming", "imagen", "dev"]
 
 [[package]]
 name = "certifi"
