@@ -1,6 +1,87 @@
 # Bitácora del proyecto
 
-Última actualización: 23-11-2026.
+Última actualización: 26-11-2026.
+
+## 26-11 (noche) · La portada dice «catálogo en pausa» con la API apagada — Panditax
+
+Rama `feature/portada-catalogo-en-pausa`. Con la EC2 apagada, que es casi siempre, la portada
+mostraba una franja roja «Estamos con problemas» que empujaba la página (CLS 0.14 en `www`),
+«0 prendas seguidas hoy» y tres secciones vacías: parecía un sitio abandonado, y así lo ven el
+evaluador y AdSense. Ahora, si la API falla y no hay **ninguna** prenda, `InicioView` muestra
+«Catálogo en pausa · Los precios vuelven pronto» en el hueco de «Lo más reciente», con botón de
+reintentar, y oculta «Lo más visto» y «Categorías». Si hay prendas de antes, sigue el aviso de
+siempre. El aviso mide 358 px, lo mismo que las siluetas (medido a 375 y 1024 de ancho): al
+pasar de una a otro, lo de abajo se movió 0 px. CLS 0.002 con `--mode fallo`.
+
+El humo tenía comprobaciones del diseño anterior («Lo más visto sigue ahí»); se cambiaron por
+las del nuevo, conservando la idea: la página no se reemplaza por un error y siempre se puede
+reintentar. Queda: el catálogo (`/comparador`) y la ficha siguen con su aviso de error normal.
+
+## 26-11 (noche) · El front sale desde `development` al tiro — Panditax
+
+Rama `feature/aviso-frontend-development`. El PR #57 se mergeó a las 06:49 UTC y `www` no
+cambió: el repo del frontend copia desde `development`, pero el monorepo le avisaba solo desde
+`main`, así que quedaba esperando la copia programada «cada 15 min», que GitHub corría cada
+varias horas (13:28, 22:38, 04:21…). Se lanzó a mano (`gh workflow run`) y quedó publicado a las
+08:57. Verificado en `www`: tema claro con el dispositivo en oscuro, CLS 0, `/assets` con
+`immutable`, el hash de la CSP calza, canonical y sitemap en `www` y sin `/admin`.
+
+Arreglo: `avisar-frontend.yml` avisa también desde `development`. Cambia una decisión del
+ADR-034 (el aviso era «solo desde `main`»), anotada como actualización del 26-11 en el mismo ADR.
+Se eligió esto y no pasar el repo del frontend a copiar desde `main` porque `main` va más de 300
+commits atrás: publicaría un front viejo, sin el login con Google. Queda: llevar `development` a
+`main` antes de la EFT y, después, volver al diseño original (las dos puntas a `main` a la vez).
+
+## 26-11 · Rendimiento del front: menos fuentes y la foto de la ficha primero — Panditax
+
+Rama `feature/rendimiento-front`. Antes se revisó una lista genérica de rendimiento contra el
+código. Casi todo ya estaba: esqueletos, `encode zstd gzip` en Caddy, caché del catálogo en el
+store, rutas con `import()`, `loading="lazy"`, `AsNoTracking`, índices y timeouts. Lo demás no
+aplica (no hay IA, las imágenes son de las tiendas, una sola EC2). Quedaron dos cambios chicos:
+
+- **Google Fonts pasa de 11 archivos a 7.** Se contó qué familia, peso y estilo usa el CSS.
+  Fraunces en cursiva no lo usa nadie (el «°» del logo va con `font-style: normal`), y Plex Mono
+  500 y Plex Sans 500 tampoco. Se comprobó en el navegador que todo lo que se pinta queda cargado.
+  Fraunces 400 y Plex Mono 700 se usan y **nunca se cargaron** (tampoco antes): el navegador los
+  simula. Queda anotado por si alguien nota un negrito raro.
+- **La foto de la ficha lleva `fetchpriority="high"`**: es lo más grande arriba de la página.
+
+La rama sale del `development` del 26-11 (con el CI/CD del PR #55). `npm run build` pasa y
+`npm run humo` da 0 fallas. Falta pasarlo al repo de Panditax con el `subtree` y probarlo en
+Slow 4G desde las DevTools.
+
+### Auditoría de `www` y tres arreglos
+
+Se auditó el sitio publicado (con el backend apagado: la API da 503, lo normal fuera de las
+sesiones del Academy). Bien: HTTP/3, Brotli, ~100 KB propios, encabezados de seguridad, móvil
+sin desbordes. Se arregló en la misma rama:
+
+| Qué | Medido en `www` | Arreglo |
+|---|---|---|
+| La portada **saltaba al cargar** | CLS 0.84 (0.70 de un solo golpe). Vue montaba antes de que llegara la vista, que se carga aparte: el pie y el anuncio se pintaban arriba y bajaban | `main.js` monta tras `router.isReady()`. En local, CLS 0.011 |
+| `/assets/*` **sin caché** | `max-age=0, must-revalidate` en archivos con hash | regla `/assets/*` con `max-age=31536000, immutable` en `_headers` |
+| **Canonical** a la raíz, que redirige a `www`, y **el mismo para todas las páginas** | todas decían ser la portada | `www` en `index.html`, sitemap y `robots.txt`; el router actualiza canonical y `og:url` por ruta |
+| El sitemap listaba **`/admin/mensajeria`** | — | fuera las rutas con `requiereSesion` o `soloAdmin`; `robots.txt` bloquea `/admin/` |
+
+Quedan abiertos (en el estado «API caída», que es el que más se ve): el aviso de error empuja
+la página hacia abajo (CLS 0.14) y la portada dice «Todavía no hay prendas nuevas» y «0 prendas
+seguidas hoy» como si estuviera vacía. También: rutas inexistentes con 307 a `/` en vez de la
+página 404, sin `og:image`, y la CSP report-only con avisos de Cloudflare Insights y AdSense.
+La regla de caché hay que confirmarla con `curl -I` después de desplegar.
+
+### El tema vuelve a arrancar en claro
+
+Decisión de Panditax: el sitio sale **claro siempre**, aunque el dispositivo esté en oscuro.
+Revierte el «tema por sistema» del rework visual (`9c12d2c`). «Oscuro» y «Sistema» siguen en el
+botón para quien los elija, y se guardan. Cambian `ui.store.js` (`POR_DEFECTO = 'claro'`), el
+script inline de `index.html` y sus comprobaciones en `humo.mjs`. Como el script cambió, se
+recalculó su hash en la CSP de `_headers` (si no, la CSP lo marcaría al pasar a modo bloqueo).
+Probado con el navegador en modo oscuro: sin preferencia sale claro, y con «sistema» sale oscuro.
+
+Al revisar antes del PR: `router.isReady()` se rechaza si la primera navegación falla (se corta
+la red bajando la vista), y la app no se montaba nunca: página en blanco en vez de la pantalla de
+error. Ahora monta igual. Se confirmó que ningún guard espera a la API, así que montar después de
+`isReady()` solo espera el trozo de la vista.
 
 ## 23-11 (noche) · Google funcionando en `www` y `tf.sh` más resistente — Martín
 

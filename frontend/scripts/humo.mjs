@@ -850,10 +850,9 @@ try {
     const { useUiStore } = await load('/src/shared/stores/ui.store.js')
     const ui = useUiStore()
 
-    // Aquí no hay window.matchMedia, así que «sistema» se ve claro.
     check(
-      'arranca en «sistema» (sigue al dispositivo)',
-      ui.tema === 'sistema' && ui.esOscuro === false,
+      'arranca en claro, aunque el dispositivo esté en oscuro',
+      ui.tema === 'claro' && ui.esOscuro === false,
       ui.tema,
     )
     ui.elegirTema('oscuro')
@@ -901,17 +900,17 @@ try {
       claveStore !== undefined && guion.includes(`'${claveStore}'`),
       claveStore,
     )
-    // El guion y el store tienen que partir igual: si no, quien tiene el
-    // dispositivo en oscuro ve un fogonazo claro hasta que arranca Vue.
+    // El guion y el store tienen que partir igual: si no, la página cambia de
+    // tema de golpe cuando arranca Vue.
     const porDefectoStore = /const POR_DEFECTO = '([^']+)'/.exec(fuenteStore)?.[1]
     check(
-      '  el store y el guion parten igual («sistema»)',
-      porDefectoStore === 'sistema',
+      '  el store y el guion parten igual («claro»)',
+      porDefectoStore === 'claro' && /else if \(t !== 'oscuro'\) \{\s*[^}]*?t = 'claro'/.test(guion),
       porDefectoStore,
     )
     check(
-      '  sin preferencia guardada (o con «sistema») sigue al dispositivo',
-      /if \(t !== 'claro' && t !== 'oscuro'\) \{[\s\S]*?prefers-color-scheme: dark/.test(guion),
+      '  solo con «sistema» elegido sigue al dispositivo',
+      /if \(t === 'sistema'\) \{[\s\S]*?prefers-color-scheme: dark/.test(guion),
     )
     check(
       '  con el localStorage capado sigue funcionando',
@@ -1449,13 +1448,27 @@ try {
     })
 
     check('el titular sigue en pie sin datos', rota.includes('hero__titulo'))
-    for (const seccion of ['Lo más reciente', 'Lo más visto', 'Categorías populares']) {
+    // Lo que no vive de datos sigue; lo que sí, se oculta tras el aviso de
+    // pausa (26-11): tres «aún no hay nada» seguidos parecían un sitio vacío.
+    for (const seccion of ['Lo más reciente', 'Vístete completo por menos']) {
       check(`  la sección "${seccion}" sigue ahí`, rota.includes(seccion))
     }
     check('  el pie sigue ahí', rota.includes('pie__interior'))
     check(
-      '  y se avisa con salida para reintentar',
-      rota.includes('role="status"') && rota.includes('Reintentar'),
+      '  dice que el catálogo está en pausa, con salida para reintentar',
+      rota.includes('Catálogo en pausa') &&
+        rota.includes('role="status"') &&
+        rota.includes('Volver a intentar'),
+    )
+    // Sin los comentarios HTML: el render de desarrollo los conserva, y uno
+    // que cite el texto viejo haría fallar esto sin que se vea en pantalla.
+    const visible = rota.replace(/<!--[\s\S]*?-->/g, '')
+    check(
+      '  y no lo cuenta como vacío («0 prendas», secciones vacías)',
+      !visible.includes('0 prendas seguidas') &&
+        !visible.includes('Todavía no hay prendas nuevas') &&
+        !visible.includes('Lo más visto') &&
+        !visible.includes('Categorías populares'),
     )
     check('  sin tapar la página con un error a pantalla completa', !rota.includes('aviso__titulo'))
 

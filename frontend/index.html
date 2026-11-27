@@ -10,7 +10,7 @@
       content="Compara el precio de la misma prenda en varias tiendas antes de comprar. Seguimos los precios todos los días para que sepas dónde está más barata."
     />
 
-    <link rel="canonical" href="https://cacha-el-precio.com/" />
+    <link rel="canonical" href="https://www.cacha-el-precio.com/" />
     <!-- Un solo theme-color, sin `media`: el tema por defecto es el claro aunque
          el sistema esté en oscuro, así que la barra del navegador tiene que
          seguir al tema que se está viendo y no a la preferencia del sistema.
@@ -23,8 +23,10 @@
          cada carga, y encima con la transición de `body` lo ve desvanecerse
          despacio. Va aquí, en línea y sin depender de nada, porque tiene que
          ejecutarse antes de que el navegador pinte.
-         El tema por defecto es «sistema»: sin preferencia guardada, la página
-         sigue el modo del dispositivo. «claro» y «oscuro» fijan uno u otro.
+         El tema por defecto es «claro»: sin preferencia guardada, la página
+         sale clara aunque el dispositivo esté en oscuro. «oscuro» lo fija y
+         «sistema» sigue al dispositivo, solo si se eligieron a propósito.
+         ⚠️ Si editas este script, recalcula su hash en public/_headers (CSP).
          Duplica a propósito la lógica de shared/stores/ui.store.js; el humo
          comprueba que las dos no se separen. -->
     <script>
@@ -35,13 +37,16 @@
         } catch (e) {
           /* modo privado o cookies bloqueadas */
         }
-        if (t !== 'claro' && t !== 'oscuro') {
-          // Sin preferencia, con «sistema» o con un valor raro: manda el dispositivo.
+        if (t === 'sistema') {
+          // Solo si la persona eligió «sistema»: manda el dispositivo.
           t =
             window.matchMedia &&
             window.matchMedia('(prefers-color-scheme: dark)').matches
               ? 'oscuro'
               : 'claro'
+        } else if (t !== 'oscuro') {
+          // Sin preferencia o con un valor raro: claro.
+          t = 'claro'
         }
         document.documentElement.dataset.tema = t
         var barra = document.querySelector('meta[name="theme-color"]')
@@ -58,7 +63,7 @@
       property="og:description"
       content="El precio de la misma prenda en varias tiendas, lado a lado."
     />
-    <meta property="og:url" content="https://cacha-el-precio.com/" />
+    <meta property="og:url" content="https://www.cacha-el-precio.com/" />
     <meta name="twitter:card" content="summary_large_image" />
 
     <!-- El SVG primero: los navegadores que lo entienden lo prefieren y se ve
@@ -74,10 +79,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Va aquí y no como @import en base.css: así la descarga arranca en
-         paralelo con el resto de la página en vez de esperar al CSS. -->
+         paralelo con el resto de la página en vez de esperar al CSS.
+         Solo los pesos que el CSS usa de verdad (7 en vez de 11): Fraunces
+         500/600/700 sin cursiva (el «°» del logo va en `font-style: normal`),
+         Plex Mono 400/600 y Plex Sans 400/600. Si agregas un peso o una
+         cursiva en el CSS, agrégalo también aquí o el navegador lo simula. -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap"
     />
   </head>
 

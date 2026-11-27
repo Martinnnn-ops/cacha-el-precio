@@ -8,7 +8,7 @@ import { writeFileSync } from 'node:fs'
 
 import { createServer, loadEnv } from 'vite'
 
-const SITIO = (process.env.VITE_SITE_URL ?? 'https://cacha-el-precio.com').replace(
+const SITIO = (process.env.VITE_SITE_URL ?? 'https://www.cacha-el-precio.com').replace(
   /\/+$/,
   '',
 )
@@ -83,6 +83,11 @@ try {
   const paginas = routes.filter(
     (ruta) =>
       !EXCLUIDAS.has(ruta.name) &&
+      // Fuera lo que pide sesión o es solo para admins: un buscador no puede
+      // entrar, y listarlo solo le cuenta a cualquiera qué paneles existen.
+      // Por esto /admin/mensajeria salía en el sitemap publicado.
+      ruta.meta?.requiereSesion !== true &&
+      ruta.meta?.soloAdmin !== true &&
       // Fuera las rutas con parámetro: /producto/:id no es una URL, es un
       // patrón. Para incluir los productos haría falta consultar la API, y eso
       // pertenece a un sitemap generado en el servidor, no aquí.

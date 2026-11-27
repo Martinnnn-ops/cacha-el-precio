@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
@@ -48,6 +48,18 @@ const {
   categoriasPopulares,
 } = storeToRefs(store)
 
+// El catálogo «en pausa»: la API falló y no hay NINGUNA prenda que mostrar.
+// Con AWS Academy la EC2 se apaga fuera de las sesiones, así que este es el
+// estado que más gente ve (y el que revisa AdSense). Antes salían tres
+// secciones vacías, «0 prendas seguidas hoy» y una franja roja que empujaba la
+// página hacia abajo: parecía un sitio abandonado, no uno en pausa.
+//
+// Si hay prendas de una carga anterior no es pausa: se muestran con el aviso
+// de siempre («los precios que ves son de hace…»).
+const enPausa = computed(
+  () => error.value !== null && productos.value.length === 0 && !cargando.value,
+)
+
 const visitas = new Intl.NumberFormat('es-CL')
 
 // «1 visitas» se lee mal, y ahora se ve: hasta la Fase 4 el contador siempre
@@ -66,8 +78,11 @@ onMounted(() => store.cargarProductos())
 <template>
   <div class="inicio">
     <!-- El aviso va ARRIBA del contenido y no en su lugar: la página se sigue
-         viendo entera debajo, aunque el backend esté caído. -->
+         viendo entera debajo, aunque el backend esté caído. En pausa no va:
+         el aviso de pausa ocupa el hueco de «Lo más reciente», sin empujar
+         nada hacia abajo. -->
     <AvisoDatos
+      v-if="!enPausa"
       :error="error"
       :desactualizado="datosDesactualizados"
       :actualizado-en="actualizadoEn"
@@ -111,7 +126,9 @@ onMounted(() => store.cargarProductos())
         <div class="hero__acciones">
           <BaseButton to="/comparador">Ver el catálogo</BaseButton>
 
-          <span class="mono muted hero__nota">
+          <!-- Sin prendas no hay cifra que dar: «0 prendas seguidas hoy» se
+               lee como un sitio vacío. -->
+          <span v-if="productos.length > 0" class="mono muted hero__nota">
             {{ productos.length }} prendas seguidas hoy
           </span>
         </div>
@@ -178,6 +195,20 @@ onMounted(() => store.cargarProductos())
         <ProductoCardSkeleton v-for="n in 4" :key="n" compacta />
       </div>
 
+      <!-- Ocupa el mismo hueco que los esqueletos de arriba (min-height), así
+           que al pasar de cargando a pausa no se mueve nada de la página. -->
+      <div v-else-if="enPausa" class="pausa" role="status">
+        <p class="eyebrow pausa__eyebrow">Catálogo en pausa</p>
+        <p class="display pausa__titulo">Los precios vuelven pronto.</p>
+        <p class="pausa__texto">
+          Ahora mismo no estamos trayendo precios de las tiendas. Mientras tanto
+          puedes armar un outfit con las plantillas de abajo.
+        </p>
+        <BaseButton variante="secundario" @click="store.cargarProductos({ forzar: true })">
+          Volver a intentar
+        </BaseButton>
+      </div>
+
       <p v-else class="mono muted seccion__vacia">
         Todavía no hay prendas nuevas que mostrar.
       </p>
@@ -207,7 +238,9 @@ onMounted(() => store.cargarProductos())
     <AdSlot :bloque="BLOQUE_PORTADA" :alto="96" class="inicio__anuncio" />
 
     <!-- ═══ lo más visto ═══ -->
-    <section class="seccion">
+    <!-- En pausa se ocultan las secciones que viven de datos: tres «aún no
+         hay nada» seguidos dicen lo mismo que el aviso de pausa, peor. -->
+    <section v-if="!enPausa" class="seccion">
       <header class="seccion__cabecera">
         <h2 class="seccion-titulo">Lo más visto</h2>
         <p class="mono muted seccion__nota">Lo que más se está comparando</p>
@@ -233,7 +266,7 @@ onMounted(() => store.cargarProductos())
     </section>
 
     <!-- ═══ categorías populares ═══ -->
-    <section class="seccion">
+    <section v-if="!enPausa" class="seccion">
       <header class="seccion__cabecera">
         <h2 class="seccion-titulo">Categorías populares</h2>
       </header>
@@ -424,6 +457,34 @@ onMounted(() => store.cargarProductos())
   gap: var(--cep-sp-4);
   overflow: hidden;
   padding: 2px 2px var(--cep-sp-15);
+}
+/* El catálogo en pausa. Mismo alto mínimo que .carrusel-hueso con sus
+   esqueletos (358 px medidos a 375 y a 1024 de ancho: la tarjeta compacta
+   tiene alto fijo), para que el cambio de «cargando» a «pausa» no mueva la
+   página. Si cambia el esqueleto, se vuelve a medir. */
+.pausa {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--cep-sp-2);
+  min-height: 358px;
+  padding: var(--cep-sp-6);
+  background: var(--cep-surface);
+  border-left: 3px solid var(--cep-rate);
+  border-radius: var(--cep-r-sm);
+}
+.pausa__eyebrow {
+  margin: 0;
+}
+.pausa__titulo {
+  margin: 0;
+  font-size: var(--cep-fs-xl);
+}
+.pausa__texto {
+  margin: 0 0 var(--cep-sp-2);
+  max-width: 52ch;
+  color: var(--cep-muted);
 }
 .seccion__vacia {
   margin: 0;

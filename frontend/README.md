@@ -219,7 +219,7 @@ viendo el sitio entero.
 | Situación | Qué se ve |
 |---|---|
 | Cargando | Siluetas con la forma real de las tarjetas (`ProductoCardSkeleton`), así el contenido cae en el mismo sitio y no hay salto |
-| Falla y no hay datos | Titular, títulos de sección, categorías, pie… y la franja de aviso |
+| Falla y no hay datos | En la portada, **«Catálogo en pausa»** en el hueco de «Lo más reciente», con el mismo alto que sus siluetas (nada salta), y botón de reintentar. Se ocultan «Lo más visto» y «Categorías», y no se dice «0 prendas». Siguen el titular, los outfits y el pie. Es lo que se ve con la EC2 apagada, o sea casi siempre |
 | Falla y **sí** hay datos | Los precios siguen visibles, con «no pudimos actualizar, son de hace 10 minutos» |
 | Sin conexión | Aviso propio: reintentar no sirve de nada hasta que vuelva la red |
 
@@ -390,7 +390,8 @@ Las **cabeceras de seguridad** (HSTS, `X-Content-Type-Options`, `X-Frame-Options
 `Referrer-Policy`, `Permissions-Policy` y la CSP) van en `public/_headers`, que el
 Worker de Cloudflare aplica a cada respuesta. La CSP está en modo *Report-Only*
 hasta revisar la consola; el archivo explica cada origen y el hash del script
-inline de `index.html`, que hay que recalcular si ese script cambia.
+inline de `index.html`, que hay que recalcular si ese script cambia. El mismo
+archivo le da a `/assets/*` caché de un año (`immutable`): esos nombres llevan hash.
 
 Lo que **no** cubre y hay que hacer en el servidor: CORS, límite de peticiones y
 la autorización real de cada endpoint.
