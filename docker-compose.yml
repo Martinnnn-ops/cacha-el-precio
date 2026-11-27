@@ -172,6 +172,9 @@ services:
       KINESIS_PRECIOS_STREAM: ${KINESIS_PRECIOS_STREAM:-}
       KINESIS_REGION: ${KINESIS_REGION:-us-east-1}
       SQS_PRECIOS_DLQ_URL: ${SQS_PRECIOS_DLQ_URL:-}
+      # Lector de auditoría (flujo 2): vacía = no arranca.
+      SQS_AUDITORIA_PRECIOS_URL: ${SQS_AUDITORIA_PRECIOS_URL:-}
+      SQS_AUDITORIA_PRECIOS_DLQ_URL: ${SQS_AUDITORIA_PRECIOS_DLQ_URL:-}
 
     depends_on:
       postgres:

@@ -5,6 +5,7 @@ using Amazon;
 using Amazon.Kinesis;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
+using Product_Service.Auditoria;
 using Product_Service.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -55,6 +56,22 @@ if (!string.IsNullOrWhiteSpace(config["SQS_OFERTAS_CRUDAS_URL"]))
     builder.Services.TryAddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(RegionEndpoint.GetBySystemName(region)));
     builder.Services.AddSingleton<IColaMensajes, ColaMensajesSqs>();
     builder.Services.AddHostedService<ConsumidorOfertas>();
+}
+
+// ─── Auditoría: lee cep-auditoria-precios (la copia de todos los cambios) ─────
+// Guarda cada cambio una vez por eventId y marca los sospechosos. Sin URL de la
+// cola (local) no se registra. Ver docs/PLAN-EFT.md §4.
+builder.Services.AddScoped<ProcesadorAuditoria>();
+if (!string.IsNullOrWhiteSpace(config["SQS_AUDITORIA_PRECIOS_URL"]))
+{
+    string region = config["AWS_REGION"] ?? config["MENSAJERIA_REGION"] ?? "us-east-1";
+    builder.Services.TryAddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(RegionEndpoint.GetBySystemName(region)));
+    builder.Services.AddKeyedSingleton<IColaMensajes>(ConsumidorAuditoria.Cola, (sp, _) => ColaMensajesSqs.Para(
+        sp.GetRequiredService<IAmazonSQS>(),
+        config["SQS_AUDITORIA_PRECIOS_URL"]!,
+        config["SQS_AUDITORIA_PRECIOS_DLQ_URL"] ?? "",
+        sp.GetRequiredService<ILogger<ColaMensajesSqs>>()));
+    builder.Services.AddHostedService<ConsumidorAuditoria>();
 }
 
 // ─── Stream de precios: lee cep-precios de Kinesis y calcula el precio habitual ──
@@ -112,6 +129,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapAuditoria();
 app.MapHealthChecks("/health");
 
 app.Run();

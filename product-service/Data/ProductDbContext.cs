@@ -16,6 +16,7 @@ public class ProductDbContext : DbContext
     // Kinesis y los eventId ya sumados (idempotencia). Ver docs/PLAN-EFT.md §5.
     public DbSet<EstadisticaPrecio> EstadisticasPrecio { get; set; }
     public DbSet<ObservacionPrecio> ObservacionesPrecio { get; set; }
+    public DbSet<EventoAuditoria> EventosAuditoria { get; set; }
     public DbSet<CheckpointStream> CheckpointsStream { get; set; }
     public DbSet<EventoPrecioProcesado> EventosPrecioProcesados { get; set; }
 
@@ -79,6 +80,19 @@ public class ProductDbContext : DbContext
         observacion.HasKey(o => new { o.Store, o.ExternalId, o.CapturadoEn });
         observacion.Property(o => o.Store).HasMaxLength(60);
         observacion.Property(o => o.ExternalId).HasMaxLength(120);
+
+        // EventId como llave: la idempotencia técnica de la cola de auditoría.
+        var auditoria = modelBuilder.Entity<EventoAuditoria>();
+        auditoria.HasKey(e => e.EventId);
+        auditoria.Property(e => e.EventId).HasMaxLength(64);
+        auditoria.Property(e => e.Tipo).HasMaxLength(40);
+        auditoria.Property(e => e.Slug).HasMaxLength(200);
+        auditoria.Property(e => e.Nombre).HasMaxLength(300);
+        auditoria.Property(e => e.Store).HasMaxLength(60);
+        auditoria.Property(e => e.Motivo).HasMaxLength(200);
+        auditoria.Property(e => e.CorrelationId).HasMaxLength(128);
+        auditoria.HasIndex(e => e.RecibidoEn);
+        auditoria.HasIndex(e => e.CorrelationId);
 
         var checkpoint = modelBuilder.Entity<CheckpointStream>();
         checkpoint.HasKey(c => c.StreamShard);
