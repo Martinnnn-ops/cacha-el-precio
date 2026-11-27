@@ -398,6 +398,94 @@ fi
 fi
 
 # ---------------------------------------------------------------------------
+# 3.6 Barrido automatico cada 3 horas
+#
+#    POR QUE. El precio habitual (Kinesis -> LectorPrecios -> estadisticas)
+#    solo sirve si hay capturas seguidas. Hasta ahora el barrido se lanzaba a
+#    mano, y cada hora con la maquina prendida sin barrer es historial que no
+#    vuelve.
+#
+#    COMO. Le pide al scraper (puerto 8000, solo en 127.0.0.1) un barrido por
+#    tienda. La API responde 202 al tiro y barre en segundo plano; los barridos
+#    se ejecutan de a uno (el scraper los serializa con un lock), asi que
+#    pedir las tres tiendas seguidas no las pisa entre si.
+#
+#    Cada 3 h y no menos: una tienda no cambia precios cada hora, y barrer mas
+#    seguido solo carga sus servidores. Igual que el respaldo, va con
+#    Persistent=true: si la maquina estaba apagada a la hora, barre al prender.
+#    RandomizedDelaySec evita caer siempre al segundo exacto sobre la tienda.
+#
+#    Las tiendas se pueden cambiar sin redesplegar en
+#    /etc/default/cep-barrido (CEP_BARRIDO_TIENDAS y CEP_BARRIDO_LIMITE).
+# ---------------------------------------------------------------------------
+if [[ "$SOLO" != "--solo-front" ]]; then
+titulo "3.6 Barrido automatico cada 3 horas"
+
+$SSH "sudo bash -s" <<'REMOTO3' >/dev/null 2>&1
+set -e
+# Valores por defecto: no se pisan si alguien ya los ajusto en la maquina.
+if [ ! -f /etc/default/cep-barrido ]; then
+  cat > /etc/default/cep-barrido <<'VALORES'
+CEP_BARRIDO_TIENDAS="paris hites sparta"
+CEP_BARRIDO_LIMITE=250
+VALORES
+fi
+
+cat > /usr/local/bin/cep-barrido <<'GUION'
+#!/usr/bin/env bash
+set -uo pipefail
+TIENDAS="${CEP_BARRIDO_TIENDAS:-paris hites sparta}"
+LIMITE="${CEP_BARRIDO_LIMITE:-250}"
+FALLOS=0
+for T in $TIENDAS; do
+  # La salida queda en el journal: journalctl -u cep-barrido
+  if R="$(curl -fsS -m 120 -X POST "http://127.0.0.1:8000/scrape/$T?limite=$LIMITE")"; then
+    echo "$T: $R"
+  else
+    echo "$T: el scraper no acepto el barrido" >&2
+    FALLOS=$((FALLOS + 1))
+  fi
+done
+[ "$FALLOS" -eq 0 ]
+GUION
+chmod +x /usr/local/bin/cep-barrido
+
+cat > /etc/systemd/system/cep-barrido.service <<'UNIDAD'
+[Unit]
+Description=Barrido de precios de Cacha el Precio (paris, hites, sparta)
+After=docker.service
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/cep-barrido
+ExecStart=/usr/local/bin/cep-barrido
+UNIDAD
+
+cat > /etc/systemd/system/cep-barrido.timer <<'TEMPO'
+[Unit]
+Description=Barrido de precios cada 3 horas
+[Timer]
+OnCalendar=*-*-* 00/3:00:00
+Persistent=true
+RandomizedDelaySec=300
+[Install]
+WantedBy=timers.target
+TEMPO
+
+systemctl daemon-reload
+systemctl enable --now cep-barrido.timer
+REMOTO3
+
+if $SSH 'systemctl is-active cep-barrido.timer' >/dev/null 2>&1; then
+  PROX="$($SSH "systemctl list-timers cep-barrido.timer --no-pager --no-legend | awk '{print \$1, \$2, \$3}'" 2>/dev/null)"
+  verde "  timer activo — proximo barrido: ${PROX:-dentro de 3 h}"
+  gris  "  lanzarlo ya: ssh ... 'sudo systemctl start cep-barrido' · ver: journalctl -u cep-barrido"
+else
+  rojo  "  el timer no quedo activo. Comprueba con:"
+  gris  "  ssh -i $LLAVE ec2-user@$INFRA_IP 'systemctl status cep-barrido.timer'"
+fi
+fi
+
+# ---------------------------------------------------------------------------
 # 4. El frontend
 #    Se compila con los datos de ESTA cuenta. Es el paso que obliga a
 #    recompilar al migrar: el client id y el dominio de Cognito quedan dentro

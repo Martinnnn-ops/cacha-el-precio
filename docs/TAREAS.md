@@ -64,7 +64,7 @@
 | | Tarea | Toca | Límite |
 |---|---|---|---|
 | 🟢 | Limpiar el catálogo con `tools/limpiar-catalogo.py` (lo que entró antes del PR #48), con respaldo antes | datos, con AWS prendido | 24-nov |
-| 🟢 | Barrido automático cada 3 h en la EC2 | `tools/desplegar.sh` (timer) | 24-nov |
+| 🟡 | Barrido automático cada 3 h en la EC2 — timer `cep-barrido` en `desplegar.sh` (paso 3.6), rama `feature/barrido-3h`. **Falta probarlo con AWS prendido.** | `tools/desplegar.sh` (timer) | 24-nov |
 | 🟢 | Guardar 3 precios (normal, internet, tarjeta) para que aparezca el tachado | `scraper-service/`, `product-service/` | 26-nov |
 | 🟢 | Ficha pulida (rango habitual, gráfico) y arreglar lo visual roto tras los merges | `frontend/` | 28-nov |
 | 🟢 | **Prometheus + Grafana** (perfil `monitoreo`), midiendo la RAM con `docker stats` | `docker-compose.yml` | 29-nov |

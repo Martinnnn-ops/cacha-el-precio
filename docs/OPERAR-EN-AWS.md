@@ -219,7 +219,7 @@ flowchart TD
 | Pieza | Qué hace |
 |---|---|
 | `infra/terraform/cuenta/` | toda la cuenta: EC2, IP, buckets, Cognito, API Gateway (24 rutas), colas y tópico. Detalle en su [README](../infra/terraform/README.md) |
-| `tools/desplegar.sh` | arma el `.env` del servidor, clona el repo en la rama pedida, levanta el compose, comprueba el 8080 **con** el encabezado, instala el respaldo de cada hora y sube el frontend compilado **para esta cuenta** (mira dentro del bundle antes de subirlo). A mano sirve para redesplegar: `--solo-backend` o `--solo-front` |
+| `tools/desplegar.sh` | arma el `.env` del servidor, clona el repo en la rama pedida, levanta el compose, comprueba el 8080 **con** el encabezado, instala el respaldo de cada hora y el barrido cada 3 h (`cep-barrido`, tiendas en `/etc/default/cep-barrido`) y sube el frontend compilado **para esta cuenta** (mira dentro del bundle antes de subirlo). A mano sirve para redesplegar: `--solo-backend` o `--solo-front` |
 | `tools/respaldar.sh` | vuelca y restaura la base (`--listar`, `--restaurar <carpeta>`) |
 | `tools/hacer-admin.sh` | mete una cuenta de Google al grupo `admin` |
 | `tools/probar-mensajeria.py` | prueba los dos flujos y el panel contra la cuenta prendida |
@@ -270,7 +270,7 @@ ssh -i ~/labsuser.pem ec2-user@$INFRA_IP \
   'for T in paris hites sparta; do curl -s -X POST "http://127.0.0.1:8000/scrape/$T?limite=250"; done'
 ```
 
-El **catálogo se repone solo**; lo que no vuelve es el **historial** de los días sin capturar.
+Con `desplegar.sh` esto ya corre solo cada 3 h (`sudo systemctl start cep-barrido` lo lanza al tiro; `journalctl -u cep-barrido` muestra qué pidió). El **catálogo se repone solo**; lo que no vuelve es el **historial** de los días sin capturar.
 
 ---
 
@@ -508,6 +508,7 @@ flowchart LR
 | Registro `api` en Cloudflare | ✅ `dominio/` | lo corre solo quien tiene el token |
 | Desplegar la app y el sitio | ✅ `desplegar.sh`, llamado por `subir` | — |
 | Respaldo antes de apagar, restauración al prender, respaldo cada hora | ✅ `tf.sh` y un timer | — |
+| Barrido de precios cada 3 h (paris, hites, sparta) | ✅ timer `cep-barrido` | — |
 | Credenciales del lab y la llave | 🔴 | temporales; solo se bajan de la consola |
 | Tu `.tfvars` y `google.env` | 🔴 | dicen qué cuenta eres; el secreto de Google no se deriva |
 | Admins del panel | 🟡 `hacer-admin.sh` | el usuario de Google no existe hasta su primer login |
