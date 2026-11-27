@@ -267,7 +267,7 @@ Pasa en una cuenta nueva sin respaldo en `respaldos/`. Se llena con el scraper:
 
 ```bash
 ssh -i ~/labsuser.pem ec2-user@$INFRA_IP \
-  'for T in paris hites sparta; do curl -s -X POST "http://127.0.0.1:8000/scrape/$T?limite=250"; done'
+  'for T in paris hites; do curl -s -X POST "http://127.0.0.1:8000/scrape/$T?limite=250"; done'
 ```
 
 Con `desplegar.sh` esto ya corre solo cada 3 h (`sudo systemctl start cep-barrido` lo lanza al tiro; `journalctl -u cep-barrido` muestra qué pidió). El **catálogo se repone solo**; lo que no vuelve es el **historial** de los días sin capturar.
@@ -508,7 +508,7 @@ flowchart LR
 | Registro `api` en Cloudflare | ✅ `dominio/` | lo corre solo quien tiene el token |
 | Desplegar la app y el sitio | ✅ `desplegar.sh`, llamado por `subir` | — |
 | Respaldo antes de apagar, restauración al prender, respaldo cada hora | ✅ `tf.sh` y un timer | — |
-| Barrido de precios cada 3 h (paris, hites, sparta) | ✅ timer `cep-barrido` | — |
+| Barrido de precios cada 3 h (paris, hites; Sparta bloquea a AWS) | ✅ timer `cep-barrido` | — |
 | Credenciales del lab y la llave | 🔴 | temporales; solo se bajan de la consola |
 | Tu `.tfvars` y `google.env` | 🔴 | dicen qué cuenta eres; el secreto de Google no se deriva |
 | Admins del panel | 🟡 `hacer-admin.sh` | el usuario de Google no existe hasta su primer login |

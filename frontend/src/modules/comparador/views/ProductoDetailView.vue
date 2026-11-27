@@ -7,12 +7,14 @@ import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import { registrarVisita } from '@/modules/comparador/services/comparador.service'
 import { rutaNoEncontrada } from '@/modules/comparador/routes'
 import { formatearPrecio } from '@/shared/utils/formato'
-import { minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
+import { maximoHistorico, minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
 import { slugProducto, slugProductoAnterior } from '@/shared/utils/slug'
 import DetalleSkeleton from '@/modules/comparador/components/DetalleSkeleton.vue'
 import EligeTuTienda from '@/modules/comparador/components/EligeTuTienda.vue'
 import FichaCaracteristicas from '@/modules/comparador/components/FichaCaracteristicas.vue'
 import GraficoPrecios from '@/modules/comparador/components/GraficoPrecios.vue'
+import PrecioHabitual from '@/modules/comparador/components/PrecioHabitual.vue'
+import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import SelloDescuento from '@/modules/comparador/components/SelloDescuento.vue'
 import AdSlot from '@/shared/components/AdSlot.vue'
 import BaseButton from '@/shared/components/BaseButton.vue'
@@ -117,6 +119,23 @@ watch(() => props.slug, cargarPorSlug, { immediate: true })
 
 const masBarato = computed(() => precioMasBajo(producto.value))
 
+// La franja del gráfico: el rango habitual de la oferta más barata que ya lo
+// tenga (el mismo criterio que usa PrecioHabitual para el veredicto).
+const { nombreTienda, colorTienda } = useTiendas()
+const banda = computed(() => {
+  const candidatas = (producto.value?.precios ?? []).filter(
+    (o) => o.stock && o.habitual?.suficiente,
+  )
+  if (candidatas.length === 0) return null
+  const o = candidatas.reduce((a, b) => (b.precio < a.precio ? b : a))
+  return {
+    piso: o.habitual.piso,
+    techo: o.habitual.techo,
+    color: colorTienda(o.tienda),
+    nombre: nombreTienda(o.tienda),
+  }
+})
+
 // Con una sola fuente de precio no hay comparación: la ficha deja de hablar de
 // "la más barata" y de titular una tabla como "Precio por tienda".
 const comparando = computed(() => (producto.value?.precios?.length ?? 0) > 1)
@@ -140,6 +159,13 @@ const ofertasDisponibles = computed(
 const BLOQUE_FICHA = import.meta.env.VITE_ADSENSE_SLOT_FICHA ?? ''
 
 const minimo = computed(() => minimoHistorico(producto.value))
+
+// El máximo solo se muestra si es distinto del mínimo: con un único precio
+// visto, "máximo $X" junto a "mínimo $X" no dice nada.
+const maximo = computed(() => {
+  const max = maximoHistorico(producto.value)
+  return max && minimo.value && max.precio > minimo.value.precio ? max : null
+})
 
 // Cuánto se aparta el precio de hoy del mínimo que hemos visto nunca. Es el
 // número que da sentido al sello: el descuento que declara la tienda compara
@@ -268,6 +294,9 @@ const subtitulo = computed(() =>
               <p v-if="minimo" class="mono cabecera__minimo">
                 Mínimo que hemos visto: {{ formatearPrecio(minimo.precio) }}
               </p>
+              <p v-if="maximo" class="mono cabecera__maximo">
+                Máximo que hemos visto: {{ formatearPrecio(maximo.precio) }}
+              </p>
               <p class="mono cabecera__disponibilidad">
                 {{ ofertasDisponibles }}
                 {{ ofertasDisponibles === 1 ? 'tienda disponible' : 'tiendas disponibles' }}
@@ -348,7 +377,12 @@ const subtitulo = computed(() =>
       <section class="panel">
         <h2 class="panel__titulo">Historial de precios</h2>
 
-        <GraficoPrecios :historial="producto.historial ?? []" />
+        <PrecioHabitual
+          :ofertas="producto.precios ?? []"
+          :historial="producto.historial ?? []"
+        />
+
+        <GraficoPrecios :historial="producto.historial ?? []" :banda="banda" />
       </section>
     </template>
   </section>
@@ -405,6 +439,11 @@ const subtitulo = computed(() =>
   margin: var(--cep-sp-15) 0 0;
   font-size: var(--cep-fs-xs);
   color: var(--cep-exito);
+}
+.cabecera__maximo {
+  margin: var(--cep-sp-1, 4px) 0 0;
+  font-size: var(--cep-fs-xs);
+  color: var(--cep-alerta);
 }
 .cabecera__disponibilidad {
   margin: var(--cep-sp-2) 0 0;

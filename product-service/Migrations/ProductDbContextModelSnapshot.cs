@@ -79,6 +79,27 @@ namespace Product_Service.Migrations
                     b.ToTable("EstadisticasPrecio", "product");
                 });
 
+            modelBuilder.Entity("Product_Service.Models.Entities.ObservacionPrecio", b =>
+                {
+                    b.Property<string>("Store")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("CapturadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Precio")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Store", "ExternalId", "CapturadoEn");
+
+                    b.ToTable("ObservacionesPrecio", "product");
+                });
+
             modelBuilder.Entity("Product_Service.Models.Entities.EventoPrecioProcesado", b =>
                 {
                     b.Property<string>("EventId")

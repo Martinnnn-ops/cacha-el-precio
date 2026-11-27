@@ -15,6 +15,7 @@ public class ProductDbContext : DbContext
     // Stream de precios (EA3/EFT): el precio habitual, el checkpoint del lector de
     // Kinesis y los eventId ya sumados (idempotencia). Ver docs/PLAN-EFT.md §5.
     public DbSet<EstadisticaPrecio> EstadisticasPrecio { get; set; }
+    public DbSet<ObservacionPrecio> ObservacionesPrecio { get; set; }
     public DbSet<CheckpointStream> CheckpointsStream { get; set; }
     public DbSet<EventoPrecioProcesado> EventosPrecioProcesados { get; set; }
 
@@ -72,6 +73,12 @@ public class ProductDbContext : DbContext
         estadistica.Property(e => e.ExternalId).HasMaxLength(120);
         // Precios en pesos (enteros): la suma de cuadrados no lleva decimales.
         estadistica.Property(e => e.SumaCuadrados).HasPrecision(29, 0);
+
+        // La llave cubre la consulta de la ficha (tienda + id, por fecha).
+        var observacion = modelBuilder.Entity<ObservacionPrecio>();
+        observacion.HasKey(o => new { o.Store, o.ExternalId, o.CapturadoEn });
+        observacion.Property(o => o.Store).HasMaxLength(60);
+        observacion.Property(o => o.ExternalId).HasMaxLength(120);
 
         var checkpoint = modelBuilder.Entity<CheckpointStream>();
         checkpoint.HasKey(c => c.StreamShard);

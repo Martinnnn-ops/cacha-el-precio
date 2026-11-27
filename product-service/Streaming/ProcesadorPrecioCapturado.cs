@@ -65,6 +65,22 @@ public sealed class ProcesadorPrecioCapturado(ProductDbContext db, ILogger<Proce
         EstadisticasPrecioHabitual.Acumular(est, datos.Price, datos.CapturedAt);
         if (nueva) db.EstadisticasPrecio.Add(est);
 
+        // La observación suelta, para el gráfico de la ficha. Si ya existe una
+        // con la misma fecha exacta (otro eventId del mismo instante) no se
+        // repite: la llave la rechazaría y el registro quedaría reintentándose.
+        bool yaObservado = await db.ObservacionesPrecio.AnyAsync(o =>
+            o.Store == datos.Store && o.ExternalId == datos.ExternalId && o.CapturadoEn == datos.CapturedAt, ct);
+        if (!yaObservado)
+        {
+            db.ObservacionesPrecio.Add(new ObservacionPrecio
+            {
+                Store = datos.Store!,
+                ExternalId = datos.ExternalId!,
+                CapturadoEn = datos.CapturedAt,
+                Precio = datos.Price
+            });
+        }
+
         db.EventosPrecioProcesados.Add(new EventoPrecioProcesado
         {
             EventId = sobre.EventId!,

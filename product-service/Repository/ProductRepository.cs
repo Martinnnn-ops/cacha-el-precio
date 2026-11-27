@@ -107,4 +107,26 @@ public sealed class ProductRepository(ProductDbContext context) : IProductReposi
     {
         return context.Products.Include(product => product.Offers);
     }
+
+    public async Task<IReadOnlyList<EstadisticaPrecio>> GetEstadisticasPrecioAsync(IReadOnlyCollection<string> externalIds)
+    {
+        if (externalIds.Count == 0) return [];
+        // Se filtra por id externo en la base y la tienda se cruza en memoria:
+        // un producto tiene pocas ofertas y así se evita un Contains de tuplas.
+        return await context.EstadisticasPrecio
+            .AsNoTracking()
+            .Where(e => externalIds.Contains(e.ExternalId))
+            .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<ObservacionPrecio>> GetObservacionesPrecioAsync(
+        IReadOnlyCollection<string> externalIds, DateTimeOffset desde)
+    {
+        if (externalIds.Count == 0) return [];
+        return await context.ObservacionesPrecio
+            .AsNoTracking()
+            .Where(o => externalIds.Contains(o.ExternalId) && o.CapturadoEn >= desde)
+            .OrderBy(o => o.CapturadoEn)
+            .ToListAsync();
+    }
 }

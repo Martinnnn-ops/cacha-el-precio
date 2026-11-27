@@ -32,4 +32,10 @@ public interface IProductRepository
     Task<IReadOnlyList<ProductEntity>> GetProductsByPriceAsync(int price);
 
     Task<IReadOnlyList<ProductEntity>> GetProductsBySizeAsync(string size);
+
+    /// <summary>Estadísticas de precio (precio habitual) de estos ids externos, en todas las tiendas.</summary>
+    Task<IReadOnlyList<EstadisticaPrecio>> GetEstadisticasPrecioAsync(IReadOnlyCollection<string> externalIds);
+
+    /// <summary>Precios capturados de estos ids externos desde una fecha, en todas las tiendas.</summary>
+    Task<IReadOnlyList<ObservacionPrecio>> GetObservacionesPrecioAsync(IReadOnlyCollection<string> externalIds, DateTimeOffset desde);
 }

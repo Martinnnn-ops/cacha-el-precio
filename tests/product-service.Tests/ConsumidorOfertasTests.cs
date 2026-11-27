@@ -274,6 +274,8 @@ public class ConsumidorOfertasTests
         public Task<IReadOnlyList<ProductEntity>> GetProductsByCategoryAsync(string category) => throw new NotImplementedException();
         public Task<IReadOnlyList<ProductEntity>> GetProductsByPriceAsync(int price) => throw new NotImplementedException();
         public Task<IReadOnlyList<ProductEntity>> GetProductsBySizeAsync(string size) => throw new NotImplementedException();
+        public Task<IReadOnlyList<EstadisticaPrecio>> GetEstadisticasPrecioAsync(IReadOnlyCollection<string> externalIds) => Task.FromResult<IReadOnlyList<EstadisticaPrecio>>([]);
+        public Task<IReadOnlyList<ObservacionPrecio>> GetObservacionesPrecioAsync(IReadOnlyCollection<string> externalIds, DateTimeOffset desde) => Task.FromResult<IReadOnlyList<ObservacionPrecio>>([]);
     }
 
     private sealed class PublicadorNulo : IPublicadorEventos
