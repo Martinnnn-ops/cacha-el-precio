@@ -89,13 +89,27 @@ if [[ "${1:-}" == "--restaurar" ]]; then
   # por ssh y solo se entera por el codigo de salida (17-11: un restore fallido
   # terminaba en 0 y el catalogo quedaba vacio sin que nadie lo notara).
   if [[ -f "$CARPETA/database.sql" ]]; then
-    docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" \
-      -v ON_ERROR_STOP=1 < "$CARPETA/database.sql" >/dev/null \
+    # Primero se borran los dos esquemas ENTEROS. El --clean del volcado solo
+    # borra las tablas que el respaldo conoce: si la base tiene una tabla mas
+    # nueva (27-11: las 3 de Kinesis, de una migracion posterior al respaldo),
+    # el DROP SCHEMA del volcado falla y la base queda vacia. Todo va en una
+    # sola transaccion (-1): si algo falla, la base queda como estaba.
+    # product-service vuelve a aplicar las migraciones que falten al arrancar.
+    { echo 'DROP SCHEMA IF EXISTS scraper CASCADE; DROP SCHEMA IF EXISTS product CASCADE;'
+      cat "$CARPETA/database.sql"
+    } | docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" \
+      -1 -v ON_ERROR_STOP=1 >/dev/null \
       && verde "  esquemas scraper y product restaurados" \
       || { rojo "  fallo el restore de Postgres"; exit 1; }
   else
     rojo "  el respaldo no trae database.sql"; exit 1
   fi
+
+  # Las tablas que el respaldo no traia (migraciones posteriores) solo vuelven
+  # cuando product-service corre Migrate() al arrancar.
+  docker compose restart product-service >/dev/null 2>&1 \
+    && verde "  product-service reiniciado: aplica las migraciones que falten" \
+    || rojo "  no se pudo reiniciar product-service: hazlo a mano"
 
   verde "Listo. Comprueba con: curl -H 'Version: 1.0' http://localhost:8081/api/products"
   exit 0
