@@ -50,6 +50,17 @@ export function descuento(oferta) {
  * precios reales, y entonces el sitio miente sin que nadie se entere.
  */
 export function minimoHistorico(producto) {
+  return extremoHistorico(producto, (a, b) => a < b)
+}
+
+/** Precio más alto que hemos visto, con su fecha. Misma fuente que el mínimo. */
+export function maximoHistorico(producto) {
+  return extremoHistorico(producto, (a, b) => a > b)
+}
+
+// Recorre el historial y los precios de hoy y se queda con el que gana según
+// `mejor` (menor para el mínimo, mayor para el máximo).
+function extremoHistorico(producto, mejor) {
   const puntos = (producto?.historial ?? []).flatMap((punto) =>
     Object.values(punto.precios ?? {}).map((precio) => ({
       precio,
@@ -67,7 +78,7 @@ export function minimoHistorico(producto) {
 
   if (todos.length === 0) return null
 
-  return todos.reduce((menor, actual) =>
-    actual.precio < menor.precio ? actual : menor,
+  return todos.reduce((elegido, actual) =>
+    mejor(actual.precio, elegido.precio) ? actual : elegido,
   )
 }

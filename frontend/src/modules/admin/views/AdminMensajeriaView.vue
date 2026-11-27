@@ -30,7 +30,7 @@ const SECCIONES = [
   {
     id: 'plano',
     titulo: 'El plano completo',
-    para: 'Los dos flujos dibujados de punta a punta, con los contadores en vivo.',
+    para: 'Los flujos de mensajería dibujados de punta a punta, con los contadores en vivo.',
     acciones: ['Explicar el recorrido de un mensaje.', 'Ver de un vistazo si alguna DLQ tiene fallas.'],
   },
   {
@@ -190,6 +190,13 @@ async function reprocesar(dlq) {
         </ol>
       </details>
 
+      <template v-if="f.porQue">
+        <h3 class="sub">¿Por qué Kinesis y no otra cola?</h3>
+        <ul class="por-que">
+          <li v-for="[titulo, texto] in f.porQue" :key="titulo"><strong>{{ titulo }}.</strong> {{ texto }}</li>
+        </ul>
+      </template>
+
       <h3 class="sub">Colas</h3>
       <TablaColas :colas="colasDe(f)" :ocupado="ocupado" :revisando="revisando"
         @ver="verMensajes" @redrive="reprocesar" />
@@ -227,7 +234,7 @@ async function reprocesar(dlq) {
     <!-- ═════════ El plano completo ═════════ -->
     <section id="plano" class="bloque">
       <h2>El plano completo</h2>
-      <p class="muted">Los dos flujos de punta a punta. Haz clic en una cola para ir a su tabla.</p>
+      <p class="muted">Los flujos 1 y 2 de punta a punta. Haz clic en una cola para ir a su tabla.</p>
       <DiagramaFlujos :colas="colas" @ir="irA" />
     </section>
 
@@ -310,4 +317,10 @@ dt { font-family: var(--cep-font-mono); font-size: var(--cep-fs-sm); color: var(
 dd { margin: 0; overflow-wrap: anywhere; }
 .bloque.flujo h2 { display: flex; align-items: center; gap: var(--cep-sp-2); }
 .num { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--cep-ink); color: var(--cep-surface); font-size: var(--cep-fs-md); }
+.por-que {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+}
 </style>

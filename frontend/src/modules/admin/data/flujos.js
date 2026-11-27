@@ -12,6 +12,7 @@ export const ETIQUETAS = {
   notificaciones: 'Avisos por enviar',
   'notificaciones-dlq': 'Avisos que no se pudieron enviar',
   'auditoria-precios': 'Auditoría de cambios de precio',
+  'precios-dlq': 'Lecturas de precio que el lector no pudo procesar',
 }
 
 export const etiqueta = (nombre) => ETIQUETAS[sinPrefijo(nombre)] ?? null
@@ -62,6 +63,35 @@ export const FLUJOS = [
     ],
     colas: ['notificaciones', 'notificaciones-dlq', 'auditoria-precios'],
     topicos: ['cambios-oferta'],
+  },
+  {
+    id: 'flujo3',
+    titulo: 'Flujo 3 · Precios por Kinesis',
+    corto: 'Kinesis',
+    paraQue: 'Cada precio que lee el scraper, convertido en el historial y el «precio habitual» de la ficha.',
+    acciones: [
+      'Explicar de dónde salen el gráfico y la etiqueta barato/normal/caro.',
+      'Ver si alguna lectura de precio falló (DLQ del lector).',
+    ],
+    resumen:
+      'El scraper no solo guarda la oferta: cada precio que lee lo escribe también en el stream de Kinesis cep-precios. ' +
+      'Un lector dentro de product-service va sacando esas lecturas, guarda cada una (el gráfico) y actualiza el rango ' +
+      'habitual de esa oferta: promedio ± una desviación, con al menos 5 lecturas.',
+    pasos: [
+      'El timer cep-barrido le pide al scraper un barrido de Paris y Hites cada 3 horas.',
+      'Por cada precio, el scraper escribe un registro precio.capturado en el stream cep-precios. La clave de partición es tienda#producto.',
+      'El lector de product-service lee el stream por lotes. Si un registro ya lo procesó (mismo eventId), lo salta.',
+      'Guarda la lectura en ObservacionesPrecio y suma el precio a EstadisticasPrecio, junto con su marcador del stream, en la misma transacción.',
+      'Si el registro no sirve (JSON roto, precio inválido) lo copia a cep-precios-dlq con el motivo y sigue con el resto.',
+      'La ficha lee esas dos tablas: el gráfico por día y si el precio de hoy está bajo, dentro o sobre lo habitual.',
+    ],
+    porQue: [
+      ['Llegan en orden', 'Todas las lecturas de una misma oferta van al mismo shard (la clave es tienda + producto), así que se procesan en el orden en que se capturaron.'],
+      ['No se pierden', 'El stream guarda las lecturas 24 horas. Si el lector se cae, retoma desde su marcador, que se guarda en la misma transacción que el cálculo: no salta ni cuenta dos veces ninguna.'],
+      ['Las pueden leer varios', 'Hoy las lee el precio habitual; una alerta de bajada o una auditoría podrían leer el mismo stream con su propio marcador, sin tocar el scraper. Una cola SQS le entrega cada mensaje a un solo lector.'],
+    ],
+    colas: ['precios-dlq'],
+    topicos: [],
   },
 ]
 

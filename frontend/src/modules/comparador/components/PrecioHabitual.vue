@@ -1,12 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import { formatearPrecio } from '@/shared/utils/formato'
 
 // ¿El precio de hoy es bueno para ESTA prenda? Lo responde el rango habitual
 // que calcula el lector de Kinesis en product-service (promedio ± una
-// desviación, con al menos 5 lecturas). Debajo, a un clic, de dónde sale el
-// dato: el recorrido del precio desde la tienda hasta esta ficha.
+// desviación, con al menos 5 lecturas). Cómo se calcula se explica en el panel
+// de administración (Mensajería › Flujo 3), no aquí: a quien compra no le sirve.
 
 const props = defineProps({
   ofertas: { type: Array, default: () => [] },
@@ -80,53 +80,6 @@ const otras = computed(() =>
     })),
 )
 
-const abierto = ref(false)
-
-const ultimaLectura = computed(() => {
-  const iso = referencia.value?.habitual?.ultimaCaptura
-  if (!iso) return null
-  const fecha = new Date(iso)
-  if (Number.isNaN(fecha.getTime())) return null
-  return new Intl.DateTimeFormat('es-CL', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(fecha)
-})
-
-// El recorrido, con los números reales de esta prenda donde los hay.
-const pasos = computed(() => {
-  const r = referencia.value
-  const tienda = r ? nombreTienda(r.tienda) : 'la tienda'
-  const muestras = r?.habitual?.muestras ?? 0
-
-  return [
-    {
-      nombre: tienda,
-      detalle: 'publica el precio en su sitio',
-    },
-    {
-      nombre: 'Scraper',
-      detalle: 'lo lee cada 3 horas',
-    },
-    {
-      nombre: 'Kinesis',
-      detalle: 'stream cep-precios: cada lectura es un registro',
-      destacado: true,
-    },
-    {
-      nombre: 'Lector',
-      detalle: `product-service suma la lectura: ${muestras} hasta ahora`,
-    },
-    {
-      nombre: 'Esta ficha',
-      detalle: props.historial.length
-        ? `${props.historial.length} ${props.historial.length === 1 ? 'día' : 'días'} en el gráfico`
-        : 'muestra el rango y el gráfico',
-    },
-  ]
-})
 </script>
 
 <template>
@@ -185,54 +138,6 @@ const pasos = computed(() => {
         <i :style="{ background: colorTienda(o.tienda) }" />{{ nombreTienda(o.tienda) }} · {{ o.texto }}
       </span>
     </p>
-
-    <!-- de dónde sale: a un clic, sin tooltips -->
-    <button
-      type="button"
-      class="habitual__boton"
-      :aria-expanded="abierto"
-      @click="abierto = !abierto"
-    >
-      {{ abierto ? '▾' : '▸' }} ¿De dónde sale este dato?
-    </button>
-
-    <div v-if="abierto" class="origen">
-      <ol class="flujo">
-        <li
-          v-for="(p, i) in pasos"
-          :key="p.nombre"
-          class="flujo__paso"
-          :class="{ 'flujo__paso--kinesis': p.destacado }"
-        >
-          <b>{{ p.nombre }}</b>
-          <span class="muted">{{ p.detalle }}</span>
-          <span v-if="i < pasos.length - 1" class="flujo__flecha" aria-hidden="true">→</span>
-        </li>
-      </ol>
-
-      <p v-if="ultimaLectura" class="mono muted origen__ultima">
-        Última lectura de {{ nombreTienda(referencia.tienda) }}: {{ ultimaLectura }}
-      </p>
-
-      <h3 class="origen__titulo">¿Por qué pasa por Kinesis?</h3>
-      <ul class="origen__razones">
-        <li>
-          <b>Llegan en orden.</b> Todas las lecturas de una misma oferta van al mismo
-          carril del stream (la clave es tienda + producto), así que el promedio se
-          calcula en el orden en que se capturaron.
-        </li>
-        <li>
-          <b>No se pierden.</b> El stream guarda las lecturas 24 horas. Si el lector se
-          cae, retoma desde su marcador (que se guarda junto con el cálculo) y no salta
-          ni cuenta dos veces ninguna.
-        </li>
-        <li>
-          <b>Las pueden leer varios.</b> Hoy las lee el cálculo del precio habitual; una
-          alerta de bajada o una auditoría podrían leer las mismas lecturas sin tocar el
-          scraper. Una cola, en cambio, le entrega cada mensaje a un solo lector.
-        </li>
-      </ul>
-    </div>
   </div>
 </template>
 
@@ -342,73 +247,5 @@ const pasos = computed(() => {
   height: 8px;
   margin-right: 6px;
   border-radius: 50%;
-}
-
-.habitual__boton {
-  justify-self: start;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--cep-fs-sm);
-  color: var(--cep-muted);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.habitual__boton:hover,
-.habitual__boton:focus-visible {
-  color: inherit;
-}
-
-.origen {
-  padding: var(--cep-sp-4);
-  border: 1px dashed var(--cep-line-fuerte);
-  border-radius: var(--cep-r-sm);
-}
-.flujo {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cep-sp-2) var(--cep-sp-5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.flujo__paso {
-  position: relative;
-  display: grid;
-  gap: 2px;
-  min-width: 110px;
-  max-width: 170px;
-  font-size: var(--cep-fs-sm);
-}
-.flujo__paso span {
-  font-size: var(--cep-fs-xs);
-  line-height: var(--cep-lh-snug);
-}
-.flujo__paso--kinesis b {
-  color: var(--cep-exito);
-}
-.flujo__flecha {
-  position: absolute;
-  top: 0;
-  right: calc(-1 * var(--cep-sp-4));
-  color: var(--cep-muted);
-}
-.origen__ultima {
-  margin: var(--cep-sp-3) 0 0;
-  font-size: var(--cep-fs-xs);
-}
-.origen__titulo {
-  margin: var(--cep-sp-4) 0 var(--cep-sp-2);
-  font-size: var(--cep-fs-sm);
-}
-.origen__razones {
-  display: grid;
-  gap: var(--cep-sp-2);
-  margin: 0;
-  padding-left: var(--cep-sp-4);
-  font-size: var(--cep-fs-sm);
-  line-height: var(--cep-lh-snug);
 }
 </style>

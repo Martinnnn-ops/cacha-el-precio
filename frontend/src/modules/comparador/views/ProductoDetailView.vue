@@ -7,7 +7,7 @@ import { useComparadorStore } from '@/modules/comparador/store/comparador.store'
 import { registrarVisita } from '@/modules/comparador/services/comparador.service'
 import { rutaNoEncontrada } from '@/modules/comparador/routes'
 import { formatearPrecio } from '@/shared/utils/formato'
-import { minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
+import { maximoHistorico, minimoHistorico, precioMasBajo } from '@/shared/utils/precios'
 import { slugProducto, slugProductoAnterior } from '@/shared/utils/slug'
 import DetalleSkeleton from '@/modules/comparador/components/DetalleSkeleton.vue'
 import EligeTuTienda from '@/modules/comparador/components/EligeTuTienda.vue'
@@ -160,6 +160,13 @@ const BLOQUE_FICHA = import.meta.env.VITE_ADSENSE_SLOT_FICHA ?? ''
 
 const minimo = computed(() => minimoHistorico(producto.value))
 
+// El máximo solo se muestra si es distinto del mínimo: con un único precio
+// visto, "máximo $X" junto a "mínimo $X" no dice nada.
+const maximo = computed(() => {
+  const max = maximoHistorico(producto.value)
+  return max && minimo.value && max.precio > minimo.value.precio ? max : null
+})
+
 // Cuánto se aparta el precio de hoy del mínimo que hemos visto nunca. Es el
 // número que da sentido al sello: el descuento que declara la tienda compara
 // contra su propia referencia, esto compara contra la realidad.
@@ -286,6 +293,9 @@ const subtitulo = computed(() =>
               </p>
               <p v-if="minimo" class="mono cabecera__minimo">
                 Mínimo que hemos visto: {{ formatearPrecio(minimo.precio) }}
+              </p>
+              <p v-if="maximo" class="mono cabecera__maximo">
+                Máximo que hemos visto: {{ formatearPrecio(maximo.precio) }}
               </p>
               <p class="mono cabecera__disponibilidad">
                 {{ ofertasDisponibles }}
@@ -429,6 +439,11 @@ const subtitulo = computed(() =>
   margin: var(--cep-sp-15) 0 0;
   font-size: var(--cep-fs-xs);
   color: var(--cep-exito);
+}
+.cabecera__maximo {
+  margin: var(--cep-sp-1, 4px) 0 0;
+  font-size: var(--cep-fs-xs);
+  color: var(--cep-alerta);
 }
 .cabecera__disponibilidad {
   margin: var(--cep-sp-2) 0 0;
