@@ -1,3 +1,4 @@
+using Product_Service.Observabilidad;
 using System.Text.Json;
 using Product_Service.Exceptions;
 using Product_Service.Models.DTOs;
@@ -14,7 +15,8 @@ public sealed record SobreEntrante(
     int Version,
     string? Source,
     DateTimeOffset? OccurredAt,
-    JsonElement Data);
+    JsonElement Data,
+    string? CorrelationId = null);
 
 // El trabajo de un mensaje de cep-ofertas-crudas: validar el sobre, leer la
 // oferta y guardarla con UpsertProductAsync, el mismo camino que POST
@@ -37,6 +39,8 @@ public sealed class ProcesadorOfertaCapturada(ProductService productos, ILogger<
         ProductRequest oferta = LeerOferta(sobre);
 
         using var _ = log.BeginScope("eventId={EventId}", sobre.EventId);
+        // El número del barrido que la capturó: sigue en el cambio que se publique.
+        using var __ = Correlacion.Iniciar(log, Correlacion.Validar(sobre.CorrelationId));
 
         // Las mismas reglas del POST: el controlador revisa la politica de edad
         // antes de llamar al servicio, asi que aca tambien.

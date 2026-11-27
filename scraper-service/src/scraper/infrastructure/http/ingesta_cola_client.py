@@ -23,6 +23,8 @@ from datetime import UTC, datetime
 
 import httpx
 
+from scraper.observabilidad import correlacion_actual
+
 log = logging.getLogger(__name__)
 
 TIPO = "oferta.capturada"
@@ -82,7 +84,7 @@ class TokenCognito:
 
 def sobre(payload: dict, ahora: datetime | None = None) -> dict:
     """Envuelve una prenda en el sobre oferta.capturada v1, con un eventId nuevo."""
-    return {
+    registro = {
         "eventId": str(uuid.uuid4()),
         "type": TIPO,
         "version": VERSION,
@@ -90,6 +92,10 @@ def sobre(payload: dict, ahora: datetime | None = None) -> dict:
         "occurredAt": (ahora or datetime.now(UTC)).isoformat().replace("+00:00", "Z"),
         "data": payload,
     }
+    # Opcional: el numero de seguimiento del barrido, si lo hay (PLAN-EFT §3).
+    if cid := correlacion_actual():
+        registro["correlationId"] = cid
+    return registro
 
 
 class IngestaColaClient:
@@ -128,7 +134,10 @@ class IngestaColaClient:
                 r = self._http.post(
                     self._url,
                     json=mensaje,
-                    headers={"Authorization": f"Bearer {self._token.obtener(forzar=renovado)}"},
+                    headers={
+                        "Authorization": f"Bearer {self._token.obtener(forzar=renovado)}",
+                        **({"X-Correlation-Id": cid} if (cid := correlacion_actual()) else {}),
+                    },
                 )
             except httpx.TimeoutException:
                 ultimo_error = "timeout"

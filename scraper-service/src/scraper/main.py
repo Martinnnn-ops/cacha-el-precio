@@ -27,7 +27,7 @@ from scraper.infrastructure.database.repositories.product_repository import (
 )
 from scraper.infrastructure.http.client import HttpClient
 from scraper.infrastructure.http.sitemap import leer_sitemap
-from scraper.observabilidad import configurar_logs
+from scraper.observabilidad import con_correlacion, configurar_logs, id_barrido
 from scraper.scrapers.base.scraper_http import ScraperHttp
 from scraper.scrapers.converse.scraper import ConverseScraper
 from scraper.scrapers.falabella.scraper import FalabellaScraper
@@ -343,7 +343,8 @@ def main(argv: list[str] | None = None) -> int:
 
     servicio = construir_servicio(cfg, repo)
 
-    resultado = servicio.ejecutar(args.tienda, leer_urls(args, cfg))
+    with con_correlacion(id_barrido(args.tienda)):
+        resultado = servicio.ejecutar(args.tienda, leer_urls(args, cfg))
     print(resultado.resumen())
     # Que fallen todas suele significar que la tienda cambio o que no
     # hay red; eso si merece marcar el job como fallido.

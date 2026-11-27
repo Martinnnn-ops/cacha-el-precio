@@ -75,6 +75,9 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+// Primero de todo: cada pedido lleva su número de seguimiento (PLAN-EFT §3).
+app.UsarCorrelacion();
+
 using (IServiceScope scope = app.Services.CreateScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();

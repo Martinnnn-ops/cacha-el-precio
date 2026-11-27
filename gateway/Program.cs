@@ -7,6 +7,9 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.UsarLogsJson();
+// Todas las llamadas hacia atrás llevan el correlationId del pedido.
+builder.Services.AddTransient<PropagarCorrelacion>();
+builder.Services.ConfigureHttpClientDefaults(http => http.AddHttpMessageHandler<PropagarCorrelacion>());
 
 string productUrl = builder.Configuration["PRODUCT_URL"] ?? "http://localhost:8081";
 string? cognitoIssuer = builder.Configuration["COGNITO_ISSUER"];
@@ -106,6 +109,9 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+// Primero de todo: cada pedido lleva su número de seguimiento (PLAN-EFT §3).
+app.UsarCorrelacion();
 
 app.Use(async (context, next) =>
 {

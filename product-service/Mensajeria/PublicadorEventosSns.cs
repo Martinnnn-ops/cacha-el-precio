@@ -1,3 +1,4 @@
+using Product_Service.Observabilidad;
 using System.Text.Json;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
@@ -36,7 +37,9 @@ public sealed class PublicadorEventosSns(
             Version: 1,
             Source: "product-service",
             OccurredAt: DateTimeOffset.UtcNow,
-            Data: datos);
+            Data: datos,
+            // El mismo número del barrido (o pedido) que provocó el cambio.
+            CorrelationId: Correlacion.Actual);
 
         var atributos = new Dictionary<string, MessageAttributeValue>
         {

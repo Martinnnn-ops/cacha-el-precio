@@ -29,7 +29,7 @@ from scraper.config.settings import get_settings
 from scraper.domain.clothing import es_vestimenta
 from scraper.infrastructure.http.client import HttpClient
 from scraper.main import construir_repositorio, construir_servicio, descubrir_urls, sitemap_de
-from scraper.observabilidad import configurar_logs
+from scraper.observabilidad import con_correlacion, configurar_logs, id_barrido
 
 configurar_logs(get_settings().log_level)
 log = logging.getLogger(__name__)
@@ -80,14 +80,21 @@ def tiendas() -> list[dict[str, Any]]:
     ]
 
 
-def _barrer(tienda: str, urls: list[str]) -> None:
+def _barrer(tienda: str, urls: list[str], correlation_id: str) -> None:
     """Se ejecuta en segundo plano; guarda el resultado para /status."""
+    with con_correlacion(correlation_id):
+        _barrer_con_id(tienda, urls, correlation_id)
+
+
+def _barrer_con_id(tienda: str, urls: list[str], correlation_id: str) -> None:
+    log.info("barrido de %s: empieza con %s URLs", tienda, len(urls))
     try:
         # El repositorio PostgreSQL comparte una conexion. Serializar los
         # barridos evita mezclar transacciones de dos peticiones simultaneas.
         with _barrido_lock:
             r = _servicio.ejecutar(tienda, urls)
         _ultimo[tienda] = {
+            "correlationId": correlation_id,
             "resumen": r.resumen(),
             "urls_pedidas": r.urls_pedidas,
             "guardados": r.guardados,
@@ -104,7 +111,7 @@ def _barrer(tienda: str, urls: list[str]) -> None:
         }
     except Exception as e:
         log.exception("barrido de %s fallo", tienda)
-        _ultimo[tienda] = {"error": str(e)}
+        _ultimo[tienda] = {"correlationId": correlation_id, "error": str(e)}
 
 
 @app.post("/scrape/{tienda}", status_code=202, summary="Lanza un barrido en segundo plano")
@@ -131,8 +138,9 @@ def scrape(
 
     # 202: aceptado y encolado. El scrapeo tarda demasiado para hacerlo
     # dentro de la peticion.
-    tareas.add_task(_barrer, tienda, urls)
-    return {"estado": "encolado", "tienda": tienda, "urls": len(urls)}
+    cid = id_barrido(tienda)
+    tareas.add_task(_barrer, tienda, urls, cid)
+    return {"estado": "encolado", "tienda": tienda, "urls": len(urls), "correlationId": cid}
 
 
 @app.get("/scrape/{tienda}/status", summary="Resultado del ultimo barrido")

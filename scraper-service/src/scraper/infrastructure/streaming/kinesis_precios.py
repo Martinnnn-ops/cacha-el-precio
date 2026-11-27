@@ -26,6 +26,7 @@ from datetime import UTC, datetime
 from typing import Protocol
 
 from scraper.domain.product import Product
+from scraper.observabilidad import correlacion_actual
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ def registro_precio(producto: Product, ahora: datetime | None = None) -> dict:
     una vez"). Mismo estilo de sobre que oferta.capturada (docs/MENSAJERIA.md).
     """
     emitido = (ahora or datetime.now(UTC)).isoformat().replace("+00:00", "Z")
-    return {
+    registro = {
         "eventId": str(uuid.uuid4()),
         "type": TIPO,
         "version": VERSION,
@@ -64,6 +65,10 @@ def registro_precio(producto: Product, ahora: datetime | None = None) -> dict:
             "capturedAt": producto.scraped_at.isoformat().replace("+00:00", "Z"),
         },
     }
+    # Opcional: el numero de seguimiento del barrido, si lo hay (PLAN-EFT §3).
+    if cid := correlacion_actual():
+        registro["correlationId"] = cid
+    return registro
 
 
 class PublicadorPrecios(Protocol):

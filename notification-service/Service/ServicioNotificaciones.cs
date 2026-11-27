@@ -1,3 +1,4 @@
+using Notification_Service.Observabilidad;
 using System.Text.Json;
 using Notification_Service.Correo;
 using Notification_Service.Exceptions;
@@ -30,6 +31,7 @@ public sealed class ServicioNotificaciones(
         DatosCambioOferta datos = LeerDatos(sobre);
 
         using var _ = log.BeginScope("eventId={EventId} intento={Intento}", sobre.EventId, intento);
+        using var __ = Correlacion.Iniciar(log, Correlacion.Validar(sobre.CorrelationId));
 
         var subs = await seguidores.ObtenerSeguidoresAsync(datos.ProductId, ct);
         if (subs.Count == 0)

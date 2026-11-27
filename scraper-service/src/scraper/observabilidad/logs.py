@@ -30,6 +30,15 @@ def correlacion_actual() -> str | None:
     return _correlacion.get()
 
 
+def id_barrido(tienda: str, ahora: datetime | None = None) -> str:
+    """
+    El numero de seguimiento de un barrido: legible a proposito, para poder
+    dictarlo en la demo ("barrido-paris-20261128T000012Z") y buscarlo en los logs.
+    """
+    momento = (ahora or datetime.now(UTC)).strftime("%Y%m%dT%H%M%SZ")
+    return f"barrido-{tienda}-{momento}"
+
+
 @contextlib.contextmanager
 def con_correlacion(correlation_id: str | None) -> Iterator[None]:
     """Todo log dentro del bloque lleva este correlationId."""

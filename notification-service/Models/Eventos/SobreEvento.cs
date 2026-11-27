@@ -10,7 +10,8 @@ public sealed record SobreEvento(
     int Version,
     string Source,
     DateTimeOffset OccurredAt,
-    JsonElement Data);
+    JsonElement Data,
+    string? CorrelationId = null);
 
 // Union de los campos de `data` de los tres tipos de cambio de oferta. Los
 // comunes van siempre; los de precio solo en el tipo que corresponde.

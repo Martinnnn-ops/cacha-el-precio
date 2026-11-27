@@ -13,7 +13,8 @@ public sealed record SobreEvento(
     int Version,
     string Source,
     DateTimeOffset OccurredAt,
-    object Data);
+    object Data,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CorrelationId = null);
 
 /// <summary>
 /// El <c>data</c> de los tres cambios de oferta. Los campos comunes van

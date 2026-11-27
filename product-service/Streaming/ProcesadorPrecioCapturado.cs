@@ -1,3 +1,4 @@
+using Product_Service.Observabilidad;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Product_Service.Data;
@@ -50,6 +51,7 @@ public sealed class ProcesadorPrecioCapturado(ProductDbContext db, ILogger<Proce
         PrecioCapturado datos = LeerDatos(sobre);
 
         using var _ = log.BeginScope("eventId={EventId}", sobre.EventId);
+        using var __ = Correlacion.Iniciar(log, Correlacion.Validar(sobre.CorrelationId));
 
         if (await db.EventosPrecioProcesados.AnyAsync(e => e.EventId == sobre.EventId, ct))
         {

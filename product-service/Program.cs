@@ -90,6 +90,9 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+// Primero de todo: cada pedido lleva su número de seguimiento (PLAN-EFT §3).
+app.UsarCorrelacion();
+
 if (string.IsNullOrWhiteSpace(config["SQS_OFERTAS_CRUDAS_URL"]))
     app.Logger.LogWarning("ConsumidorOfertas desactivado: SQS_OFERTAS_CRUDAS_URL viene vacia (la API HTTP sigue igual)");
 
