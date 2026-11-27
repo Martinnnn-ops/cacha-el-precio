@@ -78,7 +78,8 @@ def observaciones_sparta():
 
 def armar_sql(seco):
     datos = io.StringIO()
-    escritor = csv.writer(datos)
+    # lineterminator \n: el CSV por defecto usa \r\n y COPY lo rechaza junto al \. final.
+    escritor = csv.writer(datos, lineterminator="\n")
     n = 0
     for sku, cuando, precio in observaciones_sparta():
         escritor.writerow(["sparta", sku, cuando, precio])

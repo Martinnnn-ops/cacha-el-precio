@@ -122,7 +122,7 @@ const pasos = computed(() => {
     {
       nombre: 'Esta ficha',
       detalle: props.historial.length
-        ? `${props.historial.length} días en el gráfico`
+        ? `${props.historial.length} ${props.historial.length === 1 ? 'día' : 'días'} en el gráfico`
         : 'muestra el rango y el gráfico',
     },
   ]
