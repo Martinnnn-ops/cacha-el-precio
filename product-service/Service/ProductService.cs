@@ -20,7 +20,7 @@ public sealed class ProductService(IProductRepository repository, IPublicadorEve
     public async Task<ProductResponse?> GetProductByIdAsync(int id)
     {
         ProductEntity? product = await repository.GetProductByIdAsync(id);
-        return product is not null && !IsChild(product) ? product.ToResponse() : null;
+        return product is not null && !IsChild(product) ? await FichaAsync(product) : null;
     }
 
     public async Task<string?> GetProductSlugByIdAsync(int id)
@@ -33,7 +33,65 @@ public sealed class ProductService(IProductRepository repository, IPublicadorEve
     {
         string normalizedSlug = ProductIdentity.CreateSlug(slug);
         ProductEntity? product = await repository.GetProductBySlugAsync(normalizedSlug);
-        return product is not null && !IsChild(product) ? product.ToResponse() : null;
+        return product is not null && !IsChild(product) ? await FichaAsync(product) : null;
+    }
+
+    /// <summary>
+    /// La ficha de un producto: lo mismo que el listado, más el precio
+    /// habitual de cada oferta (lo calcula el lector de Kinesis).
+    /// </summary>
+    private async Task<ProductResponse> FichaAsync(ProductEntity product)
+    {
+        List<string> ids = product.Offers.Select(o => o.ExternalId).Distinct().ToList();
+        IReadOnlyList<EstadisticaPrecio> stats = await repository.GetEstadisticasPrecioAsync(ids);
+        var porOferta = stats
+            .GroupBy(e => EntityToResponse.Clave(e.Store, e.ExternalId))
+            .ToDictionary(g => g.Key, g => g.First());
+
+        IReadOnlyList<ObservacionPrecio> observaciones = await repository.GetObservacionesPrecioAsync(
+            ids, DateTimeOffset.UtcNow.AddDays(-DiasDeHistorial));
+
+        ProductResponse respuesta = product.ToResponse(porOferta);
+        respuesta.Historial = HistorialPorDia(product, observaciones);
+        return respuesta;
+    }
+
+    /// <summary>Cuántos días hacia atrás muestra el gráfico de la ficha.</summary>
+    public const int DiasDeHistorial = 120;
+
+    private static readonly TimeZoneInfo HoraChile =
+        TimeZoneInfo.TryFindSystemTimeZoneById("America/Santiago", out TimeZoneInfo? tz) ? tz : TimeZoneInfo.Utc;
+
+    /// <summary>
+    /// Un punto por día (hora de Chile) con el ÚLTIMO precio de cada tienda ese
+    /// día. Solo cuentan las ofertas de este producto: el id externo podría
+    /// repetirse en otra tienda.
+    /// </summary>
+    public static IReadOnlyList<HistorialDiaResponse> HistorialPorDia(
+        ProductEntity product, IEnumerable<ObservacionPrecio> observaciones)
+    {
+        var propias = product.Offers
+            .Select(o => EntityToResponse.Clave(o.Store, o.ExternalId))
+            .ToHashSet();
+
+        return observaciones
+            .Where(o => propias.Contains(EntityToResponse.Clave(o.Store, o.ExternalId)))
+            .GroupBy(o => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(o.CapturadoEn, HoraChile).DateTime))
+            .OrderBy(g => g.Key)
+            .Select(dia => new HistorialDiaResponse
+            {
+                Fecha = dia.Key.ToString("yyyy-MM-dd"),
+                Precios = dia
+                    .GroupBy(o => o.Store.ToLowerInvariant())
+                    // Si hay dos ofertas de la misma tienda, gana la más barata
+                    // de las últimas capturas (igual que la ficha muestra la más barata).
+                    .ToDictionary(
+                        t => t.Key,
+                        t => t.GroupBy(o => o.ExternalId)
+                              .Select(g => g.OrderBy(o => o.CapturadoEn).Last().Precio)
+                              .Min())
+            })
+            .ToList();
     }
 
     public async Task<ProductResponse> UpsertProductAsync(ProductRequest request)

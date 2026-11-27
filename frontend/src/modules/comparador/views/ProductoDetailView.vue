@@ -13,6 +13,8 @@ import DetalleSkeleton from '@/modules/comparador/components/DetalleSkeleton.vue
 import EligeTuTienda from '@/modules/comparador/components/EligeTuTienda.vue'
 import FichaCaracteristicas from '@/modules/comparador/components/FichaCaracteristicas.vue'
 import GraficoPrecios from '@/modules/comparador/components/GraficoPrecios.vue'
+import PrecioHabitual from '@/modules/comparador/components/PrecioHabitual.vue'
+import { useTiendas } from '@/modules/comparador/composables/useTiendas'
 import SelloDescuento from '@/modules/comparador/components/SelloDescuento.vue'
 import AdSlot from '@/shared/components/AdSlot.vue'
 import BaseButton from '@/shared/components/BaseButton.vue'
@@ -116,6 +118,23 @@ async function avisarVisita(id) {
 watch(() => props.slug, cargarPorSlug, { immediate: true })
 
 const masBarato = computed(() => precioMasBajo(producto.value))
+
+// La franja del gráfico: el rango habitual de la oferta más barata que ya lo
+// tenga (el mismo criterio que usa PrecioHabitual para el veredicto).
+const { nombreTienda, colorTienda } = useTiendas()
+const banda = computed(() => {
+  const candidatas = (producto.value?.precios ?? []).filter(
+    (o) => o.stock && o.habitual?.suficiente,
+  )
+  if (candidatas.length === 0) return null
+  const o = candidatas.reduce((a, b) => (b.precio < a.precio ? b : a))
+  return {
+    piso: o.habitual.piso,
+    techo: o.habitual.techo,
+    color: colorTienda(o.tienda),
+    nombre: nombreTienda(o.tienda),
+  }
+})
 
 // Con una sola fuente de precio no hay comparación: la ficha deja de hablar de
 // "la más barata" y de titular una tabla como "Precio por tienda".
@@ -348,7 +367,12 @@ const subtitulo = computed(() =>
       <section class="panel">
         <h2 class="panel__titulo">Historial de precios</h2>
 
-        <GraficoPrecios :historial="producto.historial ?? []" />
+        <PrecioHabitual
+          :ofertas="producto.precios ?? []"
+          :historial="producto.historial ?? []"
+        />
+
+        <GraficoPrecios :historial="producto.historial ?? []" :banda="banda" />
       </section>
     </template>
   </section>

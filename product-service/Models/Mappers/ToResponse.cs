@@ -1,12 +1,19 @@
 using Product_Service.Models.DTOs;
 using Product_Service.Models.Entities;
+using Product_Service.Streaming;
 
 namespace Product_Service.Models.Mappers;
 
 
 public static class EntityToResponse
 {
-    public static ProductResponse ToResponse(this ProductEntity product)
+    /// <param name="estadisticas">
+    /// Estadísticas de precio por (tienda en minúsculas, id externo). Solo las
+    /// pasa la ficha; el listado no las pide para no hacer una consulta extra.
+    /// </param>
+    public static ProductResponse ToResponse(
+        this ProductEntity product,
+        IReadOnlyDictionary<(string Store, string ExternalId), EstadisticaPrecio>? estadisticas = null)
     {
         return new ProductResponse
         {
@@ -25,13 +32,15 @@ public static class EntityToResponse
             CreatedAt = product.CreatedAt,
             Offers = product.Offers
                 .GroupBy(offer => offer.Store, StringComparer.OrdinalIgnoreCase)
-                .Select(ToStoreOffer)
+                .Select(group => ToStoreOffer(group, estadisticas))
                 .OrderBy(offer => offer.Price)
                 .ToList()
         };
     }
 
-    private static ProductOfferResponse ToStoreOffer(IGrouping<string, ProductOfferEntity> group)
+    private static ProductOfferResponse ToStoreOffer(
+        IGrouping<string, ProductOfferEntity> group,
+        IReadOnlyDictionary<(string Store, string ExternalId), EstadisticaPrecio>? estadisticas)
     {
         List<ProductOfferEntity> offers = group.ToList();
         ProductOfferEntity representative = offers
@@ -58,7 +67,29 @@ public static class EntityToResponse
             Image = representative.ProductImage
                 ?? offers.Select(offer => offer.ProductImage).FirstOrDefault(image => image is not null),
             Active = available.Count > 0,
-            UpdatedAt = offers.Max(offer => offer.UpdatedAt)
+            UpdatedAt = offers.Max(offer => offer.UpdatedAt),
+            Habitual = estadisticas is not null
+                && estadisticas.TryGetValue(Clave(representative.Store, representative.ExternalId), out EstadisticaPrecio? est)
+                    ? ToHabitual(est, representative.Price)
+                    : null
+        };
+    }
+
+    /// <summary>Clave del diccionario de estadísticas: tienda en minúsculas + id externo.</summary>
+    public static (string Store, string ExternalId) Clave(string store, string externalId) =>
+        (store.ToLowerInvariant(), externalId);
+
+    public static PrecioHabitualResponse ToHabitual(EstadisticaPrecio est, int precioActual)
+    {
+        RangoHabitual rango = EstadisticasPrecioHabitual.Rango(est);
+        return new PrecioHabitualResponse
+        {
+            Piso = rango.Piso,
+            Techo = rango.Techo,
+            Suficiente = rango.Suficiente,
+            Ubicacion = EstadisticasPrecioHabitual.Clasificar(est, precioActual).ToString().ToLowerInvariant(),
+            Muestras = est.Muestras,
+            UltimaCaptura = est.UltimaCaptura
         };
     }
 }

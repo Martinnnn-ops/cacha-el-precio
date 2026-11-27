@@ -3,7 +3,9 @@
 //   API   Product { id, canonicalKey, name, brand, category, bodyArea, gender, layer, description,
 //                   image, visits, createdAt, offers[] }
 //         Offer   { id, externalId, store, price, sizes[], url, image,
-//                   active, updatedAt }
+//                   active, updatedAt, habitual? }
+//         habitual { piso, techo, suficiente, ubicacion, muestras, ultimaCaptura }
+//         historial[] { fecha, precios: { tienda: precio } }   (solo en la ficha)
 //   App   Producto { id, nombre, categoria, precios[], historial[] }
 
 import { TIENDAS_CONOCIDAS } from '@/modules/comparador/data/tiendas'
@@ -50,6 +52,46 @@ export function idTienda(nombre) {
     .replace(/^-|-$/g, '')
 }
 
+// El precio habitual lo calcula el lector de Kinesis (product-service). Viene
+// solo en la ficha; en el listado no está y la oferta queda con `null`.
+const UBICACIONES = new Set(['bajo', 'dentro', 'sobre', 'insuficiente'])
+
+function adaptarHabitual(h) {
+  if (!h || typeof h !== 'object') return null
+
+  const piso = Number(h.piso)
+  const techo = Number(h.techo)
+  const muestras = Number(h.muestras ?? 0)
+
+  if (!Number.isFinite(piso) || !Number.isFinite(techo)) return null
+
+  return {
+    piso,
+    techo,
+    suficiente: h.suficiente === true,
+    ubicacion: UBICACIONES.has(h.ubicacion) ? h.ubicacion : 'insuficiente',
+    muestras: Number.isFinite(muestras) ? muestras : 0,
+    ultimaCaptura: texto(h.ultimaCaptura) || null,
+  }
+}
+
+// La API trae la tienda tal como la guarda el scraper ("paris"); el gráfico
+// usa el id del front, que es el mismo salvo casos como H&M.
+function adaptarHistorial(historial) {
+  if (!Array.isArray(historial)) return []
+
+  return historial
+    .filter((dia) => texto(dia?.fecha) && dia?.precios && typeof dia.precios === 'object')
+    .map((dia) => ({
+      fecha: texto(dia.fecha),
+      precios: Object.fromEntries(
+        Object.entries(dia.precios)
+          .filter(([, precio]) => Number.isFinite(Number(precio)))
+          .map(([tienda, precio]) => [idTienda(tienda), Number(precio)]),
+      ),
+    }))
+}
+
 function tallasDisponibles(sizes) {
   if (Array.isArray(sizes)) {
     return [...new Set(sizes.map((talla) => texto(String(talla)).toUpperCase()).filter(Boolean))]
@@ -87,6 +129,7 @@ function consolidarOfertas(ofertas) {
         url: texto(oferta.url) || null,
         tallas: tallasDisponibles(oferta.sizes),
         imagen: texto(oferta.image) || null,
+        habitual: adaptarHabitual(oferta.habitual),
       }
 
       if (!actual) {
@@ -104,6 +147,7 @@ function consolidarOfertas(ofertas) {
         ...elegida,
         tallas,
         imagen: elegida.imagen ?? actual.imagen ?? candidata.imagen,
+        habitual: elegida.habitual ?? actual.habitual ?? candidata.habitual,
       })
     })
 
@@ -181,7 +225,7 @@ export function adaptarProductos(filas = []) {
         pros: [],
         contras: [],
         precios: ofertas,
-        historial: [],
+        historial: adaptarHistorial(fila.historial),
       }
     })
     .filter((producto) => producto.precios.length > 0)

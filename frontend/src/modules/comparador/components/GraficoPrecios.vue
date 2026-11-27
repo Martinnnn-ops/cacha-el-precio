@@ -11,6 +11,9 @@ import { formatearFecha, formatearPrecio } from '@/shared/utils/formato'
 // precios donde no se pueden leer los precios es medio gráfico.
 const props = defineProps({
   historial: { type: Array, default: () => [] },
+  // Rango habitual de una tienda ({ piso, techo, color, nombre }): se pinta
+  // como una franja para ver de un vistazo si hoy está dentro o fuera.
+  banda: { type: Object, default: null },
 })
 
 const { nombreTienda, colorTienda } = useTiendas()
@@ -48,6 +51,9 @@ const grafico = computed(() => {
   const valores = dias.flatMap((d) => Object.values(d.precios ?? {}))
 
   if (valores.length === 0) return null
+
+  // La franja también tiene que caber en la escala.
+  if (props.banda) valores.push(props.banda.piso, props.banda.techo)
 
   const min = Math.min(...valores)
   const max = Math.max(...valores)
@@ -110,8 +116,17 @@ const grafico = computed(() => {
     })
   })
 
+  const banda = props.banda
+    ? {
+        ...props.banda,
+        yTecho: y(props.banda.techo),
+        alto: Math.max(2, y(props.banda.piso) - y(props.banda.techo)),
+      }
+    : null
+
   return {
     dias,
+    banda,
     series,
     guias,
     fechas,
@@ -216,6 +231,21 @@ defineExpose({ grafico })
         </template>
       </g>
 
+      <!-- rango habitual (calculado por el lector de Kinesis) -->
+      <g v-if="grafico.banda" class="grafico__banda">
+        <rect
+          :x="PAD_IZQ"
+          :y="grafico.banda.yTecho"
+          :width="AREA_ANCHO"
+          :height="grafico.banda.alto"
+          :fill="grafico.banda.color"
+          fill-opacity="0.12"
+        />
+        <text :x="ANCHO - PAD_DER - 6" :y="grafico.banda.yTecho - 5" text-anchor="end">
+          rango habitual · {{ grafico.banda.nombre }}
+        </text>
+      </g>
+
       <!-- guía vertical del día leído -->
       <line
         class="grafico__cursor"
@@ -308,7 +338,8 @@ defineExpose({ grafico })
 
     <p class="mono muted grafico__pista">
       Pasa el cursor —o usa ← → con el teclado— para ver el precio de cada día.
-      El círculo verde marca el más bajo registrado.
+      El círculo verde marca el más bajo registrado<template v-if="grafico.banda">;
+      la franja es el rango habitual de {{ grafico.banda.nombre }}</template>.
     </p>
   </div>
 
@@ -333,6 +364,11 @@ defineExpose({ grafico })
 }
 .grafico__guias text,
 .grafico__fecha {
+  font-family: var(--cep-font-mono);
+  font-size: 10.5px;
+  fill: var(--cep-muted);
+}
+.grafico__banda text {
   font-family: var(--cep-font-mono);
   font-size: 10.5px;
   fill: var(--cep-muted);
