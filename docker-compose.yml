@@ -167,6 +167,11 @@ services:
       # vacia, el consumidor no arranca y el POST /api/products sigue igual.
       SQS_OFERTAS_CRUDAS_URL: ${SQS_OFERTAS_CRUDAS_URL:-}
       SQS_OFERTAS_CRUDAS_DLQ_URL: ${SQS_OFERTAS_CRUDAS_DLQ_URL:-}
+      # Kinesis cep-precios (ADR-035): lee cada precio capturado y calcula el precio
+      # habitual. Sin stream, LectorPrecios no arranca; sin DLQ, los rotos van al log.
+      KINESIS_PRECIOS_STREAM: ${KINESIS_PRECIOS_STREAM:-}
+      KINESIS_REGION: ${KINESIS_REGION:-us-east-1}
+      SQS_PRECIOS_DLQ_URL: ${SQS_PRECIOS_DLQ_URL:-}
 
     depends_on:
       postgres:
@@ -263,6 +268,10 @@ services:
       COGNITO_SCRAPER_CLIENT_ID: ${COGNITO_SCRAPER_CLIENT_ID:-}
       COGNITO_SCRAPER_CLIENT_SECRET: ${COGNITO_SCRAPER_CLIENT_SECRET:-}
       COGNITO_SCRAPER_SCOPE: ${COGNITO_SCRAPER_SCOPE:-}
+      # Kinesis cep-precios (ADR-035): cada prenda aceptada manda su precio al
+      # stream, de mejor esfuerzo. Vacio = no manda nada y el barrido sigue igual.
+      KINESIS_PRECIOS_STREAM: ${KINESIS_PRECIOS_STREAM:-}
+      KINESIS_REGION: ${KINESIS_REGION:-us-east-1}
 
     ports:
       - "127.0.0.1:${SCRAPER_API_PORT:-8000}:8000"

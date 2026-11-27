@@ -122,6 +122,9 @@ borde.env
 # Lo escribe tools/tf.sh: URLs de colas y ARN del topico (cambian por cuenta)
 mensajeria.env
 
+# Lo escribe tools/tf.sh: el nombre del stream de Kinesis (vacio con la EC2 apagada)
+streaming.env
+
 # Cache de Python (scripts de tools/ y el scraper)
 __pycache__/
 *.pyc
