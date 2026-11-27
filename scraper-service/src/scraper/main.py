@@ -27,6 +27,7 @@ from scraper.infrastructure.database.repositories.product_repository import (
 )
 from scraper.infrastructure.http.client import HttpClient
 from scraper.infrastructure.http.sitemap import leer_sitemap
+from scraper.observabilidad import configurar_logs
 from scraper.scrapers.base.scraper_http import ScraperHttp
 from scraper.scrapers.converse.scraper import ConverseScraper
 from scraper.scrapers.falabella.scraper import FalabellaScraper
@@ -142,7 +143,7 @@ def construir_stream_precios(cfg: Settings):
         import boto3  # noqa: F401  (solo para avisar si falta antes de barrer)
     except ModuleNotFoundError:
         log.error(
-            'KINESIS_PRECIOS_STREAM esta definido pero falta boto3. Instala el extra: '
+            "KINESIS_PRECIOS_STREAM esta definido pero falta boto3. Instala el extra: "
             'pip install -e ".[streaming]"'
         )
         raise SystemExit(2) from None
@@ -172,7 +173,8 @@ def construir_sync(cfg: Settings):
         if faltan:
             # Mejor reventar al arrancar que barrer 20 tiendas y perderlo todo.
             raise SystemExit(
-                "MODO_PUBLICACION=cola, pero faltan: " + ", ".join(faltan)
+                "MODO_PUBLICACION=cola, pero faltan: "
+                + ", ".join(faltan)
                 + ". Salen de api-gateway.env y cognito.env (ver docs/MENSAJERIA.md)."
             )
         import httpx
@@ -308,10 +310,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args = p.parse_args(argv)
     cfg = get_settings()
-    logging.basicConfig(
-        level=cfg.log_level.upper(),
-        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
-    )
+    configurar_logs(cfg.log_level)
 
     # "tiendas" y "descubrir" no tocan la base: se resuelven antes de
     # abrir conexion, para que sigan funcionando con la base apagada.

@@ -29,7 +29,9 @@ from scraper.config.settings import get_settings
 from scraper.domain.clothing import es_vestimenta
 from scraper.infrastructure.http.client import HttpClient
 from scraper.main import construir_repositorio, construir_servicio, descubrir_urls, sitemap_de
+from scraper.observabilidad import configurar_logs
 
+configurar_logs(get_settings().log_level)
 log = logging.getLogger(__name__)
 
 app = FastAPI(

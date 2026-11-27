@@ -136,8 +136,12 @@ class IngestaColaClient:
                 ultimo_error = f"error de red: {exc.__class__.__name__}"
             else:
                 if r.status_code == 200:
-                    log.debug("Encolada %s/%s eventId=%s", payload.get("store"),
-                              payload.get("externalId"), mensaje["eventId"])
+                    log.debug(
+                        "Encolada %s/%s eventId=%s",
+                        payload.get("store"),
+                        payload.get("externalId"),
+                        mensaje["eventId"],
+                    )
                     return {"eventId": mensaje["eventId"], "encolado": True}
                 if r.status_code == 401 and not renovado:
                     renovado = True
@@ -151,8 +155,9 @@ class IngestaColaClient:
                 ultimo_error = f"HTTP {r.status_code}"
 
             if intento < self._reintentos:
-                log.warning("Ingesta fallo (%s), intento %s de %s",
-                            ultimo_error, intento, self._reintentos)
+                log.warning(
+                    "Ingesta fallo (%s), intento %s de %s", ultimo_error, intento, self._reintentos
+                )
                 self._dormir(self._espera * intento)
 
         raise ErrorIngesta(

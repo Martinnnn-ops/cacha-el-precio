@@ -1,3 +1,4 @@
+using CachaElPrecio.Gateway.Observabilidad;
 using System.Security.Claims;
 using CachaElPrecio.Gateway.Mensajeria;
 using CachaElPrecio.Gateway.Services;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.UsarLogsJson();
 
 string productUrl = builder.Configuration["PRODUCT_URL"] ?? "http://localhost:8081";
 string? cognitoIssuer = builder.Configuration["COGNITO_ISSUER"];

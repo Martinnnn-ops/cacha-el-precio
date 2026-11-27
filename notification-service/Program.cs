@@ -1,3 +1,4 @@
+using Notification_Service.Observabilidad;
 using Amazon;
 using Amazon.CognitoIdentityProvider;
 using Amazon.SQS;
@@ -12,6 +13,7 @@ using Notification_Service.Service;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.UsarLogsJson();
 var config = builder.Configuration;
 
 // ─── Base de datos: esquema propio `notification` ───────────────────────────

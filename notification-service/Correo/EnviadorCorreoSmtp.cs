@@ -34,7 +34,7 @@ public sealed class EnviadorCorreoSmtp(IConfiguration config, ILogger<EnviadorCo
         catch (ParseException e)
         {
             // Direccion de destino con formato invalido: no se arregla reintentando.
-            throw new ErrorDefinitivoException($"direccion invalida: {correo.Para}", e);
+            throw new ErrorDefinitivoException($"direccion invalida: {Observabilidad.LogsJson.Enmascarar(correo.Para)}", e);
         }
 
         using var cliente = new SmtpClient { Timeout = (int)Timeout.TotalMilliseconds };
@@ -49,13 +49,13 @@ public sealed class EnviadorCorreoSmtp(IConfiguration config, ILogger<EnviadorCo
             e.StatusCode is SmtpStatusCode.MailboxUnavailable or SmtpStatusCode.MailboxNameNotAllowed)
         {
             // 550 / 553: el servidor rechaza la direccion. Definitivo.
-            throw new ErrorDefinitivoException($"correo rechazado ({(int)e.StatusCode}): {correo.Para}", e);
+            throw new ErrorDefinitivoException($"correo rechazado ({(int)e.StatusCode}): {Observabilidad.LogsJson.Enmascarar(correo.Para)}", e);
         }
         catch (Exception e) when (e is not ErrorDefinitivoException)
         {
             // Timeout, conexion caida, 4xx temporal: recuperable. Se propaga para
             // que el mensaje no se borre y SQS lo reintente.
-            log.LogWarning(e, "Fallo recuperable enviando a {Para}", correo.Para);
+            log.LogWarning(e, "Fallo recuperable enviando a {Para}", Observabilidad.LogsJson.Enmascarar(correo.Para));
             throw;
         }
     }

@@ -8,8 +8,10 @@ public sealed class EnviadorCorreoLog(ILogger<EnviadorCorreoLog> log) : IEnviado
 
     public Task EnviarAsync(CorreoSalida correo, CancellationToken ct)
     {
+        // Modo de desarrollo: el texto se muestra para ver el correo armado, pero
+        // la dirección va enmascarada igual que en producción.
         log.LogInformation("CORREO (log) -> {Para} | {Asunto}\n{Texto}",
-            correo.Para, correo.Asunto, correo.Texto);
+            Observabilidad.LogsJson.Enmascarar(correo.Para), correo.Asunto, correo.Texto);
         return Task.CompletedTask;
     }
 }

@@ -1,3 +1,4 @@
+using Product_Service.Observabilidad;
 using Scalar.AspNetCore;
 using Asp.Versioning;
 using Amazon;
@@ -13,6 +14,7 @@ using Product_Service.Service;
 using Product_Service.Streaming;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.UsarLogsJson();
 var config = builder.Configuration;
 
 // Add services to the container.
