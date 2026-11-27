@@ -16,25 +16,29 @@
 # con la EC2. El precio igual quedo en el catalogo por el flujo 1, asi que perder
 # el stream unas horas no pierde datos, solo pausa el calculo del precio habitual.
 
-resource "aws_kinesis_stream" "precios" {
+# ⚠️ NO es aws_kinesis_stream (27-11): el provider de AWS, al crear el stream,
+# SIEMPRE llama a IncreaseStreamRetentionPeriod (aunque sea a las 24 h de fabrica),
+# y la politica de la organizacion del Learner Lab la niega con un deny explicito.
+# El stream quedaba creado pero "tainted" y cada `tf.sh subir` fallaba. Por eso se
+# crea con la CLI, como los buckets de base.tf: CreateStream sin tocar la retencion
+# (queda en 24 h) y, al apagar, DeleteStream, porque cobra por shard-hora.
+#
+# 1 shard = 1.000 registros/s y 1 MiB/s de escritura: con 8 tiendas barridas cada
+# 3 h sobra de lejos. Sin cifrado KMS a proposito (sumaria permisos kms:* que el
+# lab podria negar, y el stream no lleva datos personales).
+resource "terraform_data" "stream_precios" {
   count = var.encendido ? 1 : 0
 
-  name = "${local.prefijo}precios"
+  input = "${local.prefijo}precios"
 
-  # 1 shard = 1.000 registros/s y 1 MiB/s de escritura. Con 8 tiendas barridas
-  # cada 3 h sobra de lejos; subir a 2 shards es cambiar este numero.
-  shard_count = 1
+  # Si ya existe (una pasada anterior), lo adopta en vez de fallar.
+  provisioner "local-exec" {
+    command = "aws kinesis describe-stream-summary --stream-name ${self.input} --region us-east-1 >/dev/null 2>&1 || aws kinesis create-stream --stream-name ${self.input} --shard-count 1 --stream-mode-details StreamMode=PROVISIONED --region us-east-1; aws kinesis wait stream-exists --stream-name ${self.input} --region us-east-1"
+  }
 
-  # 24 h: una caida del lector de medio dia se recupera sin perder precios. Mas
-  # retencion cobra extra por shard-hora.
-  retention_period = 24
-
-  # Sin cifrado administrado por KMS a proposito: una clave CMK suma permisos de
-  # kms:* que el Learner Lab podria negar, y el stream no lleva datos personales
-  # (solo tienda, id de producto y precio). Si el sondeo (6a) muestra que KMS pasa,
-  # se cambia a encryption_type = "KMS" con la clave administrada alias/aws/kinesis.
-  stream_mode_details {
-    stream_mode = "PROVISIONED"
+  provisioner "local-exec" {
+    when    = destroy
+    command = "aws kinesis delete-stream --stream-name ${self.input} --enforce-consumer-deletion --region us-east-1 2>/dev/null; aws kinesis wait stream-not-exists --stream-name ${self.input} --region us-east-1 || true"
   }
 }
 
@@ -57,7 +61,7 @@ resource "aws_cloudwatch_metric_alarm" "precios_atrasado" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    StreamName = aws_kinesis_stream.precios[0].name
+    StreamName = terraform_data.stream_precios[0].input
   }
 }
 
@@ -67,7 +71,7 @@ resource "aws_cloudwatch_metric_alarm" "precios_atrasado" {
 output "streaming_env" {
   description = "Variables del stream para mensajeria.env. Vacias cuando encendido = false."
   value = {
-    KINESIS_PRECIOS_STREAM = try(aws_kinesis_stream.precios[0].name, "")
+    KINESIS_PRECIOS_STREAM = try(terraform_data.stream_precios[0].input, "")
     KINESIS_REGION         = "us-east-1"
   }
 }
