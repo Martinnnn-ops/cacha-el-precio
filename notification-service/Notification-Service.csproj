@@ -12,6 +12,7 @@
     <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="4.0.106.3" />
     <PackageReference Include="AWSSDK.SQS" Version="4.0.100.18" />
     <PackageReference Include="MailKit" Version="4.18.1" />
+    <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
     <!-- MimeKit (vía MailKit) arrastra la 10.0.0, con vulnerabilidad conocida
          (GHSA-846f-f764-76mx). Fijamos la parcheada. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />

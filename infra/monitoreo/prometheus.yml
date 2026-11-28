@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Prometheus · qué números se guardan (PLAN-EFT §8, perfil `monitoreo`)
+# ─────────────────────────────────────────────────────────────────────────────
+#  Cada 15 s le pide /metrics a cada servicio por la red interna del compose.
+#  Los servicios .NET sirven sus métricas en el puerto 9464 (METRICAS_PUERTO),
+#  que NO se publica: Caddy solo reenvía el 8080, así que nada de esto se ve
+#  desde internet. La retención (3 días) va en el compose, como flag.
+# ─────────────────────────────────────────────────────────────────────────────
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Los 3 servicios .NET: peticiones por ruta y código, latencia, RAM y GC.
+  - job_name: servicios
+    static_configs:
+      - targets: ["gateway:9464"]
+        labels: { servicio: gateway }
+      - targets: ["product-service:9464"]
+        labels: { servicio: product-service }
+      - targets: ["notification-service:9464"]
+        labels: { servicio: notification-service }
+
+  # La EC2 misma: CPU, RAM, disco y red (node-exporter mira el host, no el contenedor).
+  - job_name: ec2
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels: { servicio: ec2 }
+
+  # Prometheus se mide a sí mismo (cuánto guarda y si está sano).
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

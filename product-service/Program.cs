@@ -1,3 +1,4 @@
+using Prometheus;
 using Product_Service.Observabilidad;
 using Scalar.AspNetCore;
 using Asp.Versioning;
@@ -105,6 +106,13 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
+// Métricas para Prometheus (PLAN-EFT §8). Van en un puerto APARTE (METRICAS_PUERTO,
+// 9464 en el compose) que no se publica: Caddy solo le reenvía el 8080, así que
+// /metrics nunca queda a la vista en api.cacha-el-precio.com. Vacío o 0 = apagado
+// (las pruebas y el dotnet run local no abren ningún puerto).
+int puertoMetricas = builder.Configuration.GetValue("METRICAS_PUERTO", 0);
+if (puertoMetricas > 0)
+    builder.Services.AddMetricServer(opciones => opciones.Port = (ushort)puertoMetricas);
 builder.Services.AddScoped<RegistroTrazas>();
 
 var app = builder.Build();
@@ -128,6 +136,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+// Cuenta cada petición por ruta, método y código (200/401/403/5xx) y su duración.
+app.UseHttpMetrics();
 app.UseAuthorization();
 
 app.MapControllers();

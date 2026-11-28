@@ -111,6 +111,8 @@ services:
 
     environment:
       ASPNETCORE_HTTP_PORTS: 8080
+      # /metrics para Prometheus, en un puerto que no se publica (PLAN-EFT §8).
+      METRICAS_PUERTO: 9464
       # Dentro del compose el host es el NOMBRE DEL SERVICIO. Cada contenedor
       # tiene su propio localhost, y ahí no hay nadie escuchando.
       PRODUCT_URL: http://product-service:8081
@@ -156,6 +158,8 @@ services:
 
     environment:
       ASPNETCORE_HTTP_PORTS: 8081
+      # /metrics para Prometheus, en un puerto que no se publica (PLAN-EFT §8).
+      METRICAS_PUERTO: 9464
       ConnectionStrings__PostgreSql: "Host=postgres;Port=5432;Database=${DB_NAME:-cachaelprecio};Username=${DB_USER:-cachaelprecio};Password=${DB_PASSWORD};Search Path=product,public"
       # Mensajería del flujo 2: publica los cambios de oferta en SNS. Credenciales
       # por el rol de la EC2 en producción; en local salen del .env. Si el ARN
@@ -204,6 +208,8 @@ services:
 
     environment:
       ASPNETCORE_HTTP_PORTS: 8082
+      # /metrics para Prometheus, en un puerto que no se publica (PLAN-EFT §8).
+      METRICAS_PUERTO: 9464
       ConnectionStrings__PostgreSql: "Host=postgres;Port=5432;Database=${DB_NAME:-cachaelprecio};Username=${DB_USER:-cachaelprecio};Password=${DB_PASSWORD};Search Path=notification,public"
       # Host interno del compose; resuelve los seguidores por la red privada.
       PRODUCT_URL: http://product-service:8081
@@ -283,6 +289,102 @@ services:
 
     networks: [cep]
 
+  # ───────────────────────────────────────────────────────────────────────────
+  #  Monitoreo (PLAN-EFT §8 · infra/monitoreo/README.md) — perfil `monitoreo`
+  # ───────────────────────────────────────────────────────────────────────────
+  #  NO se prende con el `up -d` normal ni con el CD: solo con
+  #      docker compose --profile monitoreo up -d
+  #  Nada de esto publica puertos hacia afuera: Grafana escucha en 127.0.0.1 y
+  #  se entra por túnel SSH (ssh -L 3000:localhost:3000 ...). Topes de RAM
+  #  medidos el 28-11 con docker stats y los servicios arriba: ~670 MB los 5 juntos
+  #  (Grafana ~375, Loki ~100, Prometheus ~100, Alloy ~90, node-exporter ~15).
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    container_name: cep-prometheus
+    profiles: [monitoreo]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=3d
+    volumes:
+      - ./infra/monitoreo/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-datos:/prometheus
+    mem_limit: 256m
+    networks: [cep]
+
+  node-exporter:
+    image: prom/node-exporter:v1.13.1
+    container_name: cep-node-exporter
+    profiles: [monitoreo]
+    restart: unless-stopped
+    # Mira el HOST (la EC2), no su propio contenedor: por eso ve los procesos
+    # del host y su disco montado en solo lectura.
+    pid: host
+    command: [--path.rootfs=/host]
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 64m
+    networks: [cep]
+
+  loki:
+    image: grafana/loki:3.7.11
+    container_name: cep-loki
+    profiles: [monitoreo]
+    restart: unless-stopped
+    command: [-config.file=/etc/loki/loki.yml]
+    volumes:
+      - ./infra/monitoreo/loki.yml:/etc/loki/loki.yml:ro
+      - loki-datos:/loki
+    mem_limit: 256m
+    networks: [cep]
+
+  alloy:
+    image: grafana/alloy:v1.22.0
+    container_name: cep-alloy
+    profiles: [monitoreo]
+    restart: unless-stopped
+    command: [run, /etc/alloy/config.alloy, --storage.path=/var/lib/alloy/data]
+    volumes:
+      - ./infra/monitoreo/config.alloy:/etc/alloy/config.alloy:ro
+      # Solo lectura: Alloy lee los logs de los contenedores, no los maneja.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: [loki]
+    mem_limit: 192m
+    networks: [cep]
+
+  grafana:
+    image: grafana/grafana:13.3.2
+    container_name: cep-grafana
+    profiles: [monitoreo]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      # Sin `:?` a propósito: Compose interpola el archivo ENTERO aunque el perfil
+      # esté apagado, y un `:?` botaría el `up` normal y el CD. En la EC2 la
+      # genera tools/desplegar.sh; en tu PC, vacía = admin/admin (solo 127.0.0.1).
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_CLAVE:-}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/tableros/cacha-el-precio.json
+      # CloudWatch (Kinesis y SQS): en la EC2 usa el LabRole; en tu PC, estas.
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+    volumes:
+      - ./infra/monitoreo/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/monitoreo/grafana/tableros:/var/lib/grafana/tableros:ro
+      - grafana-datos:/var/lib/grafana
+    ports:
+      # Solo 127.0.0.1: nunca abierto a internet (ni el security group lo abre).
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on: [prometheus, loki]
+    mem_limit: 512m
+    networks: [cep]
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Volúmenes: donde Docker guarda los datos para que no se pierdan al apagar
 # ─────────────────────────────────────────────────────────────────────────────
@@ -290,6 +392,10 @@ volumes:
   postgres-datos:
   caddy_data:
   caddy_config:
+  # Monitoreo (perfil `monitoreo`): 3 días de métricas y logs, y Grafana.
+  prometheus-datos:
+  loki-datos:
+  grafana-datos:
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Red interna: los contenedores se ven entre ellos por su nombre de servicio.

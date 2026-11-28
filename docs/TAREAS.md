@@ -2,7 +2,7 @@
 
 > **Qué es.** La bolsa de tareas pendientes hasta la EFT y las reglas para trabajar sin pisarse.
 > **Para quién.** Los tres. El porqué de cada tarea está en [PLAN-EFT](PLAN-EFT.md).
-> **Última revisión:** 18-11-2026. La historia del EP1 quedó en
+> **Última revisión:** 28-11-2026. La historia del EP1 quedó en
 > [HISTORIA](HISTORIA.md).
 
 > 📍 **En 10 segundos:** **no hay dueños.** El que puede, toma una tarea 🟢, la pasa a 🟡 y la sube
@@ -67,7 +67,7 @@
 | 🟡 | Barrido automático cada 3 h en la EC2 — timer `cep-barrido` en `desplegar.sh` (paso 3.6), rama `feature/barrido-3h`. **Falta probarlo con AWS prendido.** | `tools/desplegar.sh` (timer) | 24-nov |
 | 🟢 | Guardar 3 precios (normal, internet, tarjeta) para que aparezca el tachado | `scraper-service/`, `product-service/` | 26-nov |
 | 🟢 | Ficha pulida (rango habitual, gráfico) y arreglar lo visual roto tras los merges | `frontend/` | 28-nov |
-| 🟢 | **Prometheus + Grafana** (perfil `monitoreo`), midiendo la RAM con `docker stats` | `docker-compose.yml` | 29-nov |
+| 🟡 | **Prometheus + Grafana + Loki** (perfil `monitoreo`) — rama `feature/monitoreo`, probado en local. **Falta:** `tf.sh subir` con `t3.medium`, prenderlo en la EC2 y ver la fila de CloudWatch ([ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md)) | `docker-compose.yml`, `infra/monitoreo/` | 29-nov |
 
 ### Cierre
 

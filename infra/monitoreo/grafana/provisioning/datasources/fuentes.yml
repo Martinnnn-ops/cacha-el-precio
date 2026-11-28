@@ -1,0 +1,33 @@
+# Las 3 fuentes del tablero. Se cargan solas al arrancar Grafana: nadie las
+# configura a mano en la interfaz (y si alguien las cambia ahí, se pisan al
+# reiniciar). Los uid son los que usa grafana/tableros/cacha-el-precio.json.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
+
+  # Kinesis y SQS no corren en la EC2: sus métricas las junta AWS en CloudWatch.
+  # authType default = la cadena normal del SDK: en la EC2, el LabRole del perfil
+  # de la instancia; en tu PC, las AWS_* que el compose le pasa desde el .env.
+  - name: CloudWatch
+    uid: cloudwatch
+    type: cloudwatch
+    editable: false
+    jsonData:
+      authType: default
+      defaultRegion: us-east-1

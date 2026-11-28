@@ -9,3 +9,7 @@ llave_ssh       = "vockey"
 
 # El client secret de Google NO va aqui. Entra por variable de entorno
 # (TF_VAR_google_client_secret), y tools/tf.sh la saca de google.env.
+
+# Solo en la cuenta de produccion (la del dominio): t3.medium por el monitoreo
+# (ADR-036). Las cuentas de prueba se quedan con el t3.small por defecto.
+# tipo_instancia = "t3.medium"

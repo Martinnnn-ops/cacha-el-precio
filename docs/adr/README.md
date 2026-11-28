@@ -3,7 +3,7 @@
 > **Qué es.** Una decisión técnica por archivo: el contexto, las alternativas, lo que se decidió y
 > sus consecuencias, **incluidas las malas**.
 > **Para quién.** El equipo y la defensa: cuando preguntan «¿por qué así?», la respuesta está aquí.
-> **Última revisión:** 26-11-2026.
+> **Última revisión:** 28-11-2026.
 
 > 📍 **En 10 segundos:** 24 decisiones vigentes o reemplazadas. Las que más se preguntan:
 > **006** (Cognito), **019** (API Gateway), **026** (encabezado del borde), **029** (SQS y SNS) y
@@ -38,6 +38,7 @@
 | [033](033-terraform-para-la-infraestructura.md) | Terraform para la infraestructura de AWS | ✅ aceptado el 17-11, fases 0 a 7 |
 | [034](034-cicd-con-github-actions.md) | CI/CD con GitHub Actions; el front lo publica Cloudflare desde el repo de Panditax | ✅ desde el 27-11 front y backend salen solo de `main` |
 | [035](035-kinesis-precios-capturados.md) | Kinesis `cep-precios`: el scraper escribe y product-service calcula el precio habitual | ✅ aceptado el 24-11 (EFT) |
+| [036](036-monitoreo-prometheus-grafana-loki.md) | Prometheus + Grafana + Loki en el perfil `monitoreo`, `/metrics` en un puerto interno y la EC2 a `t3.medium` | ✅ aceptado el 28-11 (EFT) |
 
 Los números que faltan (001–005, 009–012, 017, 027) nunca tuvieron archivo en este repo. Algunos
 se citan en la bitácora o en el archivo (por ejemplo el 010, los esquemas `catalog` y `price` que

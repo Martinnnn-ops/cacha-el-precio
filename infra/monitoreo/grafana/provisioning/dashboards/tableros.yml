@@ -1,0 +1,12 @@
+# Grafana carga los tableros JSON de /var/lib/grafana/tableros (montado desde
+# infra/monitoreo/grafana/tableros). El tablero vive en el repo: si alguien lo
+# mejora en la interfaz, lo exporta como JSON y lo commitea ahí.
+apiVersion: 1
+
+providers:
+  - name: cacha-el-precio
+    folder: Cacha el Precio
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/tableros

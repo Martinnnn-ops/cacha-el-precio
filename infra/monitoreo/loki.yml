@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Loki · dónde se guardan los logs (PLAN-EFT §8, perfil `monitoreo`)
+# ─────────────────────────────────────────────────────────────────────────────
+#  Un solo proceso, sin nube: los logs quedan en el volumen del contenedor y se
+#  borran a los 3 días (igual que Prometheus). Alloy le manda los logs JSON de
+#  los contenedores; Grafana los consulta para seguir un correlationId.
+# ─────────────────────────────────────────────────────────────────────────────
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+
+schema_config:
+  configs:
+    - from: 2026-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  retention_period: 72h
+  allow_structured_metadata: true
+  volume_enabled: true
+
+# El compactor es el que de verdad borra lo que pasó de los 3 días.
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+# Caché chica: la EC2 es compartida con todo lo demás.
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 32
+
+analytics:
+  reporting_enabled: false

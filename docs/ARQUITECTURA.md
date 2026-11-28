@@ -3,7 +3,7 @@
 > **Qué es.** Las piezas del sistema, quién es dueño de cada dato, cómo viajan los mensajes, cómo
 > funciona el login y por qué lo desplegado difiere del diseño original.
 > **Para quién.** El equipo y la defensa. El detalle de cada servicio está en su README.
-> **Última revisión:** 18-11-2026. Absorbe `IDENTIDAD.md` (§6) y la parte vigente de
+> **Última revisión:** 28-11-2026. Absorbe `IDENTIDAD.md` (§6) y la parte vigente de
 > `DESPLIEGUE.md` (§7), que se resumen en [HISTORIA](HISTORIA.md).
 
 > 📍 **En 10 segundos:** un frontend Vue en S3 detrás de Cloudflare llama al **API Gateway**, que
@@ -312,7 +312,7 @@ Cómo se monta, prende, apaga y migra: [OPERAR-EN-AWS](OPERAR-EN-AWS.md).
 | El emparejamiento une o separa mal | identidad de producto por número de modelo ([ADR-022](adr/022-identidad-de-producto-entre-tiendas.md)) |
 | Ráfagas del scraper | ya pasan por la cola: product-service consume a su ritmo |
 | El historial crece | índices, particionado o retención |
-| La EC2 se queda sin RAM | medir con `docker stats`; plan B `t3.medium` ([PLAN-EFT](PLAN-EFT.md)) |
+| La EC2 se queda sin RAM | producción en `t3.medium` desde el 28-11; el monitoreo en un perfil aparte con topes de RAM ([ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md)) |
 | Se cae product-service | el catálogo se atrasa, las ofertas esperan en la cola, nada se pierde |
 | Se cae notification-service | los avisos esperan; al volver no se repiten |
 
