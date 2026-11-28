@@ -53,8 +53,8 @@ presentar.
 | Mensajería con DLQ | SQS + SNS del EP3 | ✅ |
 | **Kinesis** | stream de precios capturados → precio habitual | ⬜ [PLAN-EFT §5](PLAN-EFT.md#5--kinesis-los-precios-capturados) |
 | «DLC» 🔎 (creemos que es DLQ) | las de SQS + la del lector de Kinesis | 🟡 |
-| **Logs avanzados** | correlationId + logs JSON | ⬜ [PLAN-EFT §3](PLAN-EFT.md#3--correlationid-y-logs-en-json) |
-| Trazabilidad e idempotencia (clase del 12-11) | lector de auditoría | ⬜ [PLAN-EFT §4](PLAN-EFT.md#4--la-cola-de-auditoría-que-nadie-leía) |
+| **Logs avanzados** | correlationId + logs JSON | ✅ 28-11 · [PLAN-EFT §3](PLAN-EFT.md#3--correlationid-y-logs-en-json) |
+| Trazabilidad e idempotencia (clase del 12-11) | lector de auditoría + «Seguir un barrido» | ✅ 28-11 · [PLAN-EFT §4](PLAN-EFT.md#4--la-cola-de-auditoría-que-nadie-leía) |
 | Kafka | 🚫 descartado en la clase del 17-11 | — |
 | Módulos extra | Terraform, CI/CD, armario digital, bandeja de correos, panel, Grafana | 🟡 |
 
