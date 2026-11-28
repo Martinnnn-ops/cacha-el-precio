@@ -2,6 +2,29 @@
 
 Última actualización: 28-11-2026.
 
+## 28-11 · Prometheus, Grafana y Loki, y la EC2 a `t3.medium` — Martín
+
+Rama `feature/monitoreo`, armada en un *worktree* aparte mientras se cerraba la trazabilidad, y
+llevada encima de `development` después del merge del PR #64.
+
+- **Métricas:** `prometheus-net` en los 3 servicios .NET, en un puerto aparte (`METRICAS_PUERTO`,
+  9464) que Caddy no publica: `/metrics` en el 8080 da **404**. Dos contadores propios:
+  `cep_etapas_total` (cada paso de `RegistroTrazas`, con los duplicados descartados) y
+  `cep_mensajes_total` (ok / reintento / dlq por cola).
+- **Logs:** Loki + Alloy. El `correlationId` se busca como texto, no como etiqueta.
+- **Tablero** «Cacha el Precio · salud» (28 paneles), cargado solo desde `infra/monitoreo/`.
+- **Probado en local** con el compose real: 5 objetivos `up`; el gateway mostró 200 ×10, 401 ×5
+  y 404 ×5; un pedido con `X-Correlation-Id: demo-profe-123` apareció en Loki. CloudWatch queda
+  para la EC2.
+- **Lo que costó:** el plan estimaba ~0,4 GB y medido fueron **~670 MB** (Grafana ~375). Grafana y
+  Alloy rozaban su tope de RAM y se subieron a 512 y 192 MB. Por eso producción pasa a
+  `t3.medium` ([ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md)).
+- **Una trampa:** `${GRAFANA_CLAVE:?}` habría botado el `up` normal y el CD, porque Compose interpola
+  el archivo entero aunque el perfil esté apagado. La clave la genera `desplegar.sh`, como la de la base.
+
+**Pendiente:** `tf.sh subir` con `t3.medium` (leer que diga *in-place*), prender el perfil en la
+EC2 y confirmar que el `LabRole` deja leer CloudWatch.
+
 ## 28-11 · La trazabilidad destapa un error que llevaba semanas escondido — Martín
 
 Rama `feature/trazabilidad`. Al seguir el barrido `barrido-paris-20261128T002117Z` en la pantalla

@@ -182,20 +182,38 @@ con un comando. Paso a paso en [OPERAR EN AWS](docs/OPERAR-EN-AWS.md).
 
 ## Estado
 
-Lo que corre hoy, no lo planificado.
+Lo que corre hoy, no lo planificado. Revisado el **28-11-2026**; el detalle vive en
+[CONTEXTO](docs/CONTEXTO.md).
 
-| | Pieza | Estado |
-|:---:|---|---|
-| 🟢 | Sitio | `www.cacha-el-precio.com` |
-| 🟡 | API | `api.cacha-el-precio.com`, solo durante las sesiones de trabajo (la EC2 del Learner Lab no queda prendida) |
-| 🟢 | Login | Google vía Cognito |
-| 🟢 | Catálogo | 6 tiendas en vivo (Ripley y Converse con el parser listo) |
-| 🟢 | Mensajería | los dos flujos probados en AWS, con DLQ y panel |
-| 🟢 | Trazabilidad | cada barrido lleva un número de seguimiento que se puede seguir en el panel y en los logs |
-| 🟢 | Infraestructura | toda la cuenta en Terraform, probada en una cuenta vacía |
-| 🟢 | Respaldos | cada hora a S3, y al laptop antes de cada apagado |
-| 🟢 | CI/CD | GitHub Actions: pruebas en cada PR y despliegue automático desde `main` |
-| ⬜ | Red privada | la EC2 usa la red por defecto; la protege el encabezado del borde ([ADR-015](docs/adr/015-red-privada-con-vpc-link.md)) |
+**Leyenda:** 🟢 funciona · 🟡 funciona con una condición · ⬜ falta
+
+### Lo que ve la gente
+
+| | Pieza | Estado | Más |
+|:---:|---|---|---|
+| 🟢 | Sitio | `www.cacha-el-precio.com`, publicado por Cloudflare | [CICD](docs/CICD.md) |
+| 🟡 | API | `api.cacha-el-precio.com`, **solo en las sesiones de trabajo**: la EC2 del Learner Lab no queda prendida | [OPERAR EN AWS](docs/OPERAR-EN-AWS.md) |
+| 🟢 | Login | Google vía Cognito; el panel de admin, por grupo | [ARQUITECTURA §6](docs/ARQUITECTURA.md#6--seguridad-e-identidad) |
+| 🟢 | Catálogo | 6 tiendas en vivo (Ripley y Converse con el parser listo), barrido automático cada 3 h | [scraper](scraper-service/README.md) |
+| 🟢 | Ficha | historial real, **precio habitual** y máximo histórico | [ADR-035](docs/adr/035-kinesis-precios-capturados.md) |
+
+### Lo que corre por dentro
+
+| | Pieza | Estado | Más |
+|:---:|---|---|---|
+| 🟢 | Mensajería | SQS + SNS, dos flujos con DLQ; los consumidores descartan repetidos (idempotencia) | [MENSAJERIA](docs/MENSAJERIA.md) |
+| 🟢 | Streaming | Kinesis `cep-precios`: cada precio capturado alimenta el precio habitual | [ADR-035](docs/adr/035-kinesis-precios-capturados.md) |
+| 🟢 | Trazabilidad | un `correlationId` por pedido y por barrido, en los logs JSON y en «Seguir un barrido» del panel | [PLAN-EFT §3](docs/PLAN-EFT.md#3--correlationid-y-logs-en-json) |
+| 🟡 | Monitoreo | Prometheus + Grafana + Loki en el perfil `monitoreo`, por túnel SSH. Probado en local; **falta prenderlo en la EC2** | [ADR-036](docs/adr/036-monitoreo-prometheus-grafana-loki.md) |
+
+### La operación
+
+| | Pieza | Estado | Más |
+|:---:|---|---|---|
+| 🟢 | Infraestructura | toda la cuenta en Terraform (`tools/tf.sh subir` / `apagar`), probada en una cuenta vacía; EC2 `t3.medium` | [Terraform](infra/terraform/README.md) |
+| 🟢 | CI/CD | GitHub Actions: pruebas en cada PR y despliegue automático **solo desde `main`**, con *rollback* | [ADR-034](docs/adr/034-cicd-con-github-actions.md) |
+| 🟢 | Respaldos | cada hora a S3, y al laptop antes de cada apagado | [OPERAR EN AWS §6](docs/OPERAR-EN-AWS.md#6--apagar-sin-perder-datos-tfsh-apagar) |
+| ⬜ | Red privada | la EC2 usa la red por defecto; la protege el encabezado del borde | [ADR-015](docs/adr/015-red-privada-con-vpc-link.md) |
 
 ---
 

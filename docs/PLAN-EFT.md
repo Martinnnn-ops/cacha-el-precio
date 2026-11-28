@@ -4,13 +4,13 @@
 > funciona y qué puede salir mal. Es la versión para el equipo del plan acordado el 16 y 17-11 (plan
 > del 15-11 + issue [#49](https://github.com/Martinnnn-ops/cacha-el-precio/issues/49)).
 > **Para quién.** Los tres. Las tareas sueltas, para tomarlas, están en [TAREAS](TAREAS.md).
-> **Última revisión:** 19-11-2026.
+> **Última revisión:** 28-11-2026 (monitoreo y `t3.medium`).
 
 > 📍 **En 10 segundos:** entrega el **miércoles 2-dic-2026 a las 17:00**. Primero se mergea
 > **Terraform** y se arma el **CI/CD**. Después, cada pedido lleva un **correlationId** en logs
 > JSON, la cola de auditoría que nadie leía pasa a guardar **todos los cambios de precio**, y
 > **Kinesis** recibe cada precio capturado para calcular el **precio habitual**. **Kafka no va**
-> (17-11). La EC2 sigue en `t3.small`, con **Prometheus + Grafana**. En paralelo: historial con
+> (17-11). La EC2 de producción pasa a **`t3.medium`** (28-11) por **Prometheus + Grafana + Loki**. En paralelo: historial con
 > **3 precios**, barrido automático y la ficha pulida. Todo se suma **al lado** de lo que ya
 > existe, sin reescribir lo que funciona.
 
@@ -75,7 +75,7 @@ se atrasa, se atrasa todo.
 | 6 | **Kinesis con los precios capturados** | el stream que pidió el profe | ⬜ |
 | 7 | DLQ del lector de Kinesis | un precio roto no traba al resto | ⬜ |
 | 8a–f | Limpiar catálogo, 3 precios, barrido, ficha, lo visual roto | lo que se ve en el video | 🟡 (§7) |
-| 11 | **Prometheus + Grafana** | un tablero con servicios, EC2, Kinesis y SQS | ⬜ |
+| 11 | **Prometheus + Grafana + Loki** | un tablero con servicios, EC2, Kinesis, SQS y los logs por `correlationId` | 🟡 28-11, `feature/monitoreo`: probado en local con los servicios; falta la EC2 (`t3.medium`) y CloudWatch · [ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md) |
 | 13–15 | Informes, video, ensayo | la entrega | ⬜ |
 
 ### Fuera de la EFT
@@ -307,30 +307,32 @@ puntos.
 
 ## 8 · La RAM y el monitoreo
 
-**Decisión del 17-11: se queda en `t3.small` (2 GB).** Kinesis lo corre AWS, los lectores nuevos
-son tareas dentro de servicios que ya existen, el CI corre en GitHub y con el CD la EC2 deja de
-compilar.
+**Decisión del 28-11: la EC2 de producción pasa a `t3.medium` (4 GB)**
+([ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md)). El 17-11 se había decidido quedarse en
+`t3.small` estimando ~0,4 GB para el monitoreo; medido con todo arriba fueron **~670 MB**, y con
+Loki para los logs. Va solo en `martin.tfvars`: las cuentas de prueba siguen en `t3.small`.
 
 | Qué corre | RAM | ¿Va? |
 |---|---|---|
 | Caddy, Postgres, gateway, product, notification, scraper | ~0,8 GB (medido el 10-09) | ✅ |
-| Prometheus + Grafana + exporters | ~0,4 GB 🔎 | ✅ |
+| Prometheus + Grafana + Loki + Alloy + node-exporter | **~0,67 GB** (medido el 28-11) | ✅ |
 | ~~Kafka + Kafka UI~~ | ~~1,0 GB~~ | 🚫 |
-| **Total** | **~1,2 GB de 2 GB** | ✅ |
+| **Total** | **~1,5 GB de 4 GB** (`t3.medium`) | ✅ |
 
-**Cómo se mantiene dentro:** el CD primero; el monitoreo en un **perfil aparte** (`monitoreo`) que
-se prende solo para trabajar y para la demo; Prometheus con 3 días de retención y topes de RAM por
-contenedor; medir con `docker stats` con todo prendido; si pasa de ~1,7 GB, un **swapfile** de 2 GB.
-**Plan B:** `tipo_instancia = "t3.medium"` y `tf.sh subir`, con respaldo antes y leyendo que el plan
-diga *in-place* y no *replace*.
+**Cómo se mantiene dentro:** el monitoreo en un **perfil aparte** (`monitoreo`) que se prende solo
+para trabajar y para la demo; Prometheus y Loki con 3 días de retención y topes de RAM por
+contenedor. **Para subir:** `tipo_instancia = "t3.medium"` en `martin.tfvars` y `tf.sh subir`, con
+respaldo antes y leyendo que el plan diga *in-place* y no *replace*. Cómo se prende y se entra:
+[OPERAR-EN-AWS · El monitoreo](OPERAR-EN-AWS.md#el-monitoreo).
 
 | Herramienta | Qué hace | ¿Va? |
 |---|---|---|
 | Logs JSON + correlationId (§3) | seguir un pedido | ✅ es la base |
+| **Loki + Alloy** | **guarda** los logs y los busca por `correlationId` desde Grafana | ✅ 28-11 (no estaba en el plan del 17-11) |
 | **Prometheus** | **guarda** números en el tiempo | ✅ |
 | **Grafana** | **dibuja** el tablero: servicios .NET, RAM y CPU de la EC2, Kinesis y SQS desde CloudWatch | ✅ por túnel SSH, nunca abierto a internet |
 | Métricas de CloudWatch | las de Kinesis y SQS llegan solas; ahí vive la alarma | ✅ |
-| CloudWatch Logs | juntar los logs de todos los contenedores | 🔎 si el Academy da permiso a `awslogs`; si no, quedan locales |
+| CloudWatch Logs | juntar los logs de todos los contenedores | 🚫 lo hace Loki, sin depender de permisos del Academy |
 | Jenkins | no es monitoreo y pide ~1 GB | 🚫 el CI/CD es GitHub Actions |
 
 ---
@@ -340,12 +342,12 @@ diga *in-place* y no *replace*.
 ```mermaid
 flowchart TB
     GH["GitHub Actions<br/>CI + imágenes GHCR"] -.despliega.-> EC2
-    subgraph EC2["EC2 t3.small"]
+    subgraph EC2["EC2 t3.medium"]
         TIM["⏰ barrido cada 3 h"] --> SC["scraper"]
         GW[gateway] --> PS[product-service]
         PS --> EST[("estadisticas_precio")]
         PS --> AUD[("eventos_auditoria")]
-        MON["Prometheus + Grafana<br/>(perfil monitoreo)"]
+        MON["Prometheus + Grafana + Loki<br/>(perfil monitoreo)"]
     end
     SC -->|flujo 1| Q0[["ofertas-crudas"]] --> PS
     SC --> KIN[("Kinesis · cep-precios")] --> PS
@@ -363,7 +365,7 @@ flowchart TB
 |---|---|---|
 | CI, imágenes, despliegue | GitHub Actions + GHCR | `.github/workflows/` |
 | Kinesis, DLQ nuevas, alarma, grupos de logs | AWS | **Terraform** |
-| Prometheus, Grafana | Docker en la EC2 | `docker-compose.yml` |
+| Prometheus, Grafana, Loki | Docker en la EC2, perfil `monitoreo` | `docker-compose.yml` + `infra/monitoreo/` |
 | Lectores de auditoría y de Kinesis | product-service | C# |
 | correlationId y logs JSON | todos los servicios | C# y Python |
 | 3 precios, barrido, envío a Kinesis | scraper | Python |
@@ -388,7 +390,7 @@ en clase lo de Kafka:
 | CI/CD | — | sin detalle | **completo**, desplegando solo desde `main` |
 | Feed personalizado | nuevo | — | ⏸️ después de la EFT |
 | Rediseño visual total | nuevo | pulir la ficha | 🚫 solo arreglar lo roto |
-| RAM | — | `t3.medium` sí o sí | **se queda en `t3.small`** |
+| RAM | — | `t3.medium` sí o sí | `t3.small` el 17-11; **`t3.medium` desde el 28-11** (ADR-036) |
 
 ---
 

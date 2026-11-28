@@ -3,7 +3,7 @@
 > **Qué es.** La guía para levantar el sistema entero en una cuenta de AWS, prenderlo y apagarlo
 > cada día sin perder datos, y saltar a otra cuenta (con el dominio) cuando una se agota.
 > **Para quién.** Quien vaya a prender el sistema. Sirve para las tres cuentas del equipo.
-> **Última revisión:** 18-11-2026. Junta lo que estaba en `MONTAR-EN-TU-CUENTA.md` y
+> **Última revisión:** 28-11-2026 (el monitoreo). Junta lo que estaba en `MONTAR-EN-TU-CUENTA.md` y
 > `MIGRACION.md`. Probado desde cero el 17-11 en una cuenta vacía (`081199126041`, 81 recursos) y
 > en el día a día en `731705830984` desde el 14-11.
 
@@ -312,6 +312,34 @@ entra con Google, así que hay que meter al grupo la cuenta de Google de quien l
 
 > Desde el 17-11 el panel **solo mira**: colas, tópicos y reglas se cambian en `topologia.json` +
 > `tf.sh subir` ([MENSAJERIA](MENSAJERIA.md#administración-t11)).
+
+### El monitoreo
+
+Prometheus, Grafana y Loki **no se prenden solos** (perfil `monitoreo`, [ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md)):
+se prenden para trabajar y para la demo. Grafana solo escucha en `127.0.0.1`, así que se entra por
+un **túnel SSH**; el security group no abre nada nuevo.
+
+```bash
+. infra.env   # INFRA_IP
+# 1 · prenderlo (la primera vez baja ~3,6 GB de imágenes)
+ssh -i ~/labsuser.pem ec2-user@$INFRA_IP \
+  'cd /opt/cacha-el-precio && docker compose --profile monitoreo up -d'
+# 2 · la clave de Grafana (la genera desplegar.sh y la conserva)
+ssh -i ~/labsuser.pem ec2-user@$INFRA_IP 'grep GRAFANA_CLAVE /opt/cacha-el-precio/.env'
+# 3 · el túnel: deja esta terminal abierta y abre http://localhost:3000 (usuario admin)
+ssh -i ~/labsuser.pem -N -L 3000:127.0.0.1:3000 ec2-user@$INFRA_IP
+# 4 · apagarlo al terminar (los datos se quedan 3 días en sus volúmenes)
+ssh -i ~/labsuser.pem ec2-user@$INFRA_IP \
+  'cd /opt/cacha-el-precio && docker compose --profile monitoreo stop prometheus node-exporter loki alloy grafana'
+```
+
+- **Apágalo con `stop`, no con `down`:** el CD borra las imágenes que ningún contenedor usa, y
+  con `down` se volverían a bajar los ~3,6 GB.
+- **La clave:** la escribe `desplegar.sh`, y si falta la agrega el CD (`tools/cd-remoto.sh`).
+- **Si el puerto 3000 de tu PC está ocupado:** `-L 3001:127.0.0.1:3000` y abre `localhost:3001`.
+- **La fila de AWS vacía:** Grafana lee CloudWatch con el `LabRole` de la EC2. Si el lab lo niega,
+  el resto del tablero funciona igual 🔎.
+- **Qué mirar y qué mostrar:** [infra/monitoreo](../infra/monitoreo/README.md#2--el-tablero-cacha-el-precio--salud).
 
 ---
 

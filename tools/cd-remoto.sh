@@ -33,6 +33,15 @@ if [[ ! -f "$DESTINO/.env" ]]; then
 fi
 cd "$DESTINO"
 
+# La clave de Grafana (perfil monitoreo, ADR-036). desplegar.sh la escribe, pero
+# una EC2 desplegada antes del 28-11 no la tiene y el CD no rearma el .env: se
+# agrega una sola vez, sin tocar lo demas. Se lee con: grep GRAFANA_CLAVE .env
+if ! grep -q '^GRAFANA_CLAVE=.' .env; then
+  sed -i '/^GRAFANA_CLAVE=/d' .env
+  echo "GRAFANA_CLAVE=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)" >> .env
+  echo "  GRAFANA_CLAVE agregada al .env"
+fi
+
 # Lo que corre ahora, para poder volver atras.
 COMMIT_ANTERIOR="$(git rev-parse HEAD)"
 TAG_ANTERIOR="$(cat .imagen-tag 2>/dev/null || echo local)"

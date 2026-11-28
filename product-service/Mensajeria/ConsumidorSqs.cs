@@ -1,4 +1,5 @@
 using Product_Service.Exceptions;
+using Product_Service.Observabilidad;
 
 namespace Product_Service.Mensajeria;
 
@@ -60,6 +61,7 @@ public abstract class ConsumidorSqs(
             using var scope = scopes.CreateScope();
             string eventId = await ProcesarAsync(scope.ServiceProvider, mensaje.Cuerpo, ct);
             await cola.BorrarAsync(mensaje, ct);
+            MetricasNegocio.Mensajes.WithLabels(nombreCola, "ok").Inc();
             log.LogInformation("Resultado=ok eventId={EventId} MessageId={MessageId} intento={Intento}",
                 eventId, mensaje.MessageId, mensaje.ApproximateReceiveCount);
         }
@@ -69,6 +71,7 @@ public abstract class ConsumidorSqs(
                 mensaje.MessageId, mensaje.ApproximateReceiveCount, e.Razon);
             await cola.EnviarADlqAsync(mensaje,
                 Diagnostico(mensaje, "definitivo", e.Razon, e.InnerException ?? e), ct);
+            MetricasNegocio.Mensajes.WithLabels(nombreCola, "dlq").Inc();
         }
         // TaskCanceledException hereda de OperationCanceledException y es un timeout
         // de la base: tambien es recuperable. Solo se deja pasar si el servicio se
@@ -92,9 +95,11 @@ public abstract class ConsumidorSqs(
                 var causa = e.GetBaseException();
                 await cola.EnviarADlqAsync(mensaje, Diagnostico(mensaje, "recuperable-agotado",
                     $"{m} intentos sin exito; el ultimo: {causa.Message}", causa), ct);
+                MetricasNegocio.Mensajes.WithLabels(nombreCola, "dlq-agotado").Inc();
                 return;
             }
 
+            MetricasNegocio.Mensajes.WithLabels(nombreCola, "reintento").Inc();
             log.LogWarning(e, "Resultado=reintento MessageId={MessageId} intento={Intento}: {Mensaje}",
                 mensaje.MessageId, mensaje.ApproximateReceiveCount, e.Message);
         }

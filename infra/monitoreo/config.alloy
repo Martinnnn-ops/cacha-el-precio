@@ -1,0 +1,65 @@
+// ─────────────────────────────────────────────────────────────────────────────
+//  Alloy · lleva los logs de los contenedores a Loki (perfil `monitoreo`)
+// ─────────────────────────────────────────────────────────────────────────────
+//  Lee el socket de Docker (solo lectura), toma los contenedores del proyecto
+//  cachaelprecio y le pone a cada línea la etiqueta `servicio` (gateway,
+//  product-service...). Los 4 servicios escriben JSON con las mismas llaves
+//  (Timestamp, LogLevel, Category, Message, Scopes): de ahí sale `nivel`.
+//
+//  El correlationId NO se vuelve etiqueta a propósito: hay uno por pedido y
+//  por barrido, y Loki se pone lento con etiquetas de valores infinitos. Se
+//  busca como texto:  {servicio=~".+"} |= "barrido-paris-20261128T000012Z"
+// ─────────────────────────────────────────────────────────────────────────────
+
+discovery.docker "contenedores" {
+  host = "unix:///var/run/docker.sock"
+  // Cada 15 s (no los 60 de fábrica): un contenedor recién desplegado aparece al tiro.
+  refresh_interval = "15s"
+
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=cachaelprecio"]
+  }
+}
+
+discovery.relabel "contenedores" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "servicio"
+  }
+
+  // Los del propio monitoreo no se guardan: solo gastarían disco.
+  rule {
+    source_labels = ["servicio"]
+    regex         = "prometheus|grafana|loki|alloy|node-exporter"
+    action        = "drop"
+  }
+}
+
+loki.source.docker "contenedores" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.contenedores.targets
+  relabel_rules = discovery.relabel.contenedores.rules
+  forward_to    = [loki.process.json.receiver]
+}
+
+loki.process "json" {
+  // Si la línea no es JSON (Caddy, Postgres) pasa igual, solo sin `nivel`.
+  stage.json {
+    expressions = { nivel = "LogLevel" }
+  }
+
+  stage.labels {
+    values = { nivel = "" }
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

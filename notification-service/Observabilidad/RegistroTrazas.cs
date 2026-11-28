@@ -13,6 +13,8 @@ public sealed class RegistroTrazas(NotificationDbContext db, ILogger<RegistroTra
 {
     public async Task AnotarAsync(string etapa, CancellationToken ct = default)
     {
+        // Se cuenta siempre, venga o no con correlationId (Prometheus no lo necesita).
+        MetricasNegocio.Etapas.WithLabels(etapa).Inc();
         if (Correlacion.Actual is not { } id) return;
         try
         {

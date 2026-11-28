@@ -4,7 +4,7 @@
 > para el informe y el guion de la demo.
 > **Para quién.** Los tres, para preparar entregas y la defensa. Los PDF del EP1 y el EP2 están en
 > [`rubricas/`](rubricas/).
-> **Última revisión:** 18-11-2026.
+> **Última revisión:** 28-11-2026.
 
 > 📍 **En 10 segundos:** los seis EP valen el 60% del ramo y la **EFT el 40%**. El EP1 y el EP2
 > evaluaron casi solo **identidad, API Manager y frontend** (EP2: nota 7,0). El EP3 evaluó la
@@ -56,7 +56,7 @@ presentar.
 | **Logs avanzados** | correlationId + logs JSON | ✅ 28-11 · [PLAN-EFT §3](PLAN-EFT.md#3--correlationid-y-logs-en-json) |
 | Trazabilidad e idempotencia (clase del 12-11) | lector de auditoría + «Seguir un barrido» | ✅ 28-11 · [PLAN-EFT §4](PLAN-EFT.md#4--la-cola-de-auditoría-que-nadie-leía) |
 | Kafka | 🚫 descartado en la clase del 17-11 | — |
-| Módulos extra | Terraform, CI/CD, armario digital, bandeja de correos, panel, Grafana | 🟡 |
+| Módulos extra | Terraform, CI/CD, armario digital, bandeja de correos, panel, Prometheus + Grafana + Loki | 🟡 |
 
 El plan completo y el orden están en [PLAN-EFT](PLAN-EFT.md).
 

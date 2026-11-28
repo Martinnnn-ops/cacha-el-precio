@@ -108,6 +108,10 @@ else
   gris "  contrasena de la base generada"
 fi
 
+# La de Grafana (perfil monitoreo), igual: se genera una vez y se conserva.
+CLAVE_GRAFANA="$($SSH "grep -s '^GRAFANA_CLAVE=' $DESTINO/.env | cut -d= -f2-" 2>/dev/null)"
+[[ -n "$CLAVE_GRAFANA" ]] || CLAVE_GRAFANA="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)"
+
 ENVTMP="$(mktemp)"
 cat > "$ENVTMP" <<ENV
 # Generado por tools/desplegar.sh el $(date -Is)
@@ -123,6 +127,8 @@ CADDY_HTTPS_PORT=443
 APP_ENV=production
 AWS_REGION=$INFRA_REGION
 BORDE_SECRETO=$BORDE_SECRETO
+# Grafana (perfil monitoreo). Se lee con: ssh ... grep GRAFANA_CLAVE .env
+GRAFANA_CLAVE=$CLAVE_GRAFANA
 # Mensajeria del EP3 (de mensajeria.env). Vacias = consumidores apagados.
 COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID
 MENSAJERIA_MODO=aws

@@ -31,7 +31,7 @@
 | CI/CD | ✅ CI en cada PR; CD del backend (GHCR + SSH + *rollback*) y aviso al front, **solo desde `main`** | [CICD](CICD.md) · [ADR-034](adr/034-cicd-con-github-actions.md) |
 | Trazabilidad | ✅ `correlationId` de punta a punta, logs en JSON y «Seguir un barrido» en el panel | [PLAN-EFT §3](PLAN-EFT.md) |
 | Kinesis (precios capturados) | ✅ precio habitual y máximo histórico en la ficha | [PLAN-EFT](PLAN-EFT.md) |
-| Grafana | ⬜ | [PLAN-EFT](PLAN-EFT.md) |
+| Monitoreo | 🟡 Prometheus + Grafana + Loki (perfil `monitoreo`), probado en local; falta la EC2 | [infra/monitoreo](../infra/monitoreo/README.md) · [ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md) |
 
 **Las cuentas de AWS:** el sitio publicado usa la cuenta `731705830984` desde el 19-11, aunque su
 `.tfvars` todavía dice `tiene_dominio = false` (ver la deuda abierta). Las otras dos lo montan sin dominio. Terraform se probó desde cero en una cuenta vacía el 17-11.
@@ -56,7 +56,7 @@
 | Decisión | Desde | Dónde |
 |---|---|---|
 | **Kafka descartado**: la EFT va solo con **Kinesis** | 17-11 | [PLAN-EFT](PLAN-EFT.md) |
-| La EC2 se queda en **`t3.small`** | 17-11 | [PLAN-EFT §8](PLAN-EFT.md#8--la-ram-y-el-monitoreo) |
+| La EC2 de producción pasa a **`t3.medium`** (las de prueba siguen en `t3.small`) | 28-11 | [ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md) |
 | Front y backend salen **solo desde `main`** (el 26-11 el front salía desde `development`) | 27-11 | [ADR-034](adr/034-cicd-con-github-actions.md#actualización-del-27-11-2026-el-front-vuelve-a-salir-desde-main) |
 | Colas, tópicos y reglas: **solo Terraform**; el panel solo mira | 17-11 | [ADR-032](adr/032-administracion-de-mensajeria.md) |
 | 🅐 o 🅑 lo decide **`tiene_dominio`** en el `.tfvars`, no el DNS | 17-11 | [OPERAR-EN-AWS §0](OPERAR-EN-AWS.md#0--lo-primero-el-dominio) |
