@@ -63,6 +63,22 @@ public sealed class ProcesadorOfertaCapturada(
             // Validacion del catalogo: reintentar no va a cambiar el precio ni el nombre.
             throw new ErrorDefinitivoException($"validacion: {e.Message}", e);
         }
+        catch (Exception e) when (EsTextoDemasiadoLargo(e))
+        {
+            // Postgres 22001: un campo no cabe en su columna. Reintentar manda el
+            // mismo texto y falla igual, asi que va directo a la DLQ (antes gastaba
+            // los 5 reintentos; BITACORA 28-11).
+            throw new ErrorDefinitivoException("validacion: un texto de la oferta excede el largo de su columna (22001)", e);
+        }
+    }
+
+    // 22001 = string_data_right_truncation. EF lo envuelve en DbUpdateException.
+    public static bool EsTextoDemasiadoLargo(Exception? e)
+    {
+        for (; e is not null; e = e.InnerException)
+            if (e is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.StringDataRightTruncation })
+                return true;
+        return false;
     }
 
     public static SobreEntrante LeerSobre(string cuerpo)

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Product_Service.Models.Entities;
+using Product_Service.Service;
 
 namespace Product_Service.Data;
 
@@ -46,7 +47,7 @@ public class ProductDbContext : DbContext
         product.Property(p => p.BodyArea).IsRequired().HasMaxLength(40).HasDefaultValue("Cuerpo");
         product.Property(p => p.Gender).IsRequired().HasMaxLength(30).HasDefaultValue("Unisex");
         product.Property(p => p.Layer).IsRequired().HasMaxLength(40).HasDefaultValue("General");
-        product.Property(p => p.Description).HasMaxLength(2000);
+        product.Property(p => p.Description).HasMaxLength(ProductService.LargoMaximoDescripcion);
         product.Property(p => p.ProductImage).HasMaxLength(1000);
         product.Property(p => p.Visits).IsRequired().HasDefaultValue(0);
         product.Property(p => p.CreatedAt).IsRequired().HasDefaultValueSql("CURRENT_TIMESTAMP");

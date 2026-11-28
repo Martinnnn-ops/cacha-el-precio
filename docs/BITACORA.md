@@ -26,9 +26,10 @@ la diferencia salta en la pantalla y el log exacto se encuentra filtrando por un
 muestra que la **DLQ hizo su trabajo**: ninguna oferta se perdió, quedaron apartadas con su motivo
 y se pueden reprocesar con el redrive cuando el arreglo esté.
 
-**El arreglo (pendiente):** recortar la descripción a 2.000 caracteres antes de guardar, y tratar
-el `22001` como error **definitivo** (a la DLQ al primer intento, sin gastar 5 reintentos). Después,
-redrive de las 76 desde el panel.
+**El arreglo:** `ProductService.RecortarDescripcion` guarda los primeros 2.000 caracteres, cortados
+en el último punto y con «…» al final. Además, `ProcesadorOfertaCapturada` trata el `22001` como
+error **definitivo**: si otro texto no cabe, va a la DLQ al primer intento, sin gastar 5 reintentos.
+Pruebas en `DescripcionLargaTests`. Después del despliegue: redrive de las 76 desde el panel.
 
 ## 27-11 · El front vuelve a salir solo desde `main` — Martín
 

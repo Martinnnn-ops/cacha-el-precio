@@ -163,8 +163,9 @@ apenas entra, viaja a cada servicio y a cada mensaje de cola, y **todo log del c
 **Lo que encontró (para contarlo en la defensa):** el 28-11, la línea de tiempo de un barrido de
 Paris mostró 217 ofertas enviadas y 206 guardadas. Filtrando los logs por su `correlationId` apareció
 la causa: descripciones de más de 2.000 caracteres (`22001`), mal clasificadas como error pasajero,
-que llevaban **76 ofertas apartadas en la DLQ** sin que nadie lo notara. Detalle en la
-[bitácora del 28-11](BITACORA.md).
+que llevaban **76 ofertas apartadas en la DLQ** sin que nadie lo notara. Arreglado: la descripción
+se recorta a 2.000 caracteres y el `22001` va directo a la DLQ. Con el redrive, las ofertas
+apartadas vuelven a entrar. Detalle en la [bitácora del 28-11](BITACORA.md).
 
 **Demo en 3 pasos:**
 1. `curl -H "X-Correlation-Id: demo-profe-001" -H "Version: 2.0" $API/productos/<slug> -D -` → la respuesta trae el mismo número.

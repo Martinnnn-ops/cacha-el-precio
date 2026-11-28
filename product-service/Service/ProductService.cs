@@ -59,6 +59,31 @@ public sealed class ProductService(IProductRepository repository, IPublicadorEve
     /// <summary>Cuántos días hacia atrás muestra el gráfico de la ficha.</summary>
     public const int DiasDeHistorial = 120;
 
+    // Tope de la columna Products.Description (ProductDbContext). Algunas fichas
+    // de Paris traen ~2.450 caracteres de marketing y Postgres rechazaba la
+    // oferta completa (22001): se guardan los primeros 2.000 y listo
+    // (BITACORA 28-11, PLAN-EFT §3).
+    public const int LargoMaximoDescripcion = 2000;
+
+    /// <summary>
+    /// Deja la descripcion dentro del tope: si sobra, corta en el ultimo punto
+    /// (para no dejar una frase a medias) y agrega "…". Si no hay un punto en la
+    /// segunda mitad, corta en el ultimo espacio.
+    /// </summary>
+    public static string? RecortarDescripcion(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return null;
+        texto = texto.Trim();
+        if (texto.Length <= LargoMaximoDescripcion) return texto;
+
+        var cabe = texto[..(LargoMaximoDescripcion - 1)];
+        var corte = cabe.LastIndexOf(". ", StringComparison.Ordinal);
+        if (corte >= LargoMaximoDescripcion / 2)
+            return cabe[..(corte + 1)] + " …";
+        corte = cabe.LastIndexOf(' ');
+        return (corte >= LargoMaximoDescripcion / 2 ? cabe[..corte] : cabe).TrimEnd() + "…";
+    }
+
     private static readonly TimeZoneInfo HoraChile =
         TimeZoneInfo.TryFindSystemTimeZoneById("America/Santiago", out TimeZoneInfo? tz) ? tz : TimeZoneInfo.Utc;
 
@@ -283,7 +308,7 @@ public sealed class ProductService(IProductRepository repository, IPublicadorEve
             string.IsNullOrWhiteSpace(request.Layer) ? "General" : request.Layer.Trim(),
             request.Price,
             ProductIdentity.NormalizeSizes(request.Sizes),
-            string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            RecortarDescripcion(request.Description),
             ProductIdentity.Required(request.Url, "url"),
             string.IsNullOrWhiteSpace(request.Image) ? null : request.Image.Trim(),
             request.Active
