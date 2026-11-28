@@ -1003,7 +1003,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{servicio=~\".+\"} |= \"$correlationId\" | json | line_format \"{{ if .Message }}{{ .Message }}{{ if .Exception }} ⟶ {{ .Exception }}{{ end }}{{ else }}{{ __line__ }}{{ end }}\"",
+          "expr": "{servicio=~\".+\"} |= \"$correlationId\" | json Message, Exception | line_format \"{{ .servicio }} │ {{ if .Message }}{{ .Message }}{{ if .Exception }} ⟶ {{ .Exception }}{{ end }}{{ else }}{{ __line__ }}{{ end }}\" | keep servicio, nivel",
           "queryType": "range"
         }
       ],
@@ -1023,7 +1023,7 @@
         "wrapLogMessage": true,
         "enableLogDetails": true,
         "prettifyLogMessage": false,
-        "showLabels": true
+        "showLabels": false
       }
     },
     {
@@ -1083,7 +1083,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{nivel=~\"Warning|Error|Critical\"} | json | line_format \"{{ if .Message }}{{ .Message }}{{ if .Exception }} ⟶ {{ .Exception }}{{ end }}{{ else }}{{ __line__ }}{{ end }}\"",
+          "expr": "{nivel=~\"Warning|Error|Critical\"} | json Message, Exception | line_format \"{{ .servicio }} │ {{ if .Message }}{{ .Message }}{{ if .Exception }} ⟶ {{ .Exception }}{{ end }}{{ else }}{{ __line__ }}{{ end }}\" | keep servicio, nivel",
           "queryType": "range"
         }
       ],
@@ -1102,7 +1102,7 @@
         "sortOrder": "Descending",
         "wrapLogMessage": true,
         "enableLogDetails": true,
-        "showLabels": true
+        "showLabels": false
       }
     }
   ]
