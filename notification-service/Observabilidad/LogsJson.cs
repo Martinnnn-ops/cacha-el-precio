@@ -17,6 +17,9 @@ public static class LogsJson
     public static WebApplicationBuilder UsarLogsJson(this WebApplicationBuilder builder)
     {
         builder.Logging.ClearProviders();
+        // Cada consulta SQL de EF salía como Information: cientos por barrido,
+        // tapando lo que importa. Solo se ven si fallan.
+        builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
         builder.Logging.AddJsonConsole(o =>
         {
             o.IncludeScopes = true;

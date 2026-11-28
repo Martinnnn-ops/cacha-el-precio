@@ -40,7 +40,7 @@ public static partial class Correlacion
         _actual.Value = id;
         IDisposable? scope = id is null
             ? null
-            : log.BeginScope(new Dictionary<string, object> { ["correlationId"] = id });
+            : log.BeginScope("correlationId={correlationId}", id);
         return new Restaurar(anterior, scope);
     }
 
