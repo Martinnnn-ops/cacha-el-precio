@@ -66,16 +66,16 @@ se atrasa, se atrasa todo.
 
 | # | Qué | Qué trae | Estado |
 |---|---|---|---|
-| 1 | **PR de Terraform** (`feature/terraform` → `development`) | toda la infra se prende y apaga con un comando, en cualquier cuenta | 🟡 fases 0 a 7 hechas y probadas (17-11); falta revisar y mergear · ⛔ **bloquea casi todo**: Kinesis y los grupos de logs se escriben en Terraform |
+| 1 | **PR de Terraform** (`feature/terraform` → `development`) | toda la infra se prende y apaga con un comando, en cualquier cuenta | ✅ PR #52, 18-11 |
 | 2 | **CI** | pruebas automáticas en cada PR | ✅ 19-11 (`feature/cicd`) |
 | 3 | **CD** solo desde `main` | desplegar sin hacerlo a mano; la EC2 deja de compilar | ✅ 19-11, probado en `731705830984` |
 | 4 | **correlationId + logs JSON** | seguir un pedido de punta a punta | ✅ 28-11, `feature/trazabilidad`: logs JSON en los 4 servicios, `X-Correlation-Id` en el gateway, `correlationId` en el sobre de SQS, SNS y Kinesis; probado en la EC2 |
 | 5 | **Lector de `cep-auditoria-precios`** | trazabilidad + idempotencia | ✅ 28-11: `ConsumidorAuditoria` + tabla `EventosAuditoria` (una vez por `eventId`, 🚩 si baja ≥70%) + DLQ; idempotencia probada mandando el mismo cambio dos veces. Panel: **«Seguir un barrido»** |
-| 6a | Probar permisos de Kinesis en el Academy | saber si se puede antes de programar | 🔎 ⛔ bloquea el 6 |
-| 6 | **Kinesis con los precios capturados** | el stream que pidió el profe | ⬜ |
-| 7 | DLQ del lector de Kinesis | un precio roto no traba al resto | ⬜ |
+| 6a | Probar permisos de Kinesis en el Academy | saber si se puede antes de programar | ✅ 27-11 (PR #60: el stream se crea con la CLI) |
+| 6 | **Kinesis con los precios capturados** | el stream que pidió el profe | ✅ PR #56 y #60, desplegado 27-11 |
+| 7 | DLQ del lector de Kinesis | un precio roto no traba al resto | ✅ PR #56, 27-11 |
 | 8a–f | Limpiar catálogo, 3 precios, barrido, ficha, lo visual roto | lo que se ve en el video | 🟡 (§7) |
-| 11 | **Prometheus + Grafana + Loki** | un tablero con servicios, EC2, Kinesis, SQS y los logs por `correlationId` | 🟡 28-11, `feature/monitoreo`: probado en local con los servicios; falta la EC2 (`t3.medium`) y CloudWatch · [ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md) |
+| 11 | **Prometheus + Grafana + Loki** | un tablero con servicios, EC2, Kinesis, SQS y los logs por `correlationId` | ✅ PR #65 y #66, desplegado en la EC2 (`t3.medium`) el 28-11; CloudWatch con el `LabRole` · [ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md) |
 | 13–15 | Informes, video, ensayo | la entrega | ⬜ |
 
 ### Fuera de la EFT
@@ -293,10 +293,10 @@ datos para siempre) y **se guarda un solo precio**, el vigente.
 
 | # | Qué | Cómo | Estado |
 |---|---|---|---|
-| 8a | **Limpiar el catálogo** de lo infantil y no-ropa que entró antes del PR #48 | `tools/limpiar-catalogo.py`, con respaldo antes ([EL-PROYECTO §9](EL-PROYECTO.md#9--el-catálogo-y-el-armario-personal)) | 🟡 el filtro está; falta correrlo con AWS prendido |
+| 8a | **Limpiar el catálogo** de lo infantil y no-ropa que entró antes del PR #48 | `tools/limpiar-catalogo.py`, con respaldo antes ([EL-PROYECTO §9](EL-PROYECTO.md#9--el-catálogo-y-el-armario-personal)) | ✅ 28-11: la auditoría dio 0 prendas para borrar |
 | 8b | **3 precios:** `price` (internet), `list_price` (el tachado) y `card_price` (con tarjeta) | columnas nuevas en `schema.sql`, cada `parser.py` llena lo que publique su tienda, y van en el sobre y en Kinesis. 🔎 Falabella hoy podría estar tomando el de CMR | ⬜ |
-| 8c | **Barrido cada 3 h** | un `cep-barrido.timer` instalado por `desplegar.sh`, con `Persistent=true` (si estaba apagada, barre al prender) | ⬜ · ⛔ sin esto Kinesis tiene pocos datos |
-| 8d | **Ficha pulida:** tachado, «rango habitual», gráfico con fechas, tabla de historial | frontend + `estadisticas_precio`; con menos de 14 días, «historial insuficiente» | 🟡 hay gráfico básico |
+| 8c | **Barrido cada 3 h** | un `cep-barrido.timer` instalado por `desplegar.sh`, con `Persistent=true` (si estaba apagada, barre al prender) | ✅ PR #62, 27-11 |
+| 8d | **Ficha pulida:** tachado, «rango habitual», gráfico con fechas, tabla de historial | frontend + `estadisticas_precio`; con menos de 14 días, «historial insuficiente» | 🟡 precio habitual e historial real (PR #63, 27-11); el tachado depende del 8b |
 | 8e | Arreglar **lo visual roto** tras los merges | primero listar qué está roto | ⬜ |
 | 8f | Que el front no caiga a **datos falsos** (`USAR_MOCK`) | revisar que el entorno publicado apunte a la API | 🔎 |
 

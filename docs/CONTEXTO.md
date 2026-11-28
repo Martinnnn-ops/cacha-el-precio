@@ -31,7 +31,7 @@
 | CI/CD | ✅ CI en cada PR; CD del backend (GHCR + SSH + *rollback*) y aviso al front, **solo desde `main`** | [CICD](CICD.md) · [ADR-034](adr/034-cicd-con-github-actions.md) |
 | Trazabilidad | ✅ `correlationId` de punta a punta, logs en JSON y «Seguir un barrido» en el panel | [PLAN-EFT §3](PLAN-EFT.md) |
 | Kinesis (precios capturados) | ✅ precio habitual y máximo histórico en la ficha | [PLAN-EFT](PLAN-EFT.md) |
-| Monitoreo | 🟡 Prometheus + Grafana + Loki (perfil `monitoreo`), probado en local; falta la EC2 | [infra/monitoreo](../infra/monitoreo/README.md) · [ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md) |
+| Monitoreo | ✅ Prometheus + Grafana + Loki (perfil `monitoreo`), en la EC2 desde el 28-11; Grafana por túnel SSH | [infra/monitoreo](../infra/monitoreo/README.md) · [ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md) |
 
 **Las cuentas de AWS:** el sitio publicado usa la cuenta `731705830984` desde el 19-11, aunque su
 `.tfvars` todavía dice `tiene_dominio = false` (ver la deuda abierta). Las otras dos lo montan sin dominio. Terraform se probó desde cero en una cuenta vacía el 17-11.
