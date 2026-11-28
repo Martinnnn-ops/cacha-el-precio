@@ -333,6 +333,9 @@ ssh -i ~/labsuser.pem ec2-user@$INFRA_IP \
   'cd /opt/cacha-el-precio && docker compose --profile monitoreo stop prometheus node-exporter loki alloy grafana'
 ```
 
+- **Apágalo con `stop`, no con `down`:** el CD borra las imágenes que ningún contenedor usa, y
+  con `down` se volverían a bajar los ~3,6 GB.
+- **La clave:** la escribe `desplegar.sh`, y si falta la agrega el CD (`tools/cd-remoto.sh`).
 - **Si el puerto 3000 de tu PC está ocupado:** `-L 3001:127.0.0.1:3000` y abre `localhost:3001`.
 - **La fila de AWS vacía:** Grafana lee CloudWatch con el `LabRole` de la EC2. Si el lab lo niega,
   el resto del tablero funciona igual 🔎.
