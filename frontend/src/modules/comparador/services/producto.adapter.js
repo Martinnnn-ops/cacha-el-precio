@@ -8,7 +8,7 @@
 //         historial[] { fecha, precios: { tienda: precio } }   (solo en la ficha)
 //   App   Producto { id, nombre, categoria, precios[], historial[] }
 
-import { TIENDAS_CONOCIDAS } from '@/modules/comparador/data/tiendas'
+import { TIENDAS_CONOCIDAS } from '../data/tiendas.js'
 
 // Fuente de respaldo para productos antiguos que no identifican la tienda.
 export const FUENTE_UNICA = {
