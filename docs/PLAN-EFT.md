@@ -69,8 +69,8 @@ se atrasa, se atrasa todo.
 | 1 | **PR de Terraform** (`feature/terraform` → `development`) | toda la infra se prende y apaga con un comando, en cualquier cuenta | 🟡 fases 0 a 7 hechas y probadas (17-11); falta revisar y mergear · ⛔ **bloquea casi todo**: Kinesis y los grupos de logs se escriben en Terraform |
 | 2 | **CI** | pruebas automáticas en cada PR | ✅ 19-11 (`feature/cicd`) |
 | 3 | **CD** solo desde `main` | desplegar sin hacerlo a mano; la EC2 deja de compilar | ✅ 19-11, probado en `731705830984` |
-| 4 | **correlationId + logs JSON** | seguir un pedido de punta a punta | ⬜ · antes del 5 y el 6, para no chocar en todos los `Program.cs` |
-| 5 | **Lector de `cep-auditoria-precios`** | trazabilidad + idempotencia | 🟡 la cola existe, falta el lector |
+| 4 | **correlationId + logs JSON** | seguir un pedido de punta a punta | ✅ 28-11, `feature/trazabilidad`: logs JSON en los 4 servicios, `X-Correlation-Id` en el gateway, `correlationId` en el sobre de SQS, SNS y Kinesis; probado en la EC2 |
+| 5 | **Lector de `cep-auditoria-precios`** | trazabilidad + idempotencia | ✅ 28-11: `ConsumidorAuditoria` + tabla `EventosAuditoria` (una vez por `eventId`, 🚩 si baja ≥70%) + DLQ; idempotencia probada mandando el mismo cambio dos veces. Panel: **«Seguir un barrido»** |
 | 6a | Probar permisos de Kinesis en el Academy | saber si se puede antes de programar | 🔎 ⛔ bloquea el 6 |
 | 6 | **Kinesis con los precios capturados** | el stream que pidió el profe | ⬜ |
 | 7 | DLQ del lector de Kinesis | un precio roto no traba al resto | ⬜ |
@@ -149,6 +149,28 @@ apenas entra, viaja a cada servicio y a cada mensaje de cola, y **todo log del c
 | cada servicio .NET | logs en JSON con el id en el *scope* de cada pedido |
 | los sobres de las colas | el id viaja como atributo del mensaje |
 | scraper | logs en JSON y el id en cada `oferta.capturada` |
+
+### Cómo quedó y cómo se muestra (28-11)
+
+| Pieza | Qué hace |
+|---|---|
+| Logs JSON | `AddJsonConsole` en los 3 .NET y un formateador propio en el scraper: una línea por evento, con `correlationId` en el scope |
+| Pedidos web | el gateway crea o respeta `X-Correlation-Id` (solo `[A-Za-z0-9._:-]`, hasta 128), lo devuelve y lo pasa a product-service |
+| Barridos | el scraper crea `barrido-<tienda>-<fecha>` y lo pone en cada oferta (SQS) y cada precio (Kinesis); product-service lo copia a los cambios (SNS) |
+| Trazas | tabla `Trazas` en product y notification: cuántas cosas hizo cada etapa con ese número |
+| Panel | Mensajería › **Seguir un barrido**: línea de tiempo por etapa, cambios auditados con 🚩 y el comando para los logs |
+
+**Lo que encontró (para contarlo en la defensa):** el 28-11, la línea de tiempo de un barrido de
+Paris mostró 217 ofertas enviadas y 206 guardadas. Filtrando los logs por su `correlationId` apareció
+la causa: descripciones de más de 2.000 caracteres (`22001`), mal clasificadas como error pasajero,
+que llevaban **76 ofertas apartadas en la DLQ** sin que nadie lo notara. Arreglado: la descripción
+se recorta a 2.000 caracteres y el `22001` va directo a la DLQ. Con el redrive, las ofertas
+apartadas vuelven a entrar. Detalle en la [bitácora del 28-11](BITACORA.md).
+
+**Demo en 3 pasos:**
+1. `curl -H "X-Correlation-Id: demo-profe-001" -H "Version: 2.0" $API/productos/<slug> -D -` → la respuesta trae el mismo número.
+2. En la EC2: `docker compose logs --no-log-prefix | grep demo-profe-001` → aparece en el gateway y en product-service.
+3. Panel › Seguir un barrido → el último barrido, etapa por etapa (SQS → Kinesis → SNS → auditoría → avisos).
 
 | ⚠️ Ojo | Cómo |
 |---|---|

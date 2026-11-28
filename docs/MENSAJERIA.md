@@ -70,6 +70,7 @@ Todo mensaje va dentro del mismo sobre. Los campos van en inglés, igual que `Pr
 | `source` | string | Servicio que lo produjo |
 | `occurredAt` | string (ISO 8601, UTC) | Cuándo ocurrió |
 | `data` | objeto | El contenido, según el `type` |
+| `correlationId` | string, **opcional** | El número de seguimiento del barrido o pedido que lo originó (`barrido-paris-20261128T002117Z`, `web-3f2a…`). Cada servicio lo pone en sus logs y lo copia a los eventos que produce. Un sobre sin él sigue siendo válido. Ver [PLAN-EFT §3](PLAN-EFT.md#3--correlationid-y-logs-en-json) |
 
 Un consumidor que recibe un `type` o una `version` que no conoce lo trata como **error
 definitivo** (ver abajo).

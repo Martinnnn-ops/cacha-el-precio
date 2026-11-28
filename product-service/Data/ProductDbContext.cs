@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Product_Service.Models.Entities;
+using Product_Service.Service;
 
 namespace Product_Service.Data;
 
@@ -16,6 +17,8 @@ public class ProductDbContext : DbContext
     // Kinesis y los eventId ya sumados (idempotencia). Ver docs/PLAN-EFT.md §5.
     public DbSet<EstadisticaPrecio> EstadisticasPrecio { get; set; }
     public DbSet<ObservacionPrecio> ObservacionesPrecio { get; set; }
+    public DbSet<EventoAuditoria> EventosAuditoria { get; set; }
+    public DbSet<Traza> Trazas { get; set; }
     public DbSet<CheckpointStream> CheckpointsStream { get; set; }
     public DbSet<EventoPrecioProcesado> EventosPrecioProcesados { get; set; }
 
@@ -44,7 +47,7 @@ public class ProductDbContext : DbContext
         product.Property(p => p.BodyArea).IsRequired().HasMaxLength(40).HasDefaultValue("Cuerpo");
         product.Property(p => p.Gender).IsRequired().HasMaxLength(30).HasDefaultValue("Unisex");
         product.Property(p => p.Layer).IsRequired().HasMaxLength(40).HasDefaultValue("General");
-        product.Property(p => p.Description).HasMaxLength(2000);
+        product.Property(p => p.Description).HasMaxLength(ProductService.LargoMaximoDescripcion);
         product.Property(p => p.ProductImage).HasMaxLength(1000);
         product.Property(p => p.Visits).IsRequired().HasDefaultValue(0);
         product.Property(p => p.CreatedAt).IsRequired().HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -79,6 +82,25 @@ public class ProductDbContext : DbContext
         observacion.HasKey(o => new { o.Store, o.ExternalId, o.CapturadoEn });
         observacion.Property(o => o.Store).HasMaxLength(60);
         observacion.Property(o => o.ExternalId).HasMaxLength(120);
+
+        // EventId como llave: la idempotencia técnica de la cola de auditoría.
+        var auditoria = modelBuilder.Entity<EventoAuditoria>();
+        auditoria.HasKey(e => e.EventId);
+        auditoria.Property(e => e.EventId).HasMaxLength(64);
+        auditoria.Property(e => e.Tipo).HasMaxLength(40);
+        auditoria.Property(e => e.Slug).HasMaxLength(200);
+        auditoria.Property(e => e.Nombre).HasMaxLength(300);
+        auditoria.Property(e => e.Store).HasMaxLength(60);
+        auditoria.Property(e => e.Motivo).HasMaxLength(200);
+        auditoria.Property(e => e.CorrelationId).HasMaxLength(128);
+        auditoria.HasIndex(e => e.RecibidoEn);
+        auditoria.HasIndex(e => e.CorrelationId);
+
+        var traza = modelBuilder.Entity<Traza>();
+        traza.HasKey(t => new { t.CorrelationId, t.Etapa });
+        traza.Property(t => t.CorrelationId).HasMaxLength(128);
+        traza.Property(t => t.Etapa).HasMaxLength(40);
+        traza.HasIndex(t => t.UltimaVez);
 
         var checkpoint = modelBuilder.Entity<CheckpointStream>();
         checkpoint.HasKey(c => c.StreamShard);

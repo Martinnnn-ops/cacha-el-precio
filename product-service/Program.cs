@@ -1,9 +1,11 @@
+using Product_Service.Observabilidad;
 using Scalar.AspNetCore;
 using Asp.Versioning;
 using Amazon;
 using Amazon.Kinesis;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
+using Product_Service.Auditoria;
 using Product_Service.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,6 +15,7 @@ using Product_Service.Service;
 using Product_Service.Streaming;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.UsarLogsJson();
 var config = builder.Configuration;
 
 // Add services to the container.
@@ -55,6 +58,22 @@ if (!string.IsNullOrWhiteSpace(config["SQS_OFERTAS_CRUDAS_URL"]))
     builder.Services.AddHostedService<ConsumidorOfertas>();
 }
 
+// ─── Auditoría: lee cep-auditoria-precios (la copia de todos los cambios) ─────
+// Guarda cada cambio una vez por eventId y marca los sospechosos. Sin URL de la
+// cola (local) no se registra. Ver docs/PLAN-EFT.md §4.
+builder.Services.AddScoped<ProcesadorAuditoria>();
+if (!string.IsNullOrWhiteSpace(config["SQS_AUDITORIA_PRECIOS_URL"]))
+{
+    string region = config["AWS_REGION"] ?? config["MENSAJERIA_REGION"] ?? "us-east-1";
+    builder.Services.TryAddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(RegionEndpoint.GetBySystemName(region)));
+    builder.Services.AddKeyedSingleton<IColaMensajes>(ConsumidorAuditoria.Cola, (sp, _) => ColaMensajesSqs.Para(
+        sp.GetRequiredService<IAmazonSQS>(),
+        config["SQS_AUDITORIA_PRECIOS_URL"]!,
+        config["SQS_AUDITORIA_PRECIOS_DLQ_URL"] ?? "",
+        sp.GetRequiredService<ILogger<ColaMensajesSqs>>()));
+    builder.Services.AddHostedService<ConsumidorAuditoria>();
+}
+
 // ─── Stream de precios: lee cep-precios de Kinesis y calcula el precio habitual ──
 // (EA3/EFT). Sin nombre de stream (local, sin AWS) el lector no se registra y el
 // resto del servicio sigue igual. La DLQ cep-precios-dlq usa el mismo SQS; el
@@ -86,7 +105,12 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
+builder.Services.AddScoped<RegistroTrazas>();
+
 var app = builder.Build();
+
+// Primero de todo: cada pedido lleva su número de seguimiento (PLAN-EFT §3).
+app.UsarCorrelacion();
 
 if (string.IsNullOrWhiteSpace(config["SQS_OFERTAS_CRUDAS_URL"]))
     app.Logger.LogWarning("ConsumidorOfertas desactivado: SQS_OFERTAS_CRUDAS_URL viene vacia (la API HTTP sigue igual)");
@@ -107,6 +131,8 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapAuditoria();
+app.MapTrazas();
 app.MapHealthChecks("/health");
 
 app.Run();

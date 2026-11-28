@@ -1,3 +1,4 @@
+using Product_Service.Observabilidad;
 using System.Text.Json;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
@@ -14,7 +15,8 @@ namespace Product_Service.Mensajeria;
 public sealed class PublicadorEventosSns(
     IAmazonSimpleNotificationService sns,
     IConfiguration config,
-    ILogger<PublicadorEventosSns> logger) : IPublicadorEventos
+    ILogger<PublicadorEventosSns> logger,
+    IServiceScopeFactory? scopes = null) : IPublicadorEventos
 {
     // Los campos del sobre van en camelCase y los nulos del data no se escriben.
     private static readonly JsonSerializerOptions JsonOpciones = new(JsonSerializerDefaults.Web);
@@ -36,7 +38,9 @@ public sealed class PublicadorEventosSns(
             Version: 1,
             Source: "product-service",
             OccurredAt: DateTimeOffset.UtcNow,
-            Data: datos);
+            Data: datos,
+            // El mismo número del barrido (o pedido) que provocó el cambio.
+            CorrelationId: Correlacion.Actual);
 
         var atributos = new Dictionary<string, MessageAttributeValue>
         {
@@ -62,6 +66,12 @@ public sealed class PublicadorEventosSns(
             logger.LogInformation(
                 "Evento {Tipo} publicado para el producto {ProductId}. eventId={EventId} MessageId={MessageId}",
                 tipo, datos.ProductId, sobre.EventId, respuesta.MessageId);
+            // Singleton: la traza necesita su propio scope para usar la base.
+            if (scopes is not null && Correlacion.Actual is not null)
+            {
+                using var scope = scopes.CreateScope();
+                await scope.ServiceProvider.GetRequiredService<RegistroTrazas>().AnotarAsync("cambio-publicado", ct);
+            }
         }
         catch (Exception ex)
         {

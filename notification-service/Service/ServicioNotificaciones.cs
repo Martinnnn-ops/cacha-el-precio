@@ -1,3 +1,4 @@
+using Notification_Service.Observabilidad;
 using System.Text.Json;
 using Notification_Service.Correo;
 using Notification_Service.Exceptions;
@@ -18,7 +19,8 @@ public sealed class ServicioNotificaciones(
     IBandejaCorreos bandeja,
     IEnviadorCorreo enviador,
     IConfiguration config,
-    ILogger<ServicioNotificaciones> log)
+    ILogger<ServicioNotificaciones> log,
+    RegistroTrazas? trazas = null)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly HashSet<string> TiposValidos = ["precio.bajo", "oferta.agotada", "oferta.repuesta"];
@@ -30,6 +32,8 @@ public sealed class ServicioNotificaciones(
         DatosCambioOferta datos = LeerDatos(sobre);
 
         using var _ = log.BeginScope("eventId={EventId} intento={Intento}", sobre.EventId, intento);
+        using var __ = Correlacion.Iniciar(log, Correlacion.Validar(sobre.CorrelationId));
+        if (trazas is not null) await trazas.AnotarAsync("cambio-recibido", ct);
 
         var subs = await seguidores.ObtenerSeguidoresAsync(datos.ProductId, ct);
         if (subs.Count == 0)
@@ -45,6 +49,7 @@ public sealed class ServicioNotificaciones(
             if (await repositorio.YaEnviadoAsync(sobre.EventId, sub, ct))
             {
                 log.LogInformation("Ya se le habia avisado a {Sub}; se salta", sub);
+                if (trazas is not null) await trazas.AnotarAsync("aviso-repetido-saltado", ct);
                 continue;
             }
 
@@ -65,6 +70,7 @@ public sealed class ServicioNotificaciones(
 
             await repositorio.MarcarEnviadoAsync(sobre.EventId, sub, sobre.Type, ct);
             log.LogInformation("Aviso enviado a {Sub}", sub);
+            if (trazas is not null) await trazas.AnotarAsync("aviso-enviado", ct);
             await GuardarEnBandejaAsync(sobre, plantilla with { Para = correo }, ct);
         }
     }

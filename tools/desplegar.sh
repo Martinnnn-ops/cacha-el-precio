@@ -135,6 +135,9 @@ SNS_CAMBIOS_OFERTA_ARN=${SNS_CAMBIOS_OFERTA_ARN:-}
 KINESIS_PRECIOS_STREAM=${KINESIS_PRECIOS_STREAM:-}
 KINESIS_REGION=${KINESIS_REGION:-$INFRA_REGION}
 SQS_PRECIOS_DLQ_URL=${SQS_PRECIOS_DLQ_URL:-}
+# Lector de auditoria (flujo 2, PLAN-EFT §4). Vacia = no arranca.
+SQS_AUDITORIA_PRECIOS_URL=${SQS_AUDITORIA_PRECIOS_URL:-}
+SQS_AUDITORIA_PRECIOS_DLQ_URL=${SQS_AUDITORIA_PRECIOS_DLQ_URL:-}
 # Flujo 1: el scraper publica por POST /ingesta (API Gateway -> SQS) con su
 # client de Cognito. Sin api-gateway.env queda en http (directo a Product Service).
 MODO_PUBLICACION=${MODO_PUBLICACION:-$([[ -n "${API_GATEWAY_URL_INGESTA:-}" ]] && echo cola || echo http)}

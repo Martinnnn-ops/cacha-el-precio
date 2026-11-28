@@ -60,6 +60,8 @@ public static class EndpointsMensajeria
 
         services.AddScoped<ServicioAdministracion>();
         BandejaCorreosProxy.Registrar(services, config);
+        AuditoriaProxy.Registrar(services, config);
+        TrazasProxy.Registrar(services, config);
         SimuladorAvisos.Registrar(services, config);
         return modo;
     }
@@ -119,6 +121,12 @@ public static class EndpointsMensajeria
 
         // ── Correos generados por notification-service (la bandeja) ────────
         BandejaCorreosProxy.Mapear(admin);
+
+        // ── Cambios auditados por product-service (cep-auditoria-precios) ──
+        AuditoriaProxy.Mapear(admin);
+
+        // ── Seguir un barrido: su línea de tiempo por correlationId ──
+        TrazasProxy.Mapear(admin);
 
         // ── Simular un aviso: publica un cambio de oferta en el topico ─────
         // 202: el mensaje quedo publicado; lo que pase despues (reglas, colas,

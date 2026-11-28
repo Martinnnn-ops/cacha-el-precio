@@ -1,3 +1,4 @@
+using Product_Service.Observabilidad;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Product_Service.Data;
@@ -35,7 +36,10 @@ public interface IProcesadorPrecio
 /// Idempotente: un eventId ya visto no vuelve a sumar (la tabla de procesados),
 /// así que un registro entregado dos veces no infla el promedio.
 /// </summary>
-public sealed class ProcesadorPrecioCapturado(ProductDbContext db, ILogger<ProcesadorPrecioCapturado> log)
+public sealed class ProcesadorPrecioCapturado(
+    ProductDbContext db,
+    ILogger<ProcesadorPrecioCapturado> log,
+    RegistroTrazas? trazas = null)
     : IProcesadorPrecio
 {
     public const string TipoPrecioCapturado = "precio.capturado";
@@ -50,6 +54,7 @@ public sealed class ProcesadorPrecioCapturado(ProductDbContext db, ILogger<Proce
         PrecioCapturado datos = LeerDatos(sobre);
 
         using var _ = log.BeginScope("eventId={EventId}", sobre.EventId);
+        using var __ = Correlacion.Iniciar(log, Correlacion.Validar(sobre.CorrelationId));
 
         if (await db.EventosPrecioProcesados.AnyAsync(e => e.EventId == sobre.EventId, ct))
         {
@@ -88,6 +93,7 @@ public sealed class ProcesadorPrecioCapturado(ProductDbContext db, ILogger<Proce
         });
 
         await db.SaveChangesAsync(ct);
+        if (trazas is not null) await trazas.AnotarAsync("precio-procesado", ct);
         log.LogInformation("Precio {Store}/{ExternalId} = {Precio} sumado ({Muestras} muestras)",
             est.Store, est.ExternalId, datos.Price, est.Muestras);
         return sobre.EventId!;

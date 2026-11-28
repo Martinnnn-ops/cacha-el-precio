@@ -46,8 +46,8 @@
 |---|---|---|---|
 | 🟢 | **CI** con GitHub Actions: compilar y probar cada PR | `.github/workflows/` | 22-nov |
 | 🟢 | **CD**: imágenes en GHCR y despliegue **solo desde `main`**, si AWS está prendido | `.github/workflows/`, `docker-compose.yml`, `tools/desplegar.sh` | 25-nov |
-| 🟢 | **correlationId** en los pedidos y los eventos, y **logs JSON** en todos los servicios | `Program.cs` de cada servicio, scraper | 25-nov |
-| 🟢 | **Lector de `cep-auditoria-precios`**: guarda todos los cambios y marca los sospechosos | `product-service/`, `infra/mensajeria/topologia.json` | 27-nov |
+| ✅ | ~~**correlationId** en los pedidos y los eventos, y **logs JSON** en todos los servicios~~ — 28-nov, `feature/trazabilidad` | `Program.cs` de cada servicio, scraper | 25-nov |
+| ✅ | ~~**Lector de `cep-auditoria-precios`**: guarda todos los cambios y marca los sospechosos~~ — 28-nov, con DLQ y la pantalla «Seguir un barrido» | `product-service/`, `infra/mensajeria/topologia.json` | 27-nov |
 
 ### Kinesis
 

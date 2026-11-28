@@ -3,8 +3,9 @@ using Amazon.SQS.Model;
 
 namespace Product_Service.Mensajeria;
 
-// Implementacion de IColaMensajes sobre Amazon SQS. Lee de cep-ofertas-crudas y
-// manda los definitivos a cep-ofertas-crudas-dlq.
+// Implementacion de IColaMensajes sobre Amazon SQS. Por defecto lee de
+// cep-ofertas-crudas y manda los definitivos a cep-ofertas-crudas-dlq; con
+// Para(...) sirve para cualquier otra cola (la de auditoria).
 public sealed class ColaMensajesSqs : IColaMensajes
 {
     private readonly IAmazonSQS sqs;
@@ -13,12 +14,21 @@ public sealed class ColaMensajesSqs : IColaMensajes
     private readonly ILogger<ColaMensajesSqs> log;
 
     public ColaMensajesSqs(IAmazonSQS sqs, IConfiguration config, ILogger<ColaMensajesSqs> log)
+        : this(sqs, config["SQS_OFERTAS_CRUDAS_URL"] ?? "", config["SQS_OFERTAS_CRUDAS_DLQ_URL"] ?? "", log)
+    {
+    }
+
+    // Para otra cola (la de auditoria): las URLs se pasan directo.
+    private ColaMensajesSqs(IAmazonSQS sqs, string colaUrl, string dlqUrl, ILogger<ColaMensajesSqs> log)
     {
         this.sqs = sqs;
         this.log = log;
-        colaUrl = config["SQS_OFERTAS_CRUDAS_URL"] ?? "";
-        dlqUrl = config["SQS_OFERTAS_CRUDAS_DLQ_URL"] ?? "";
+        this.colaUrl = colaUrl;
+        this.dlqUrl = dlqUrl;
     }
+
+    public static ColaMensajesSqs Para(IAmazonSQS sqs, string colaUrl, string dlqUrl, ILogger<ColaMensajesSqs> log) =>
+        new(sqs, colaUrl, dlqUrl, log);
 
     public bool Habilitada => !string.IsNullOrWhiteSpace(colaUrl);
 

@@ -50,3 +50,8 @@ export const simularAviso = (datos) => http.post(`${BASE}/simular-aviso`, datos)
 export const verProducto = (id) => http.get(`/productos/${id}`)
 // Seguir la prenda con la cuenta del admin: sin seguidores no hay a quién avisar.
 export const seguirProducto = (id) => http.post(`/seguimiento/${id}`)
+
+// «Seguir un barrido» (PLAN-EFT §3, paso 4): los últimos barridos y la línea de
+// tiempo de uno, armada por el gateway con lo que sabe cada servicio.
+export const listarBarridos = (limite = 15) => http.get(`${BASE}/trazas`, { params: { limite } })
+export const verTraza = (correlationId) => http.get(`${BASE}/trazas/${nombre(correlationId)}`)

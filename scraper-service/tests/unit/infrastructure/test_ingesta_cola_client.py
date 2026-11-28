@@ -44,12 +44,19 @@ class Servidor:
 
 def cliente(servidor, reintentos=3, reloj=None):
     http = httpx.Client(transport=httpx.MockTransport(servidor))
-    token = TokenCognito(URL_TOKEN, "id", "secreto", "https://api.cachaelprecio.cl/ingesta", http,
-                         **({"reloj": reloj} if reloj else {}))
+    token = TokenCognito(
+        URL_TOKEN,
+        "id",
+        "secreto",
+        "https://api.cachaelprecio.cl/ingesta",
+        http,
+        **({"reloj": reloj} if reloj else {}),
+    )
     return IngestaColaClient(URL_INGESTA, token, http, reintentos=reintentos, dormir=lambda s: None)
 
 
 # ── El sobre ─────────────────────────────────────────────────────────────
+
 
 def test_el_sobre_es_oferta_capturada_v1_con_el_payload_intacto():
     s = sobre(PAYLOAD)
@@ -66,6 +73,7 @@ def test_cada_prenda_lleva_un_event_id_distinto():
 
 
 # ── Camino feliz ─────────────────────────────────────────────────────────
+
 
 def test_publica_con_el_token_del_scraper():
     servidor = Servidor()
@@ -91,12 +99,13 @@ def test_renueva_el_token_cuando_esta_por_vencer():
     servidor = Servidor()
     c = cliente(servidor, reloj=lambda: ahora[0])
     c.sincronizar_producto(PAYLOAD)
-    ahora[0] = 3600 - 30          # dentro del margen de 60 s antes de vencer
+    ahora[0] = 3600 - 30  # dentro del margen de 60 s antes de vencer
     c.sincronizar_producto(PAYLOAD)
     assert servidor.tokens_pedidos == 2
 
 
 # ── Errores ──────────────────────────────────────────────────────────────
+
 
 def test_ante_401_pide_un_token_nuevo_una_sola_vez():
     servidor = Servidor([401, 200])
@@ -145,6 +154,7 @@ def test_si_cognito_no_entrega_token_falla_con_mensaje_claro():
 
 # ── Configuración ────────────────────────────────────────────────────────
 
+
 def test_por_defecto_publica_por_http():
     assert Settings(_env_file=None).modo_publicacion == "http"
 
@@ -166,6 +176,7 @@ def test_la_url_del_token_sale_del_dominio_de_cognito():
 
 
 # ── main.construir_sync elige el cliente según MODO_PUBLICACION ──────────
+
 
 def test_construir_sync_en_modo_cola_usa_la_ingesta():
     from scraper.main import construir_sync

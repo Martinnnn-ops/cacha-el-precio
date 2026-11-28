@@ -61,6 +61,13 @@ public class AdministracionMensajeriaHttpTests : IDisposable
                     .ConfigurePrimaryHttpMessageHandler(() => new NotificacionesFalso());
                 services.AddHttpClient<SimuladorAvisos>()
                     .ConfigurePrimaryHttpMessageHandler(() => new ProductosFalso());
+                services.AddHttpClient<AuditoriaProxy>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new NotificacionesFalso());
+                foreach (var nombre in new[] { TrazasProxy.Scraper, TrazasProxy.Productos })
+                    services.AddHttpClient(nombre).ConfigurePrimaryHttpMessageHandler(() => new TrazasFalso());
+                // notification-service "apagado": su parte debe venir en «faltan».
+                services.AddHttpClient(TrazasProxy.Notificaciones)
+                    .ConfigurePrimaryHttpMessageHandler(() => new NotificacionesFalso());
             });
         });
         admin = Cliente(Token(grupos: ["admin"]));
@@ -167,8 +174,10 @@ public class AdministracionMensajeriaHttpTests : IDisposable
         await Esperar(admin.GetAsync("/api/admin/mensajeria/colas/cep-ofertas-crudas/mensajes"), HttpStatusCode.Conflict);
 
     [Fact]
-    public async Task La_auditoria_se_puede_mirar() =>
-        await Esperar(admin.GetAsync("/api/admin/mensajeria/colas/cep-auditoria-precios/mensajes"), HttpStatusCode.OK);
+    // Desde el 28-11 la auditoría tiene lector y DLQ: mirarla contaría como una
+    // entrega y podría mandar mensajes sanos a la DLQ, así que el panel lo frena.
+    public async Task La_auditoria_ya_no_se_puede_mirar_porque_tiene_lector_y_dlq() =>
+        await Esperar(admin.GetAsync("/api/admin/mensajeria/colas/cep-auditoria-precios/mensajes"), HttpStatusCode.Conflict);
 
     [Fact]
     public async Task Una_cola_que_no_existe_responde_404() =>
@@ -262,6 +271,70 @@ public class AdministracionMensajeriaHttpTests : IDisposable
     public async Task Simular_con_un_producto_que_no_existe_responde_404() =>
         await Esperar(admin.PostAsJsonAsync("/api/admin/mensajeria/simular-aviso",
             new { productId = 999, tipo = "oferta.repuesta" }), HttpStatusCode.NotFound);
+
+    // ── La auditoría (cep-auditoria-precios, en product-service) ────────
+
+    [Fact]
+    public async Task La_auditoria_pasa_el_filtro_de_sospechosos_a_product_service()
+    {
+        var r = await admin.GetAsync("/api/admin/mensajeria/auditoria?limite=5&soloSospechosos=true");
+
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        using var json = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+        Assert.Equal("internal/auditoria?limite=5&soloSospechosos=true", json.RootElement.GetProperty("pedido").GetString());
+    }
+
+    [Fact]
+    public async Task La_auditoria_sin_token_responde_401()
+    {
+        using var anonimo = fabrica.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonimo.GetAsync("/api/admin/mensajeria/auditoria")).StatusCode);
+    }
+
+    // ── Seguir un barrido (trazas) ───────────────────────────────────────
+
+    [Fact]
+    public async Task La_linea_de_tiempo_junta_lo_que_sabe_cada_servicio()
+    {
+        var r = await admin.GetAsync("/api/admin/mensajeria/trazas/barrido-paris-1");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+
+        using var json = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+        var raiz = json.RootElement;
+        Assert.Equal("ok", raiz.GetProperty("scraper").GetProperty("estado").GetString());
+        Assert.Equal("oferta-guardada", raiz.GetProperty("etapas")[0].GetProperty("etapa").GetString());
+        Assert.Equal(1, raiz.GetProperty("auditoria").GetArrayLength());
+        // NotificacionesFalso responde otra forma: el gateway no se cae, solo lo omite.
+        Assert.Equal(JsonValueKind.Array, raiz.GetProperty("faltan").ValueKind);
+    }
+
+    [Fact]
+    public async Task La_linea_de_tiempo_exige_el_grupo_admin()
+    {
+        using var usuario = Cliente(Token(grupos: ["usuario"]));
+        Assert.Equal(HttpStatusCode.Forbidden, (await usuario.GetAsync("/api/admin/mensajeria/trazas")).StatusCode);
+    }
+
+    // scraper y product-service falsos para las trazas.
+    private sealed class TrazasFalso : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            string ruta = request.RequestUri!.PathAndQuery.TrimStart('/');
+            string json = ruta switch
+            {
+                _ when ruta.StartsWith("barridos/") => """{"correlationId":"barrido-paris-1","estado":"ok","guardados":3}""",
+                _ when ruta.StartsWith("barridos") => """[{"correlationId":"barrido-paris-1","estado":"ok"}]""",
+                _ when ruta.StartsWith("internal/auditoria") => """{"eventos":[{"eventId":"e-1","sospechoso":true}]}""",
+                _ when ruta.StartsWith("internal/trazas/") => """[{"servicio":"product-service","etapa":"oferta-guardada","cantidad":3}]""",
+                _ => "[]"
+            };
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
+        }
+    }
 
     // product-service falso: el producto 1 con una oferta de Falabella a $19.990.
     private sealed class ProductosFalso : HttpMessageHandler

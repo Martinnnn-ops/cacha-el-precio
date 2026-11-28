@@ -11,12 +11,20 @@ public class NotificationDbContext : DbContext
 
     public DbSet<NotificacionEnviada> NotificacionesEnviadas { get; set; }
     public DbSet<CorreoGenerado> CorreosGenerados { get; set; }
+    public DbSet<Traza> Trazas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.HasDefaultSchema("notification");
+
+        var traza = modelBuilder.Entity<Traza>();
+        traza.HasKey(t => new { t.CorrelationId, t.Etapa });
+        traza.Property(t => t.CorrelationId).HasMaxLength(128);
+        traza.Property(t => t.Etapa).HasMaxLength(40);
+        traza.HasIndex(t => t.UltimaVez);
+
 
         var enviada = modelBuilder.Entity<NotificacionEnviada>();
         enviada.ToTable("notificaciones_enviadas");

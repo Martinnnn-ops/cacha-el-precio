@@ -79,6 +79,83 @@ namespace Product_Service.Migrations
                     b.ToTable("EstadisticasPrecio", "product");
                 });
 
+            modelBuilder.Entity("Product_Service.Models.Entities.EventoAuditoria", b =>
+                {
+                    b.Property<string>("EventId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int?>("DescuentoPct")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Nombre")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset>("OcurridoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PrecioAnterior")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PrecioNuevo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("RecibidoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Slug")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("Sospechoso")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Store")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("EventId");
+
+                    b.HasIndex("CorrelationId");
+
+                    b.HasIndex("RecibidoEn");
+
+                    b.ToTable("EventosAuditoria", "product");
+                });
+
+            modelBuilder.Entity("Product_Service.Models.Entities.EventoPrecioProcesado", b =>
+                {
+                    b.Property<string>("EventId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("ProcesadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("EventId");
+
+                    b.HasIndex("ProcesadoEn");
+
+                    b.ToTable("EventosPrecioProcesados", "product");
+                });
+
             modelBuilder.Entity("Product_Service.Models.Entities.ObservacionPrecio", b =>
                 {
                     b.Property<string>("Store")
@@ -98,22 +175,6 @@ namespace Product_Service.Migrations
                     b.HasKey("Store", "ExternalId", "CapturadoEn");
 
                     b.ToTable("ObservacionesPrecio", "product");
-                });
-
-            modelBuilder.Entity("Product_Service.Models.Entities.EventoPrecioProcesado", b =>
-                {
-                    b.Property<string>("EventId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("ProcesadoEn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("EventId");
-
-                    b.HasIndex("ProcesadoEn");
-
-                    b.ToTable("EventosPrecioProcesados", "product");
                 });
 
             modelBuilder.Entity("Product_Service.Models.Entities.PersonalItem", b =>
@@ -282,6 +343,32 @@ namespace Product_Service.Migrations
                         .IsUnique();
 
                     b.ToTable("ProductOffers", "product");
+                });
+
+            modelBuilder.Entity("Product_Service.Models.Entities.Traza", b =>
+                {
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Etapa")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<long>("Cantidad")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("PrimeraVez")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("UltimaVez")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CorrelationId", "Etapa");
+
+                    b.HasIndex("UltimaVez");
+
+                    b.ToTable("Trazas", "product");
                 });
 
             modelBuilder.Entity("Product_Service.Models.Entities.ProductOfferEntity", b =>

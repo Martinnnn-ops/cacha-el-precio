@@ -258,11 +258,12 @@ public class ServicioAdministracionTests
     }
 
     [Fact]
-    public async Task La_auditoria_se_puede_mirar_porque_no_tiene_dlq()
+    public async Task La_auditoria_no_se_puede_mirar_porque_tiene_dlq()
     {
+        // Desde el 28-11 tiene lector y DLQ (PLAN-EFT §4): mirarla gastaría intentos.
         await servicio.AplicarTopologiaAsync(Ct);
         memoria.Sembrar("cep-auditoria-precios", """{"type":"precio.bajo"}""", new Dictionary<string, string>());
-        Assert.Single(await servicio.VerMensajesAsync("cep-auditoria-precios", 10, Ct));
+        await Assert.ThrowsAsync<ConflictoException>(() => servicio.VerMensajesAsync("cep-auditoria-precios", 10, Ct));
     }
 
     [Theory]

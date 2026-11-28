@@ -17,6 +17,11 @@
       "name": "precios-dlq",
       "description": "Registros de Kinesis cep-precios que el lector de precios no pudo procesar (JSON roto o precio invalido). Kinesis no trae DLQ propia: el lector de product-service copia aqui el registro con el motivo. Ver docs/PLAN-EFT.md seccion 6 y ADR-035.",
       "messageRetentionSeconds": 1209600
+    },
+    {
+      "name": "auditoria-precios-dlq",
+      "description": "Cambios que el lector de auditoria de product-service no pudo guardar. Ver docs/PLAN-EFT.md seccion 4.",
+      "messageRetentionSeconds": 1209600
     }
   ],
   "queues": [
@@ -50,10 +55,14 @@
       "name": "auditoria-precios",
       "description": "Flujo 2. Copia de TODOS los cambios de oferta, sin filtro. Sirve para revisar precios sospechosos del scraper y para demostrar las reglas de distribucion.",
       "producer": "SNS cep-cambios-oferta",
-      "consumer": "(opcional) consumidor de metricas",
+      "consumer": "product-service (lector de auditoria: guarda cada cambio una vez por eventId y marca los sospechosos)",
       "visibilityTimeoutSeconds": 30,
       "messageRetentionSeconds": 345600,
-      "receiveWaitTimeSeconds": 20
+      "receiveWaitTimeSeconds": 20,
+      "deadLetter": {
+        "queue": "auditoria-precios-dlq",
+        "maxReceiveCount": 5
+      }
     }
   ],
   "topics": [

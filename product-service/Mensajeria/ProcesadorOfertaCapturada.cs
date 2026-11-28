@@ -1,3 +1,4 @@
+using Product_Service.Observabilidad;
 using System.Text.Json;
 using Product_Service.Exceptions;
 using Product_Service.Models.DTOs;
@@ -14,7 +15,8 @@ public sealed record SobreEntrante(
     int Version,
     string? Source,
     DateTimeOffset? OccurredAt,
-    JsonElement Data);
+    JsonElement Data,
+    string? CorrelationId = null);
 
 // El trabajo de un mensaje de cep-ofertas-crudas: validar el sobre, leer la
 // oferta y guardarla con UpsertProductAsync, el mismo camino que POST
@@ -24,7 +26,10 @@ public sealed record SobreEntrante(
 //
 // Idempotente: UpsertProductAsync + los UNIQUE de (Store, ExternalId) y
 // CanonicalKey hacen que un duplicado de SQS no cambie nada.
-public sealed class ProcesadorOfertaCapturada(ProductService productos, ILogger<ProcesadorOfertaCapturada> log)
+public sealed class ProcesadorOfertaCapturada(
+    ProductService productos,
+    ILogger<ProcesadorOfertaCapturada> log,
+    RegistroTrazas? trazas = null)
 {
     public const string TipoOfertaCapturada = "oferta.capturada";
     public const int VersionSoportada = 1;
@@ -37,6 +42,8 @@ public sealed class ProcesadorOfertaCapturada(ProductService productos, ILogger<
         ProductRequest oferta = LeerOferta(sobre);
 
         using var _ = log.BeginScope("eventId={EventId}", sobre.EventId);
+        // El número del barrido que la capturó: sigue en el cambio que se publique.
+        using var __ = Correlacion.Iniciar(log, Correlacion.Validar(sobre.CorrelationId));
 
         // Las mismas reglas del POST: el controlador revisa la politica de edad
         // antes de llamar al servicio, asi que aca tambien.
@@ -48,6 +55,7 @@ public sealed class ProcesadorOfertaCapturada(ProductService productos, ILogger<
             var producto = await productos.UpsertProductAsync(oferta);
             log.LogInformation("Oferta {Store}/{ExternalId} guardada en el producto {ProductId}",
                 oferta.Store, oferta.ExternalId, producto.Id);
+            if (trazas is not null) await trazas.AnotarAsync("oferta-guardada", ct);
             return sobre.EventId!;
         }
         catch (Exception e) when (e is ArgumentException or PriceValueException)
@@ -55,6 +63,22 @@ public sealed class ProcesadorOfertaCapturada(ProductService productos, ILogger<
             // Validacion del catalogo: reintentar no va a cambiar el precio ni el nombre.
             throw new ErrorDefinitivoException($"validacion: {e.Message}", e);
         }
+        catch (Exception e) when (EsTextoDemasiadoLargo(e))
+        {
+            // Postgres 22001: un campo no cabe en su columna. Reintentar manda el
+            // mismo texto y falla igual, asi que va directo a la DLQ (antes gastaba
+            // los 5 reintentos; BITACORA 28-11).
+            throw new ErrorDefinitivoException("validacion: un texto de la oferta excede el largo de su columna (22001)", e);
+        }
+    }
+
+    // 22001 = string_data_right_truncation. EF lo envuelve en DbUpdateException.
+    public static bool EsTextoDemasiadoLargo(Exception? e)
+    {
+        for (; e is not null; e = e.InnerException)
+            if (e is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.StringDataRightTruncation })
+                return true;
+        return false;
     }
 
     public static SobreEntrante LeerSobre(string cuerpo)

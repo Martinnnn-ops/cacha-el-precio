@@ -54,13 +54,16 @@ public class BandejaCorreosTests
     }
 
     [Fact]
-    public void La_ultima_migracion_es_la_de_la_bandeja()
+    public void La_migracion_de_la_bandeja_esta_y_la_de_trazas_va_despues()
     {
         var opciones = new DbContextOptionsBuilder<NotificationDbContext>()
             .UseNpgsql("Host=localhost;Database=sin-uso")
             .Options;
         using var db = new NotificationDbContext(opciones);
 
-        Assert.Equal("20261026120000_BandejaCorreos", db.Database.GetMigrations().Last());
+        var migraciones = db.Database.GetMigrations().ToList();
+        Assert.Contains("20261026120000_BandejaCorreos", migraciones);
+        // Desde el 28-11 la última es la de trazas (PLAN-EFT §3, paso 4).
+        Assert.EndsWith("_AddTrazas", migraciones.Last());
     }
 }

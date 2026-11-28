@@ -1,3 +1,4 @@
+using Notification_Service.Observabilidad;
 using Amazon;
 using Amazon.CognitoIdentityProvider;
 using Amazon.SQS;
@@ -12,6 +13,7 @@ using Notification_Service.Service;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.UsarLogsJson();
 var config = builder.Configuration;
 
 // ─── Base de datos: esquema propio `notification` ───────────────────────────
@@ -71,7 +73,12 @@ builder.Services.AddHostedService<ConsumidorNotificaciones>();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
+builder.Services.AddScoped<RegistroTrazas>();
+
 var app = builder.Build();
+
+// Primero de todo: cada pedido lleva su número de seguimiento (PLAN-EFT §3).
+app.UsarCorrelacion();
 
 using (IServiceScope scope = app.Services.CreateScope())
 {
@@ -99,6 +106,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapBandejaCorreos();
+app.MapTrazas();
 app.MapHealthChecks("/health");
 
 app.Run();

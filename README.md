@@ -191,6 +191,7 @@ Lo que corre hoy, no lo planificado.
 | 🟢 | Login | Google vía Cognito |
 | 🟢 | Catálogo | 6 tiendas en vivo (Ripley y Converse con el parser listo) |
 | 🟢 | Mensajería | los dos flujos probados en AWS, con DLQ y panel |
+| 🟢 | Trazabilidad | cada barrido lleva un número de seguimiento que se puede seguir en el panel y en los logs |
 | 🟢 | Infraestructura | toda la cuenta en Terraform, probada en una cuenta vacía |
 | 🟢 | Respaldos | cada hora a S3, y al laptop antes de cada apagado |
 | 🟢 | CI/CD | GitHub Actions: pruebas en cada PR y despliegue automático desde `main` |
