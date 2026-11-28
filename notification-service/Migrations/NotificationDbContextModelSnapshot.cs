@@ -104,6 +104,32 @@ namespace Notification_Service.Migrations
 
                     b.ToTable("notificaciones_enviadas", "notification");
                 });
+
+            modelBuilder.Entity("Notification_Service.Models.Entities.Traza", b =>
+                {
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Etapa")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<long>("Cantidad")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("PrimeraVez")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("UltimaVez")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CorrelationId", "Etapa");
+
+                    b.HasIndex("UltimaVez");
+
+                    b.ToTable("Trazas", "notification");
+                });
 #pragma warning restore 612, 618
         }
     }

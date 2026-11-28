@@ -20,6 +20,8 @@ y dejaria la conexion colgada. Se lanza en segundo plano y se responde
 from __future__ import annotations
 
 import logging
+from collections import deque
+from datetime import UTC, datetime
 from threading import Lock
 from typing import Any
 
@@ -50,6 +52,20 @@ _servicio = construir_servicio(_cfg, _repo)
 # que se lanzo en segundo plano.
 _ultimo: dict[str, dict[str, Any]] = {}
 _barrido_lock = Lock()
+
+# Los ultimos barridos con su correlationId y su estado (encolado -> en curso ->
+# ok / error), para la linea de tiempo del panel de admin (PLAN-EFT §3, paso 4).
+# Vive en memoria a proposito: es lo que paso en esta maquina desde que arranco;
+# lo que importa a largo plazo (ofertas, precios, cambios) ya queda en las bases.
+_barridos: deque[dict[str, Any]] = deque(maxlen=50)
+
+
+def _ahora() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _registro_barrido(correlation_id: str) -> dict[str, Any] | None:
+    return next((b for b in _barridos if b["correlationId"] == correlation_id), None)
 
 
 @app.get("/health", summary="Sonda de vida")
@@ -87,12 +103,25 @@ def _barrer(tienda: str, urls: list[str], correlation_id: str) -> None:
 
 
 def _barrer_con_id(tienda: str, urls: list[str], correlation_id: str) -> None:
-    log.info("barrido de %s: empieza con %s URLs", tienda, len(urls))
+    registro = _registro_barrido(correlation_id) or {}
     try:
         # El repositorio PostgreSQL comparte una conexion. Serializar los
         # barridos evita mezclar transacciones de dos peticiones simultaneas.
         with _barrido_lock:
+            registro.update(estado="en curso", inicio=_ahora())
+            log.info("barrido de %s: empieza con %s URLs", tienda, len(urls))
             r = _servicio.ejecutar(tienda, urls)
+        registro.update(
+            estado="ok",
+            fin=_ahora(),
+            guardados=r.guardados,
+            cambiosDePrecio=r.cambios_de_precio,
+            enviados=r.sincronizados,
+            fueraDelCatalogo=r.productos_descartados,
+            fallos=len(r.urls_fallidas) + len(r.errores_guardado) + len(r.errores_sync),
+            segundos=round(r.segundos, 1),
+        )
+        log.info("barrido de %s: termina (%s)", tienda, r.resumen())
         _ultimo[tienda] = {
             "correlationId": correlation_id,
             "resumen": r.resumen(),
@@ -112,6 +141,7 @@ def _barrer_con_id(tienda: str, urls: list[str], correlation_id: str) -> None:
     except Exception as e:
         log.exception("barrido de %s fallo", tienda)
         _ultimo[tienda] = {"correlationId": correlation_id, "error": str(e)}
+        registro.update(estado="error", fin=_ahora(), error=str(e))
 
 
 @app.post("/scrape/{tienda}", status_code=202, summary="Lanza un barrido en segundo plano")
@@ -139,6 +169,15 @@ def scrape(
     # 202: aceptado y encolado. El scrapeo tarda demasiado para hacerlo
     # dentro de la peticion.
     cid = id_barrido(tienda)
+    _barridos.appendleft(
+        {
+            "correlationId": cid,
+            "tienda": tienda,
+            "estado": "encolado",
+            "encolado": _ahora(),
+            "urls": len(urls),
+        }
+    )
     tareas.add_task(_barrer, tienda, urls, cid)
     return {"estado": "encolado", "tienda": tienda, "urls": len(urls), "correlationId": cid}
 
@@ -148,6 +187,19 @@ def estado_barrido(tienda: str) -> dict[str, Any]:
     if tienda not in _ultimo:
         raise HTTPException(404, f"no hay barridos registrados para {tienda!r}")
     return _ultimo[tienda]
+
+
+@app.get("/barridos", summary="Los ultimos barridos, del mas nuevo al mas viejo")
+def barridos(limite: int = Query(20, ge=1, le=50)) -> list[dict[str, Any]]:
+    return list(_barridos)[:limite]
+
+
+@app.get("/barridos/{correlation_id}", summary="Un barrido por su correlationId")
+def barrido(correlation_id: str) -> dict[str, Any]:
+    registro = _registro_barrido(correlation_id)
+    if registro is None:
+        raise HTTPException(404, f"no hay registro del barrido {correlation_id!r} en esta maquina")
+    return registro
 
 
 @app.get("/productos/{tienda}/{external_id}", summary="Un producto")

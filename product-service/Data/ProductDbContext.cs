@@ -17,6 +17,7 @@ public class ProductDbContext : DbContext
     public DbSet<EstadisticaPrecio> EstadisticasPrecio { get; set; }
     public DbSet<ObservacionPrecio> ObservacionesPrecio { get; set; }
     public DbSet<EventoAuditoria> EventosAuditoria { get; set; }
+    public DbSet<Traza> Trazas { get; set; }
     public DbSet<CheckpointStream> CheckpointsStream { get; set; }
     public DbSet<EventoPrecioProcesado> EventosPrecioProcesados { get; set; }
 
@@ -93,6 +94,12 @@ public class ProductDbContext : DbContext
         auditoria.Property(e => e.CorrelationId).HasMaxLength(128);
         auditoria.HasIndex(e => e.RecibidoEn);
         auditoria.HasIndex(e => e.CorrelationId);
+
+        var traza = modelBuilder.Entity<Traza>();
+        traza.HasKey(t => new { t.CorrelationId, t.Etapa });
+        traza.Property(t => t.CorrelationId).HasMaxLength(128);
+        traza.Property(t => t.Etapa).HasMaxLength(40);
+        traza.HasIndex(t => t.UltimaVez);
 
         var checkpoint = modelBuilder.Entity<CheckpointStream>();
         checkpoint.HasKey(c => c.StreamShard);

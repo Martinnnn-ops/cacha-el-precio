@@ -345,6 +345,32 @@ namespace Product_Service.Migrations
                     b.ToTable("ProductOffers", "product");
                 });
 
+            modelBuilder.Entity("Product_Service.Models.Entities.Traza", b =>
+                {
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Etapa")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<long>("Cantidad")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("PrimeraVez")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("UltimaVez")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CorrelationId", "Etapa");
+
+                    b.HasIndex("UltimaVez");
+
+                    b.ToTable("Trazas", "product");
+                });
+
             modelBuilder.Entity("Product_Service.Models.Entities.ProductOfferEntity", b =>
                 {
                     b.HasOne("Product_Service.Models.Entities.ProductEntity", "Product")

@@ -26,7 +26,10 @@ public sealed record SobreEntrante(
 //
 // Idempotente: UpsertProductAsync + los UNIQUE de (Store, ExternalId) y
 // CanonicalKey hacen que un duplicado de SQS no cambie nada.
-public sealed class ProcesadorOfertaCapturada(ProductService productos, ILogger<ProcesadorOfertaCapturada> log)
+public sealed class ProcesadorOfertaCapturada(
+    ProductService productos,
+    ILogger<ProcesadorOfertaCapturada> log,
+    RegistroTrazas? trazas = null)
 {
     public const string TipoOfertaCapturada = "oferta.capturada";
     public const int VersionSoportada = 1;
@@ -52,6 +55,7 @@ public sealed class ProcesadorOfertaCapturada(ProductService productos, ILogger<
             var producto = await productos.UpsertProductAsync(oferta);
             log.LogInformation("Oferta {Store}/{ExternalId} guardada en el producto {ProductId}",
                 oferta.Store, oferta.ExternalId, producto.Id);
+            if (trazas is not null) await trazas.AnotarAsync("oferta-guardada", ct);
             return sobre.EventId!;
         }
         catch (Exception e) when (e is ArgumentException or PriceValueException)

@@ -63,6 +63,11 @@ public class AdministracionMensajeriaHttpTests : IDisposable
                     .ConfigurePrimaryHttpMessageHandler(() => new ProductosFalso());
                 services.AddHttpClient<AuditoriaProxy>()
                     .ConfigurePrimaryHttpMessageHandler(() => new NotificacionesFalso());
+                foreach (var nombre in new[] { TrazasProxy.Scraper, TrazasProxy.Productos })
+                    services.AddHttpClient(nombre).ConfigurePrimaryHttpMessageHandler(() => new TrazasFalso());
+                // notification-service "apagado": su parte debe venir en «faltan».
+                services.AddHttpClient(TrazasProxy.Notificaciones)
+                    .ConfigurePrimaryHttpMessageHandler(() => new NotificacionesFalso());
             });
         });
         admin = Cliente(Token(grupos: ["admin"]));
@@ -284,6 +289,51 @@ public class AdministracionMensajeriaHttpTests : IDisposable
     {
         using var anonimo = fabrica.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonimo.GetAsync("/api/admin/mensajeria/auditoria")).StatusCode);
+    }
+
+    // ── Seguir un barrido (trazas) ───────────────────────────────────────
+
+    [Fact]
+    public async Task La_linea_de_tiempo_junta_lo_que_sabe_cada_servicio()
+    {
+        var r = await admin.GetAsync("/api/admin/mensajeria/trazas/barrido-paris-1");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+
+        using var json = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+        var raiz = json.RootElement;
+        Assert.Equal("ok", raiz.GetProperty("scraper").GetProperty("estado").GetString());
+        Assert.Equal("oferta-guardada", raiz.GetProperty("etapas")[0].GetProperty("etapa").GetString());
+        Assert.Equal(1, raiz.GetProperty("auditoria").GetArrayLength());
+        // NotificacionesFalso responde otra forma: el gateway no se cae, solo lo omite.
+        Assert.Equal(JsonValueKind.Array, raiz.GetProperty("faltan").ValueKind);
+    }
+
+    [Fact]
+    public async Task La_linea_de_tiempo_exige_el_grupo_admin()
+    {
+        using var usuario = Cliente(Token(grupos: ["usuario"]));
+        Assert.Equal(HttpStatusCode.Forbidden, (await usuario.GetAsync("/api/admin/mensajeria/trazas")).StatusCode);
+    }
+
+    // scraper y product-service falsos para las trazas.
+    private sealed class TrazasFalso : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            string ruta = request.RequestUri!.PathAndQuery.TrimStart('/');
+            string json = ruta switch
+            {
+                _ when ruta.StartsWith("barridos/") => """{"correlationId":"barrido-paris-1","estado":"ok","guardados":3}""",
+                _ when ruta.StartsWith("barridos") => """[{"correlationId":"barrido-paris-1","estado":"ok"}]""",
+                _ when ruta.StartsWith("internal/auditoria") => """{"eventos":[{"eventId":"e-1","sospechoso":true}]}""",
+                _ when ruta.StartsWith("internal/trazas/") => """[{"servicio":"product-service","etapa":"oferta-guardada","cantidad":3}]""",
+                _ => "[]"
+            };
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
+        }
     }
 
     // product-service falso: el producto 1 con una oferta de Falabella a $19.990.

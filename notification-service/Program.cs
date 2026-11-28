@@ -73,6 +73,8 @@ builder.Services.AddHostedService<ConsumidorNotificaciones>();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
+builder.Services.AddScoped<RegistroTrazas>();
+
 var app = builder.Build();
 
 // Primero de todo: cada pedido lleva su número de seguimiento (PLAN-EFT §3).
@@ -104,6 +106,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapBandejaCorreos();
+app.MapTrazas();
 app.MapHealthChecks("/health");
 
 app.Run();

@@ -105,6 +105,8 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
+builder.Services.AddScoped<RegistroTrazas>();
+
 var app = builder.Build();
 
 // Primero de todo: cada pedido lleva su número de seguimiento (PLAN-EFT §3).
@@ -130,6 +132,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapAuditoria();
+app.MapTrazas();
 app.MapHealthChecks("/health");
 
 app.Run();

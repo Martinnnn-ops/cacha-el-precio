@@ -14,7 +14,10 @@ namespace Product_Service.Auditoria;
 /// vez por eventId y lo marca sospechoso si el precio cayó de golpe.
 /// Ver docs/PLAN-EFT.md §4.
 /// </summary>
-public sealed class ProcesadorAuditoria(ProductDbContext db, ILogger<ProcesadorAuditoria> log)
+public sealed class ProcesadorAuditoria(
+    ProductDbContext db,
+    ILogger<ProcesadorAuditoria> log,
+    RegistroTrazas? trazas = null)
 {
     /// <summary>
     /// Desde qué baja se sospecha de un error del scraper (un 0 de menos, un
@@ -35,6 +38,7 @@ public sealed class ProcesadorAuditoria(ProductDbContext db, ILogger<ProcesadorA
         if (await db.EventosAuditoria.AnyAsync(e => e.EventId == sobre.EventId, ct))
         {
             log.LogInformation("Resultado=duplicado: el cambio {EventId} ya estaba auditado; no se guarda de nuevo", sobre.EventId);
+            if (trazas is not null) await trazas.AnotarAsync("duplicado-ignorado", ct);
             return sobre.EventId!;
         }
 
@@ -48,7 +52,14 @@ public sealed class ProcesadorAuditoria(ProductDbContext db, ILogger<ProcesadorA
         {
             // Dos copias del mismo mensaje procesadas a la vez: la otra ganó.
             log.LogInformation("Resultado=duplicado: {EventId} lo guardó otra copia al mismo tiempo", sobre.EventId);
+            if (trazas is not null) await trazas.AnotarAsync("duplicado-ignorado", ct);
             return sobre.EventId!;
+        }
+
+        if (trazas is not null)
+        {
+            await trazas.AnotarAsync("cambio-auditado", ct);
+            if (evento.Sospechoso) await trazas.AnotarAsync("cambio-sospechoso", ct);
         }
 
         if (evento.Sospechoso)

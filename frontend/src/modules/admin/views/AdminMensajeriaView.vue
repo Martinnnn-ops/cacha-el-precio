@@ -4,6 +4,7 @@ import BaseButton from '@/shared/components/BaseButton.vue'
 import BandejaCorreos from '@/modules/admin/components/BandejaCorreos.vue'
 import DiagramaFlujos from '@/modules/admin/components/DiagramaFlujos.vue'
 import ReglasTopico from '@/modules/admin/components/ReglasTopico.vue'
+import SeguirBarrido from '@/modules/admin/components/SeguirBarrido.vue'
 import TablaColas from '@/modules/admin/components/TablaColas.vue'
 import { FLUJOS, esDeUnFlujo, sinPrefijo } from '@/modules/admin/data/flujos'
 import * as api from '@/modules/admin/services/mensajeria.service'
@@ -32,6 +33,16 @@ const SECCIONES = [
     titulo: 'El plano completo',
     para: 'Los flujos de mensajería dibujados de punta a punta, con los contadores en vivo.',
     acciones: ['Explicar el recorrido de un mensaje.', 'Ver de un vistazo si alguna DLQ tiene fallas.'],
+  },
+  {
+    id: 'barridos',
+    titulo: 'Seguir un barrido',
+    para: 'El recorrido de un barrido por todos los servicios, con su número de seguimiento (correlationId).',
+    acciones: [
+      'Ver cuántas ofertas, precios y cambios dejó un barrido en cada etapa.',
+      'Revisar sus cambios auditados y los sospechosos 🚩.',
+      'Copiar el comando para encontrarlo en los logs.',
+    ],
   },
   {
     id: 'correos',
@@ -237,6 +248,9 @@ async function reprocesar(dlq) {
       <p class="muted">Los flujos 1 y 2 de punta a punta. Haz clic en una cola para ir a su tabla.</p>
       <DiagramaFlujos :colas="colas" @ir="irA" />
     </section>
+
+    <!-- ═════════ Seguir un barrido (trazabilidad, PLAN-EFT §3) ═════════ -->
+    <SeguirBarrido id="barridos" class="bloque" />
 
     <!-- ═════════ Correos que genero el flujo 2 ═════════ -->
     <BandejaCorreos id="correos" class="bloque" :actualizado="actualizado" />

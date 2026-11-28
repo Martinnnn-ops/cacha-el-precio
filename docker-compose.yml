@@ -116,6 +116,8 @@ services:
       PRODUCT_URL: http://product-service:8081
       # La bandeja de correos del panel (/api/admin/mensajeria/correos).
       NOTIFICATION_URL: http://notification-service:8082
+      # «Seguir un barrido» (panel admin): el historial de barridos del scraper.
+      SCRAPER_URL: http://scraper-api:8000
       # Los valores de Cognito salen de cognito.env, que no se versiona.
       # Sin ellos el servicio arranca pero rechaza todos los tokens.
       # Van entre comillas: el mensaje de ${VAR:?...} lleva dos puntos y sin

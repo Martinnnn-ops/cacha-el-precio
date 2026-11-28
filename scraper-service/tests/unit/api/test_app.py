@@ -87,3 +87,43 @@ def test_scrape_sin_sitemap_da_400(cliente):
 
 def test_status_sin_barridos_da_404(cliente):
     assert cliente.get("/scrape/falabella/status").status_code == 404
+
+
+def test_un_barrido_queda_registrado_con_su_correlation_id(cliente, monkeypatch):
+    """La linea de tiempo del panel parte de aca (PLAN-EFT §3, paso 4)."""
+    from types import SimpleNamespace
+
+    import scraper.api.app as api
+
+    resultado = SimpleNamespace(
+        guardados=2,
+        cambios_de_precio=1,
+        sincronizados=2,
+        productos_descartados=0,
+        urls_fallidas=[],
+        errores_guardado=[],
+        errores_sync=[],
+        errores_imagen=[],
+        sin_producto=[],
+        urls_pedidas=2,
+        imagenes_procesadas=0,
+        segundos=1.23,
+        resumen=lambda: "[paris] 2/2",
+    )
+    monkeypatch.setattr(api, "sitemap_de", lambda cfg, t: "https://tienda.test/sitemap.xml")
+    monkeypatch.setattr(api, "descubrir_urls", lambda cfg, t, limite, http: ["u1", "u2"])
+    monkeypatch.setattr(api._servicio, "ejecutar", lambda t, urls: resultado)
+    monkeypatch.setattr(api._servicio, "tiendas", lambda: ["paris"])
+
+    cid = cliente.post("/scrape/paris?limite=2").json()["correlationId"]
+
+    assert cid.startswith("barrido-paris-")
+    registro = cliente.get(f"/barridos/{cid}").json()
+    assert registro["estado"] == "ok"
+    assert registro["guardados"] == 2
+    assert registro["enviados"] == 2
+    assert cliente.get("/barridos").json()[0]["correlationId"] == cid
+
+
+def test_un_barrido_desconocido_da_404(cliente):
+    assert cliente.get("/barridos/barrido-nada").status_code == 404
