@@ -1,6 +1,34 @@
 # Bitácora del proyecto
 
-Última actualización: 27-11-2026.
+Última actualización: 28-11-2026.
+
+## 28-11 · La trazabilidad destapa un error que llevaba semanas escondido — Martín
+
+Rama `feature/trazabilidad`. Al seguir el barrido `barrido-paris-20261128T002117Z` en la pantalla
+nueva «Seguir un barrido», los números no cuadraban: el scraper **envió 217 ofertas** y Kinesis
+procesó **217 precios**, pero product-service **guardó solo 206**. Faltaban 11.
+
+Buscando ese número de seguimiento en los logs JSON salió la causa en dos minutos:
+
+```
+Npgsql.PostgresException 22001: value too long for type character varying(2000)
+```
+
+Algunas fichas de Paris traen una descripción de **más de 2.000 caracteres**, que es el máximo de
+`Description` en `ProductDbContext`. Y el error estaba mal clasificado: el consumidor lo toma como
+**recuperable** (un `DbUpdateException` cualquiera), así que lo reintenta 5 veces —inútil, la
+descripción no se va a acortar sola— y recién ahí lo aparta en la DLQ. Resultado: **76 ofertas
+acumuladas en `cep-ofertas-crudas-dlq`** desde barridos anteriores, sin que nadie lo notara.
+
+**Por qué importa para la defensa.** Es el argumento a favor de la trazabilidad con un caso real:
+sin el `correlationId` y sin contar cada etapa, «217 enviadas, 206 guardadas» no se ve. Con ellos,
+la diferencia salta en la pantalla y el log exacto se encuentra filtrando por un solo número. Y
+muestra que la **DLQ hizo su trabajo**: ninguna oferta se perdió, quedaron apartadas con su motivo
+y se pueden reprocesar con el redrive cuando el arreglo esté.
+
+**El arreglo (pendiente):** recortar la descripción a 2.000 caracteres antes de guardar, y tratar
+el `22001` como error **definitivo** (a la DLQ al primer intento, sin gastar 5 reintentos). Después,
+redrive de las 76 desde el panel.
 
 ## 27-11 · El front vuelve a salir solo desde `main` — Martín
 

@@ -160,6 +160,12 @@ apenas entra, viaja a cada servicio y a cada mensaje de cola, y **todo log del c
 | Trazas | tabla `Trazas` en product y notification: cuántas cosas hizo cada etapa con ese número |
 | Panel | Mensajería › **Seguir un barrido**: línea de tiempo por etapa, cambios auditados con 🚩 y el comando para los logs |
 
+**Lo que encontró (para contarlo en la defensa):** el 28-11, la línea de tiempo de un barrido de
+Paris mostró 217 ofertas enviadas y 206 guardadas. Filtrando los logs por su `correlationId` apareció
+la causa: descripciones de más de 2.000 caracteres (`22001`), mal clasificadas como error pasajero,
+que llevaban **76 ofertas apartadas en la DLQ** sin que nadie lo notara. Detalle en la
+[bitácora del 28-11](BITACORA.md).
+
 **Demo en 3 pasos:**
 1. `curl -H "X-Correlation-Id: demo-profe-001" -H "Version: 2.0" $API/productos/<slug> -D -` → la respuesta trae el mismo número.
 2. En la EC2: `docker compose logs --no-log-prefix | grep demo-profe-001` → aparece en el gateway y en product-service.
