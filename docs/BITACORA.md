@@ -22,8 +22,19 @@ llevada encima de `development` después del merge del PR #64.
 - **Una trampa:** `${GRAFANA_CLAVE:?}` habría botado el `up` normal y el CD, porque Compose interpola
   el archivo entero aunque el perfil esté apagado. La clave la genera `desplegar.sh`, como la de la base.
 
-**Pendiente:** `tf.sh subir` con `t3.medium` (leer que diga *in-place*), prender el perfil en la
-EC2 y confirmar que el `LabRole` deja leer CloudWatch.
+**Después, el mismo día, ya en la EC2:**
+
+- **`t3.medium` aplicado:** respaldo antes (`20261128-032825`), `tf.sh plan` dio 1 cambio
+  *in-place* y cero destruidos; la IP no cambió y los contenedores volvieron solos.
+- **`development` desplegado** con `desplegar.sh` y el perfil prendido: ~1 GB usado de 3,8 GB.
+- **CloudWatch funciona con el `LabRole`.** Los paneles de SQS salían vacíos: en `SEARCH`, un valor
+  entre comillas se compara con el nombre **completo** de la cola. Arreglado en el PR #66
+  (`cep NOT dlq` y `QueueName=dlq`). El tablero muestra la DLQ de `ofertas-crudas` bajando de 81 a
+  11 con el redrive de la mañana.
+- **Catálogo:** `limpiar-catalogo.py` en modo auditoría contra la EC2 dio **0 prendas** para
+  borrar. No se aplicó nada.
+- **Lo que falta:** el PR `development` → `main` (364 commits; publica también el front), y la
+  entrega: informes, video y ensayo.
 
 ## 28-11 · La trazabilidad destapa un error que llevaba semanas escondido — Martín
 

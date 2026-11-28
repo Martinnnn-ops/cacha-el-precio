@@ -92,7 +92,7 @@ tiene que dar **404**. Las métricas solo existen en el puerto 9464 de la red in
 |---|---|---|
 | ⬜ | Métricas del scraper | corre cada 3 h; sus números ya se ven en Kinesis y en las etapas de product-service |
 | ⬜ | Alertas en Grafana | la única alarma (atraso de Kinesis) vive en CloudWatch, por Terraform |
-| 🔎 | CloudWatch desde la EC2 | depende de que el `LabRole` deje `cloudwatch:GetMetricData`; probar en la primera subida |
+| ✅ | CloudWatch desde la EC2 | probado el 28-nov: el `LabRole` deja leer Kinesis y SQS |
 
 ---
 

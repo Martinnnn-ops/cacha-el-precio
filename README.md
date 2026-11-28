@@ -204,7 +204,7 @@ Lo que corre hoy, no lo planificado. Revisado el **28-11-2026**; el detalle vive
 | 🟢 | Mensajería | SQS + SNS, dos flujos con DLQ; los consumidores descartan repetidos (idempotencia) | [MENSAJERIA](docs/MENSAJERIA.md) |
 | 🟢 | Streaming | Kinesis `cep-precios`: cada precio capturado alimenta el precio habitual | [ADR-035](docs/adr/035-kinesis-precios-capturados.md) |
 | 🟢 | Trazabilidad | un `correlationId` por pedido y por barrido, en los logs JSON y en «Seguir un barrido» del panel | [PLAN-EFT §3](docs/PLAN-EFT.md#3--correlationid-y-logs-en-json) |
-| 🟡 | Monitoreo | Prometheus + Grafana + Loki en el perfil `monitoreo`, por túnel SSH. Probado en local; **falta prenderlo en la EC2** | [ADR-036](docs/adr/036-monitoreo-prometheus-grafana-loki.md) |
+| 🟢 | Monitoreo | Prometheus + Grafana + Loki en el perfil `monitoreo`, por túnel SSH; incluye Kinesis y SQS desde CloudWatch | [ADR-036](docs/adr/036-monitoreo-prometheus-grafana-loki.md) |
 
 ### La operación
 

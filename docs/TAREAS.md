@@ -35,7 +35,7 @@
 | ✅ | ~~Terraform fases 0 a 7~~: toda la cuenta, `tools/tf.sh`, el DNS y la prueba en una cuenta vacía ([ADR-033](adr/033-terraform-para-la-infraestructura.md)) | `infra/terraform/`, `tools/` | 17-nov |
 | ✅ | ~~El panel de mensajería solo mira~~ ([ADR-032](adr/032-administracion-de-mensajeria.md)) | `gateway/Mensajeria/`, `frontend/src/modules/admin/` | 17-nov |
 | ✅ | ~~Docs ordenados y al día con Terraform~~: 10 documentos con el mismo estilo, README de servicios y `tests/` | `docs/`, los README | 18-nov |
-| 🟢 | **Revisar y mergear el PR de `feature/terraform`** → `development` (lo revisa alguien que no lo escribió) | — | 20-nov |
+| ✅ | ~~**Revisar y mergear el PR de `feature/terraform`**~~ — PR #52, 18-nov | — | 20-nov |
 | 🟢 | Sincronizar el frontend con el repo de Panditax (allá sigue «Administrar») | `frontend/` (subtree, [DESARROLLO](DESARROLLO.md#el-frontend-y-el-repo-de-panditax)) | antes de desplegar `www` |
 | 🟢 | Quitar o justificar el código de crear/borrar que quedó sin rutas en el gateway | `gateway/Mensajeria/`, `tests/gateway.Tests/` | 2-dic |
 | 🟢 | `respaldar.sh` también vuelca el esquema `notification` | `tools/respaldar.sh` | 2-dic |
@@ -44,8 +44,8 @@
 
 | | Tarea | Toca | Límite |
 |---|---|---|---|
-| 🟢 | **CI** con GitHub Actions: compilar y probar cada PR | `.github/workflows/` | 22-nov |
-| 🟢 | **CD**: imágenes en GHCR y despliegue **solo desde `main`**, si AWS está prendido | `.github/workflows/`, `docker-compose.yml`, `tools/desplegar.sh` | 25-nov |
+| ✅ | ~~**CI** con GitHub Actions: compilar y probar cada PR~~ — PR #55, 23-nov | `.github/workflows/` | 22-nov |
+| ✅ | ~~**CD**: imágenes en GHCR y despliegue **solo desde `main`**~~ — PR #55. ⚠️ No ha desplegado nada todavía: `main` sigue atrás (ver «PR `development` → `main`») | `.github/workflows/`, `docker-compose.yml`, `tools/desplegar.sh` | 25-nov |
 | ✅ | ~~**correlationId** en los pedidos y los eventos, y **logs JSON** en todos los servicios~~ — 28-nov, `feature/trazabilidad` | `Program.cs` de cada servicio, scraper | 25-nov |
 | ✅ | ~~**Lector de `cep-auditoria-precios`**: guarda todos los cambios y marca los sospechosos~~ — 28-nov, con DLQ y la pantalla «Seguir un barrido» | `product-service/`, `infra/mensajeria/topologia.json` | 27-nov |
 
@@ -54,8 +54,8 @@
 | | Tarea | Toca | Límite |
 |---|---|---|---|
 | ✅ | ~~Probar permisos del Academy~~ — 27-nov: crear stream, `put-record`, `get-records`, alarma y borrar pasan; el `LabRole` de la EC2 tiene `kinesis:*` de lectura/escritura y `sqs:SendMessage` (simulado). `terraform plan` limpio: solo agrega | — | 20-nov |
-| 🟡 | **Kinesis con los precios capturados**: stream en Terraform, envío desde el scraper y lector del precio habitual — `feature/ea3-kinesis-trazabilidad`. Código y pruebas listos (`streaming.tf`, productor del scraper, `LectorPrecios`, estadísticas + migración, 16 pruebas). Sondeo ✅ (27-nov) y variables conectadas en `tf.sh`, `desplegar.sh` y el compose. **Falta mergear y desplegar con AWS prendido.** | `infra/terraform/cuenta/`, `scraper-service/`, `product-service/` | 28-nov |
-| 🟡 | DLQ del lector de Kinesis — incluida en la rama de arriba: `cep-precios-dlq` en `topologia.json` y el envío desde `LectorPrecios` (definitivo + recuperable-agotado) | `infra/mensajeria/`, `product-service/` | 28-nov |
+| ✅ | ~~**Kinesis con los precios capturados**: stream, envío desde el scraper y lector del precio habitual~~ — PR #56 y #60, desplegado 27-nov | `infra/terraform/cuenta/`, `scraper-service/`, `product-service/` | 28-nov |
+| ✅ | ~~DLQ del lector de Kinesis (`cep-precios-dlq`)~~ — PR #56, 27-nov | `infra/mensajeria/`, `product-service/` | 28-nov |
 
 > La prueba de permisos del Academy (6a) pasó el 27-nov: lo que queda es desplegar.
 
@@ -63,16 +63,17 @@
 
 | | Tarea | Toca | Límite |
 |---|---|---|---|
-| 🟢 | Limpiar el catálogo con `tools/limpiar-catalogo.py` (lo que entró antes del PR #48), con respaldo antes | datos, con AWS prendido | 24-nov |
-| 🟡 | Barrido automático cada 3 h en la EC2 — timer `cep-barrido` en `desplegar.sh` (paso 3.6), rama `feature/barrido-3h`. **Falta probarlo con AWS prendido.** | `tools/desplegar.sh` (timer) | 24-nov |
+| ✅ | ~~Limpiar el catálogo con `tools/limpiar-catalogo.py`~~ — 28-nov: la auditoría contra la EC2 dio **0 prendas** para borrar; no se aplicó nada | datos, con AWS prendido | 24-nov |
+| ✅ | ~~Barrido automático cada 3 h en la EC2~~ — PR #62; corriendo (Paris y Hites, ~20 min cada vez) | `tools/desplegar.sh` (timer) | 24-nov |
 | 🟢 | Guardar 3 precios (normal, internet, tarjeta) para que aparezca el tachado | `scraper-service/`, `product-service/` | 26-nov |
-| 🟢 | Ficha pulida (rango habitual, gráfico) y arreglar lo visual roto tras los merges | `frontend/` | 28-nov |
-| 🟡 | **Prometheus + Grafana + Loki** (perfil `monitoreo`) — rama `feature/monitoreo`, probado en local. **Falta:** `tf.sh subir` con `t3.medium`, prenderlo en la EC2 y ver la fila de CloudWatch ([ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md)) | `docker-compose.yml`, `infra/monitoreo/` | 29-nov |
+| 🟡 | Ficha pulida: ✅ precio habitual e historial real (PR #63); **falta** repasar lo visual roto tras los merges y revisar `USAR_MOCK` en `www` | `frontend/` | 28-nov |
+| ✅ | ~~**Prometheus + Grafana + Loki** (perfil `monitoreo`)~~ — PR #65 y #66, desplegado en la EC2 `t3.medium` el 28-nov; CloudWatch funciona con el `LabRole` ([ADR-036](adr/036-monitoreo-prometheus-grafana-loki.md)) | `docker-compose.yml`, `infra/monitoreo/` | 29-nov |
 
 ### Cierre
 
 | | Tarea | Toca | Límite |
 |---|---|---|---|
+| 🟢 | **PR `development` → `main`**: el lanzamiento (364 commits). Publica también el front: acordarlo con Panditax y después `MONO_BRANCH: main` en su repo | — | 30-nov |
 | 🟢 | Video, informes y ensayo de la defensa individual | fuera del repo | 2-dic |
 | ⏸️ | Feed personalizado, rediseño visual completo, más tiendas, Kafka | — | después de la EFT |
 
