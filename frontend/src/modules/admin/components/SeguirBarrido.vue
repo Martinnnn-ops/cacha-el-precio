@@ -275,7 +275,7 @@ onBeforeUnmount(() => clearInterval(reloj))
 }
 .barrido {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 2px var(--cep-sp-2);
   padding: var(--cep-sp-2) var(--cep-sp-3);
   border: 1px solid var(--cep-line);

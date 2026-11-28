@@ -3,7 +3,7 @@
 > **Qué es.** El estado actual del proyecto en una página: qué corre, qué está decidido, qué está
 > abierto y dónde leer cada cosa. Es lo primero que lee quien llega nuevo, persona o IA.
 > **Para quién.** Quien empieza una sesión de trabajo, y los agentes de IA (lo pide `AGENTS.md`).
-> **Última revisión:** 26-11-2026. **Se actualiza en el mismo PR** que cambia algo de lo que dice.
+> **Última revisión:** 28-11-2026. **Se actualiza en el mismo PR** que cambia algo de lo que dice.
 
 > 📍 **En 10 segundos:** Cacha el Precio compara precios de ropa y calzado entre 6 tiendas
 > chilenas. Ya pasaron el EP1, el EP2 y el EP3; **lo que sigue es la EFT, el miércoles 2-dic a las
@@ -24,12 +24,14 @@
 | API | ✅ API Gateway → Caddy → gateway, solo con la EC2 prendida. El sitio usa el de la cuenta `731705830984` desde el 19-11 | [ARQUITECTURA](ARQUITECTURA.md) |
 | Login con Google y correo | ✅ Cognito, un pool por cuenta | [ARQUITECTURA §6](ARQUITECTURA.md#6--seguridad-e-identidad) |
 | Catálogo, armario y avisos por correo | ✅ | [EL-PROYECTO](EL-PROYECTO.md) |
-| Mensajería SQS + SNS + DLQ | ✅ dos flujos; la cola de auditoría **nadie la lee** | [MENSAJERIA](MENSAJERIA.md) |
+| Mensajería SQS + SNS + DLQ | ✅ dos flujos; desde el 28-11 la cola de auditoría la lee product-service, con idempotencia | [MENSAJERIA](MENSAJERIA.md) |
 | Panel de mensajería | ✅ **solo mira** desde el 17-11 | [ADR-032](adr/032-administracion-de-mensajeria.md) |
-| Scraper | ✅ 6 tiendas en vivo, 2 con parser listo; **se lanza a mano** | [scraper-service](../scraper-service/README.md) |
+| Scraper | ✅ 6 tiendas en vivo, 2 con parser listo; barrido automático cada 3 horas | [scraper-service](../scraper-service/README.md) |
 | Infraestructura | ✅ Terraform, fases 0 a 7; `tools/tf.sh subir` y `apagar` | [OPERAR-EN-AWS](OPERAR-EN-AWS.md) |
 | CI/CD | ✅ CI en cada PR; CD del backend (GHCR + SSH + *rollback*) y aviso al front, **solo desde `main`** | [CICD](CICD.md) · [ADR-034](adr/034-cicd-con-github-actions.md) |
-| correlationId, Kinesis, Grafana | ⬜ | [PLAN-EFT](PLAN-EFT.md) |
+| Trazabilidad | ✅ `correlationId` de punta a punta, logs en JSON y «Seguir un barrido» en el panel | [PLAN-EFT §3](PLAN-EFT.md) |
+| Kinesis (precios capturados) | ✅ precio habitual y máximo histórico en la ficha | [PLAN-EFT](PLAN-EFT.md) |
+| Grafana | ⬜ | [PLAN-EFT](PLAN-EFT.md) |
 
 **Las cuentas de AWS:** el sitio publicado usa la cuenta `731705830984` desde el 19-11, aunque su
 `.tfvars` todavía dice `tiene_dominio = false` (ver la deuda abierta). Las otras dos lo montan sin dominio. Terraform se probó desde cero en una cuenta vacía el 17-11.
